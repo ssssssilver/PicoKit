@@ -44,7 +44,11 @@ export default defineConfig(async () => {
   const { cloudflare } = await import("@cloudflare/vite-plugin");
 
   return {
-    build: { emitAssets: false },
+    // Browser Web Workers are emitted as hashed assets. They must be present in
+    // dist/client for Cloudflare's ASSETS binding to serve the URLs referenced
+    // by client chunks. Disabling asset emission leaves the files in SSR output
+    // only, which makes every production Worker request return 404.
+    build: { emitAssets: true },
     ssr: {
       // These SDKs only execute after a browser interaction. Keeping them
       // external to the SSR graph prevents client WASM from inflating the
