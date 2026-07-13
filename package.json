@@ -10,6 +10,7 @@
     "dev": "vinext dev",
     "prebuild": "node scripts/prepare-assets.mjs",
     "build": "vinext build",
+    "postbuild": "node scripts/finalize-worker-assets.mjs",
     "start": "vinext start",
     "test": "vitest run --config vitest.config.ts",
     "test:render": "npm run build && node --test tests/rendered-html.test.mjs tests/worker-assets.test.mjs",

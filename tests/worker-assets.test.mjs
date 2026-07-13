@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url"
 
 const clientDirectory = fileURLToPath(new URL("../dist/client/", import.meta.url))
 const assetsDirectory = join(clientDirectory, "assets")
+const serverDirectory = fileURLToPath(new URL("../dist/server/", import.meta.url))
 
 test("every browser Worker referenced by a client chunk is deployed as a client asset", () => {
   const references = new Set()
@@ -18,4 +19,13 @@ test("every browser Worker referenced by a client chunk is deployed as a client 
   for (const file of references) {
     assert.equal(existsSync(join(assetsDirectory, file)), true, `missing deployed Worker asset: ${file}`)
   }
+})
+
+test("browser WASM stays out of the size-limited Cloudflare Worker bundle", () => {
+  const serverFiles = readdirSync(join(serverDirectory, "ssr", "assets"))
+  assert.equal(
+    serverFiles.some((file) => file.endsWith(".wasm")),
+    false,
+    "browser WASM must be deployed as a static client asset, not a server module",
+  )
 })
