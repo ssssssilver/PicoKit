@@ -33,7 +33,7 @@
 
 ## 客户端资源边界
 
-- C2PA inline WASM 资源约 11.2MB，仅在检测到 C2PA 字节时动态加载；
+- C2PA 独立 WASM 资源仅在检测到 C2PA 字节时动态加载，可使用流式编译且不进入 Worker；
 - Transformers.js WASM 资源约 23.6MB，文本检测首次运行时按需加载；
 - 文本模型从 Hugging Face 首次下载并进入浏览器缓存，不进入首屏包；
 - 客户端源代码静态检查未发现 `fetch()`、FormData、XMLHttpRequest、sendBeacon 或 axios 上传实现。

@@ -96,8 +96,8 @@ function makeSignals(searchText: string, metadata: MetadataEntry[], hasC2paBytes
 async function inspectC2pa(file: File, likelyPresent: boolean): Promise<C2paInspection> {
   if (!likelyPresent) return { present: false, validated: null, summary: "未发现 C2PA 容器信号" }
   try {
-    const { createC2pa } = await import("@contentauth/c2pa-web/inline")
-    const c2pa = await createC2pa()
+    const { createC2pa } = await import("@contentauth/c2pa-web")
+    const c2pa = await createC2pa({ wasmSrc: "/c2pa.wasm" })
     const reader = await c2pa.reader.fromBlob(file.type || "application/octet-stream", file)
     if (!reader) return { present: true, validated: null, summary: "检测到 C2PA 字节，但 SDK 未返回可读取的清单" }
     try {

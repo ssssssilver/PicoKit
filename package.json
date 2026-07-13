@@ -6,7 +6,9 @@
     "node": ">=22.13.0"
   },
   "scripts": {
+    "predev": "node scripts/prepare-assets.mjs",
     "dev": "vinext dev",
+    "prebuild": "node scripts/prepare-assets.mjs",
     "build": "vinext build",
     "start": "vinext start",
     "test": "vitest run --config vitest.config.ts",

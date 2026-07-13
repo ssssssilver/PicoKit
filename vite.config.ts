@@ -44,6 +44,17 @@ export default defineConfig(async () => {
   const { cloudflare } = await import("@cloudflare/vite-plugin");
 
   return {
+    build: { emitAssets: false },
+    ssr: {
+      // These SDKs only execute after a browser interaction. Keeping them
+      // external to the SSR graph prevents client WASM from inflating the
+      // deployed Worker while the client build still bundles them normally.
+      external: [
+        "@contentauth/c2pa-web",
+        "@huggingface/transformers",
+        "@pilio/gemini-watermark-remover/browser",
+      ],
+    },
     server: isCodexSeatbeltSandbox
       ? { watch: { useFsEvents: false, usePolling: true } }
       : undefined,
