@@ -1,6 +1,6 @@
-# LocalProof
+# PicoKit
 
-LocalProof 是一个免登录、浏览器本地运行的 AI Detector 与图片隐私工具站。文本推理使用用户设备的 WebGPU/WASM；图片检查、元数据清理、水印处理和压缩使用 Worker、WASM 或 Canvas。用户原始内容不发送到服务端。
+PicoKit 是一个免登录、浏览器本地运行的 AI Detector 与图片隐私工具站。文本推理使用用户设备的 WebGPU/WASM；图片检查、元数据清理、水印处理和压缩使用 Worker、WASM 或 Canvas。用户原始内容不发送到服务端。
 
 ## 第一版功能
 

@@ -3,6 +3,7 @@
 import { FileImage, LoaderCircle, UploadCloud, X } from "lucide-react"
 import { useCallback, useRef, useState } from "react"
 
+import { useLanguage } from "@/components/language-provider"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { validateImageFile } from "@/lib/file-validation"
@@ -20,6 +21,7 @@ export function FileDropzone({
   maxBytes?: number
   disabled?: boolean
 }) {
+  const { language, pick } = useLanguage()
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
   const [error, setError] = useState("")
@@ -29,12 +31,12 @@ export function FileDropzone({
     setError("")
     if (!next) return
     if (next.size > maxBytes) {
-      setError(`文件不能超过 ${Math.round(maxBytes / 1024 / 1024)}MB`)
+      setError(pick(`文件不能超过 ${Math.round(maxBytes / 1024 / 1024)}MB`, `File cannot exceed ${Math.round(maxBytes / 1024 / 1024)}MB`))
       return
     }
     const allowed = !next.type || accept.split(",").some((type) => type === next.type || (type.endsWith("/*") && next.type.startsWith(type.slice(0, -1))))
     if (!allowed) {
-      setError("暂不支持这个文件格式")
+      setError(pick("暂不支持这个文件格式", "This file format is not supported"))
       return
     }
     setValidating(true)
@@ -42,21 +44,21 @@ export function FileDropzone({
       await validateImageFile(next)
       onFile(next)
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "图片校验失败")
+      setError(reason instanceof Error ? translateValidationError(reason.message, language) : pick("图片校验失败", "Image validation failed"))
     } finally {
       setValidating(false)
     }
-  }, [accept, maxBytes, onFile])
+  }, [accept, language, maxBytes, onFile, pick])
 
   if (file) {
     return (
-      <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-        <span className="grid size-12 shrink-0 place-items-center rounded-xl bg-white text-cyan-700 shadow-sm"><FileImage /></span>
+      <div className="flex items-center gap-4 rounded-xl border border-white/10 bg-white/[.025] p-4">
+        <span className="grid size-12 shrink-0 place-items-center rounded-lg border border-white/10 bg-[#161616] text-cyan-300"><FileImage /></span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-slate-900">{file.name}</p>
-          <p className="mt-1 text-xs text-slate-500">{formatBytes(file.size)} · {file.type || "未知格式"}</p>
+          <p className="truncate text-sm font-medium text-zinc-100">{file.name}</p>
+          <p className="mt-1 text-xs text-zinc-500">{formatBytes(file.size)} · {file.type || pick("未知格式", "Unknown format")}</p>
         </div>
-        <Button variant="ghost" size="icon" onClick={() => onFile(null)} disabled={disabled} aria-label="移除文件"><X /></Button>
+        <Button variant="ghost" size="icon" onClick={() => onFile(null)} disabled={disabled} aria-label={pick("移除文件", "Remove file")}><X /></Button>
       </div>
     )
   }
@@ -76,18 +78,27 @@ export function FileDropzone({
           select(event.dataTransfer.files[0])
         }}
         className={cn(
-          "group flex min-h-64 w-full flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-200 bg-white px-6 text-center transition hover:border-cyan-400 hover:bg-cyan-50/30 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-cyan-200 disabled:cursor-not-allowed disabled:opacity-60",
-          dragging && "border-cyan-500 bg-cyan-50",
+          "group flex min-h-72 w-full flex-col items-center justify-center rounded-xl border border-dashed border-white/20 bg-[#0f0f0f] px-6 text-center transition hover:border-cyan-300/60 hover:bg-white/[.025] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-cyan-300/10 disabled:cursor-not-allowed disabled:opacity-60",
+          dragging && "border-cyan-300 bg-cyan-300/[.04]",
         )}
       >
-        <span className="grid size-16 place-items-center rounded-2xl bg-slate-950 text-white shadow-xl shadow-slate-950/10 transition group-hover:-translate-y-1">{validating ? <LoaderCircle className="size-7 animate-spin" /> : <UploadCloud className="size-7" />}</span>
-        <span className="mt-5 text-base font-semibold text-slate-950">{validating ? "正在检查文件内容" : "拖入图片，或点击选择"}</span>
-        <span className="mt-2 text-sm text-slate-500">JPG、PNG、WebP · 最大 {Math.round(maxBytes / 1024 / 1024)}MB</span>
+        <span className="grid size-14 place-items-center text-zinc-200 transition group-hover:-translate-y-1 group-hover:text-cyan-300">{validating ? <LoaderCircle className="size-8 animate-spin" /> : <UploadCloud className="size-8" />}</span>
+        <span className="mt-4 text-base font-semibold text-zinc-100">{validating ? pick("正在检查文件内容", "Checking file contents") : pick("拖入图片，或点击选择", "Drop an image, or click to choose")}</span>
+        <span className="mt-2 font-mono text-xs text-zinc-500">JPG, PNG, WebP · {pick("最大", "Up to")} {Math.round(maxBytes / 1024 / 1024)}MB</span>
       </button>
       <input ref={inputRef} type="file" accept={accept} className="sr-only" onChange={(event) => select(event.target.files?.[0])} />
       {error ? <p role="alert" className="mt-2 text-sm text-red-600">{error}</p> : null}
     </div>
   )
+}
+
+function translateValidationError(message: string, language: "zh-CN" | "en") {
+  if (language !== "en") return message
+  if (message.includes("像素不能超过")) return message.replace("图片像素不能超过", "Image pixels cannot exceed ")
+  if (message.includes("文件内容不是受支持")) return "File contents are not a supported JPG, PNG, or WebP image"
+  if (message.includes("文件扩展信息与实际")) return "The declared file type does not match the detected image contents"
+  if (message.includes("浏览器无法解码")) return "The browser cannot decode this image; the file may be damaged"
+  return "Image validation failed"
 }
 
 export function formatBytes(bytes: number) {

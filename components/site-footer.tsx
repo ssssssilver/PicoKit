@@ -1,30 +1,34 @@
+"use client"
+
 import Link from "next/link"
 import { Cpu, LockKeyhole } from "lucide-react"
 
+import { useLanguage } from "@/components/language-provider"
+
 export function SiteFooter() {
+  const { pick } = useLanguage()
   return (
-    <footer className="border-t border-slate-200 bg-white">
-      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-[1fr_auto] lg:px-8">
+    <footer className="border-t border-white/10 bg-[#080808]">
+      <div className="mx-auto grid max-w-[1280px] gap-8 px-5 py-10 sm:px-8 md:grid-cols-[1fr_auto]">
         <div>
-          <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
-            <LockKeyhole className="size-4 text-cyan-700" />
-            文件留在你的设备上
+          <div className="flex items-center gap-2 text-sm font-semibold text-zinc-100">
+            <LockKeyhole className="size-4 text-cyan-300" />
+            {pick("文件留在你的设备上", "Files stay on your device")}
           </div>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">
-            LocalProof 不接收原始文本、图片、Canvas 像素或处理结果。模型与代码会下载到浏览器，计算由你的 CPU/GPU 完成。
+          <p className="mt-2 max-w-xl text-sm leading-6 text-zinc-500">
+            {pick("PicoKit 不接收原始文本、图片、Canvas 像素或处理结果。模型与代码会下载到浏览器，计算由你的 CPU/GPU 完成。", "PicoKit never receives your source text, images, canvas pixels, or results. Models and code download to the browser, while your CPU/GPU performs the work.")}
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm text-slate-600 sm:grid-cols-4">
-          <Link href="/methodology" className="hover:text-slate-950">方法</Link>
-          <Link href="/privacy" className="hover:text-slate-950">隐私</Link>
-          <Link href="/licenses" className="hover:text-slate-950">许可证</Link>
-          <Link href="/terms" className="hover:text-slate-950">条款</Link>
+        <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm text-zinc-500 sm:grid-cols-4">
+          <Link href="/methodology" className="hover:text-white">{pick("方法", "Method")}</Link>
+          <Link href="/privacy" className="hover:text-white">{pick("隐私", "Privacy")}</Link>
+          <Link href="/licenses" className="hover:text-white">{pick("许可证", "Licenses")}</Link>
+          <Link href="/terms" className="hover:text-white">{pick("条款", "Terms")}</Link>
         </div>
       </div>
-      <div className="border-t border-slate-100 px-4 py-4 text-center text-xs text-slate-400">
-        <span className="inline-flex items-center gap-1.5"><Cpu className="size-3.5" /> 免费 · 免登录 · 本地处理</span>
+      <div className="border-t border-white/10 px-4 py-4 text-center text-xs text-zinc-600">
+        <span className="inline-flex items-center gap-1.5"><Cpu className="size-3.5" /> {pick("免费 · 免登录 · 本地处理", "Free · No account · On-device")}</span>
       </div>
     </footer>
   )
 }
-

@@ -61,6 +61,21 @@ describe("container-level metadata cleanup", () => {
     expect(result.pixelsPreserved).toBe(true)
   })
 
+  it.each(["ai", "label"] as const)("removes AI provenance stored in a PNG caBX chunk in %s mode", async (mode) => {
+    const input = concat(
+      new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      pngChunk("IHDR", new Uint8Array(13)),
+      pngChunk("caBX", ascii("c2pa.actions digitalSourceType=trainedAlgorithmicMedia generator=gpt-image")),
+      pngChunk("IDAT", new Uint8Array([7, 8, 9])),
+      pngChunk("IEND"),
+    )
+    const result = await sanitizeImage(asFile(input, "image/png"), mode)
+    const text = new TextDecoder().decode(await result.blob.arrayBuffer())
+    expect(text).not.toContain("trainedAlgorithmicMedia")
+    expect(result.removed).toContain("PNG caBX")
+    expect(result.pixelsPreserved).toBe(true)
+  })
+
   it("clears WebP VP8X metadata flags after removing later chunks", async () => {
     const vp8x = new Uint8Array(10)
     vp8x[0] = 0x0c

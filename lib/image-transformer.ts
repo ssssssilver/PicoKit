@@ -18,6 +18,7 @@ export type TransformResult = {
 }
 
 type DrawableCanvas = OffscreenCanvas | HTMLCanvasElement
+type DrawableSource = ImageBitmap | OffscreenCanvas
 
 function makeCanvas(width: number, height: number): DrawableCanvas {
   if (typeof OffscreenCanvas !== "undefined") return new OffscreenCanvas(width, height)
@@ -50,6 +51,9 @@ export function sourceCrop(width: number, height: number, targetAspect: number) 
 }
 
 export function outputSize(sourceWidth: number, sourceHeight: number, options: TransformOptions, scale = 1) {
+  if (!Number.isFinite(sourceWidth) || !Number.isFinite(sourceHeight) || sourceWidth <= 0 || sourceHeight <= 0) {
+    throw new Error("图片解码后的尺寸无效")
+  }
   const targetAspect = aspectValue(options.aspect, sourceWidth, sourceHeight)
   let width = options.width || (options.height ? Math.round(options.height * targetAspect) : sourceWidth)
   let height = options.height || (options.width ? Math.round(options.width / targetAspect) : Math.round(width / targetAspect))
@@ -63,8 +67,8 @@ export function outputSize(sourceWidth: number, sourceHeight: number, options: T
   return { width, height }
 }
 
-async function render(bitmap: ImageBitmap, options: TransformOptions, scale: number, quality: number) {
-  const size = outputSize(bitmap.width, bitmap.height, options, scale)
+async function render(source: DrawableSource, sourceWidth: number, sourceHeight: number, options: TransformOptions, scale: number, quality: number) {
+  const size = outputSize(sourceWidth, sourceHeight, options, scale)
   const rotated = options.rotation === 90 || options.rotation === 270
   const canvas = makeCanvas(rotated ? size.height : size.width, rotated ? size.width : size.height)
   const context = canvas.getContext("2d", { alpha: options.format !== "image/jpeg" }) as OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null
@@ -77,8 +81,8 @@ async function render(bitmap: ImageBitmap, options: TransformOptions, scale: num
   if (options.rotation === 90) { context.translate(canvas.width, 0); context.rotate(Math.PI / 2) }
   if (options.rotation === 180) { context.translate(canvas.width, canvas.height); context.rotate(Math.PI) }
   if (options.rotation === 270) { context.translate(0, canvas.height); context.rotate(-Math.PI / 2) }
-  const crop = sourceCrop(bitmap.width, bitmap.height, aspectValue(options.aspect, bitmap.width, bitmap.height))
-  context.drawImage(bitmap, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, size.width, size.height)
+  const crop = sourceCrop(sourceWidth, sourceHeight, aspectValue(options.aspect, sourceWidth, sourceHeight))
+  context.drawImage(source, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, size.width, size.height)
   context.restore()
   const blob = await canvasToBlob(canvas, options.format, quality)
   return { blob, width: canvas.width, height: canvas.height }
@@ -114,20 +118,32 @@ export async function searchTargetSize(
   return { ...best, quality: bestQuality, targetReached: best.blob.size <= targetBytes }
 }
 
-export async function transformImage(file: Blob, options: TransformOptions): Promise<TransformResult> {
-  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" })
-  try {
-    if (!options.targetBytes || options.format === "image/png") {
-      const rendered = await render(bitmap, options, 1, options.quality)
-      return { ...rendered, quality: options.quality, targetReached: !options.targetBytes || rendered.blob.size <= options.targetBytes }
-    }
+async function transformSource(source: DrawableSource, sourceWidth: number, sourceHeight: number, options: TransformOptions): Promise<TransformResult> {
+  if (!sourceWidth || !sourceHeight) throw new Error("图片解码后的尺寸无效")
+  if (!options.targetBytes || options.format === "image/png") {
+    const rendered = await render(source, sourceWidth, sourceHeight, options, 1, options.quality)
+    return { ...rendered, quality: options.quality, targetReached: !options.targetBytes || rendered.blob.size <= options.targetBytes }
+  }
 
-    return searchTargetSize(
-      (scale, quality) => render(bitmap, options, scale, quality),
-      options.targetBytes,
-      options.quality,
-    )
+  return searchTargetSize(
+    (scale, quality) => render(source, sourceWidth, sourceHeight, options, scale, quality),
+    options.targetBytes,
+    options.quality,
+  )
+}
+
+async function transformImageBitmap(bitmap: ImageBitmap, options: TransformOptions): Promise<TransformResult> {
+  try {
+    return await transformSource(bitmap, bitmap.width, bitmap.height, options)
   } finally {
     bitmap.close()
   }
+}
+
+export function transformCanvas(canvas: OffscreenCanvas, options: TransformOptions): Promise<TransformResult> {
+  return transformSource(canvas, canvas.width, canvas.height, options)
+}
+
+export async function transformImage(file: Blob, options: TransformOptions): Promise<TransformResult> {
+  return transformImageBitmap(await createImageBitmap(file, { imageOrientation: "from-image" }), options)
 }

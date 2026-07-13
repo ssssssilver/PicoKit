@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest"
 import { detectImageType } from "@/lib/file-validation"
 import { outputSize, searchTargetSize, sourceCrop } from "@/lib/image-transformer"
 import { aiScore, normalizeOutput, splitText } from "@/lib/text-detector-core"
+import { aggregateImageViews, aiImageScore, fuseImageDetection } from "@/lib/image-detector-core"
+import type { ImageInspection } from "@/lib/image-types"
 
 describe("image file validation", () => {
   it("detects supported formats from magic bytes instead of the filename", () => {
@@ -25,6 +27,52 @@ describe("text detector core", () => {
     expect(normalized).toHaveLength(1)
     expect(aiScore(normalized[0])).toBeCloseTo(0.2)
     expect(aiScore([{ label: "Real", score: 0.3 }])).toBeCloseTo(0.7)
+  })
+})
+
+describe("AI image detector core", () => {
+  const inspection: ImageInspection = {
+    fileName: "sample.png",
+    mime: "image/png",
+    format: "PNG",
+    bytes: 1024,
+    width: 1024,
+    height: 1024,
+    metadata: [],
+    signals: [],
+    c2pa: { present: false, validated: null, summary: "none" },
+    risk: "unknown",
+    note: "",
+  }
+
+  it("normalizes fake and real classifier labels", () => {
+    expect(aiImageScore([{ label: "fake", score: 0.83 }, { label: "real", score: 0.17 }])).toBeCloseTo(0.83)
+    expect(aiImageScore([{ label: "real", score: 0.9 }])).toBeCloseTo(0.1)
+  })
+
+  it("aggregates multiple image regions and measures their consistency", () => {
+    const result = aggregateImageViews([
+      [{ label: "fake", score: 0.8 }],
+      [{ label: "fake", score: 0.7 }],
+      [{ label: "fake", score: 0.75 }],
+    ], ["full", "center", "top-left"], "wasm", "test-model")
+    expect(result.score).toBeCloseTo(0.75)
+    expect(result.consistency).toBeGreaterThan(0.8)
+    expect(result.views).toHaveLength(3)
+  })
+
+  it("keeps uncertain pixel results uncertain without explicit provenance", () => {
+    const pixel = aggregateImageViews([[{ label: "fake", score: 0.55 }]], ["full"], "wasm", "test-model")
+    expect(fuseImageDetection(pixel, inspection).band).toBe("uncertain")
+  })
+
+  it("lets strong explicit AI provenance override a conflicting low pixel score", () => {
+    const pixel = aggregateImageViews([[{ label: "fake", score: 0.12 }]], ["full"], "wasm", "test-model")
+    const withSignal: ImageInspection = { ...inspection, signals: [{ id: "generator", label: "Generator", value: "Stable Diffusion", group: "ai", severity: "high" }] }
+    const fused = fuseImageDetection(pixel, withSignal)
+    expect(fused.band).toBe("higher-ai-signals")
+    expect(fused.evidenceAgreement).toBe("conflict")
+    expect(fused.reliability).toBe("low")
   })
 })
 

@@ -77,7 +77,7 @@ function sanitizePng(bytes: Uint8Array, mode: SanitizeMode) {
     const text = textOf(data)
     const textual = ["tEXt", "zTXt", "iTXt", "eXIf"].includes(type)
     const c2pa = type === "caBX" || type === "C2PA" || C2PA_TEXT.test(text)
-    const remove = mode === "all" ? textual || c2pa : mode === "c2pa" ? c2pa : textual && shouldRemoveText(text, mode)
+    const remove = mode === "all" ? textual || c2pa : mode === "c2pa" ? c2pa : (textual || c2pa) && shouldRemoveText(text, mode)
     if (remove) removed.push(`PNG ${type}`)
     else parts.push(bytes.slice(offset, end))
     offset = end

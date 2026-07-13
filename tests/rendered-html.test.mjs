@@ -12,25 +12,27 @@ async function render(pathname = "/") {
   )
 }
 
-test("server-renders the LocalProof homepage and security headers", async () => {
+test("server-renders the PicoKit homepage and security headers", async () => {
   const response = await render()
   assert.equal(response.status, 200)
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i)
   assert.equal(response.headers.get("x-content-type-options"), "nosniff")
   assert.equal(response.headers.get("referrer-policy"), "strict-origin-when-cross-origin")
   const html = await response.text()
-  assert.match(html, /LocalProof/)
-  assert.match(html, /AI 证据留在文件里/)
+  assert.match(html, /PicoKit/)
+  assert.match(html, /本地 AI 检测与图片隐私工具/)
+  assert.match(html, /On-device AI detection and image privacy tools/)
   assert.match(html, /application\/ld\+json/)
   assert.doesNotMatch(html, /Codex is working|Your site is taking shape|react-loading-skeleton/)
 })
 
 for (const [pathname, marker] of [
   ["/ai-text-detector", "AI 文本检测"],
-  ["/ai-image-detector", "AI 图片来源"],
+  ["/ai-image-detector", "AI 图片检测"],
   ["/remove-c2pa-content-credentials", "C2PA"],
   ["/gemini-watermark-remover", "Gemini"],
   ["/image-compressor", "图片压缩"],
+  ["/remove-background", "移除图片背景"],
 ]) {
   test(`server-renders ${pathname}`, async () => {
     const response = await render(pathname)

@@ -5,9 +5,21 @@ import { ImageInspectorTool } from "@/components/image-inspector-tool"
 import { ToolAside } from "@/components/tool-aside"
 import { ToolShell } from "@/components/tool-shell"
 
-export const metadata: Metadata = { title: "AI 图片来源与 C2PA 检查", description: "本地检查图片的 C2PA Content Credentials、EXIF、XMP、IPTC、AI 生成器和 Made with AI 信号。" }
-
-export default function Page() {
-  return <ToolShell title="AI 图片来源与 C2PA 检查" description="读取文件容器里的来源证据：C2PA、EXIF/XMP、DigitalSourceType、生成器软件和工作流参数。没有证据不等于图片一定由真人创作。" eyebrow="Image Provenance" icon={ScanSearch} aside={<ToolAside notes={["首版支持 JPEG、PNG、WebP", "C2PA 验证组件按需加载", "截图和平台重编码常会丢失元数据"]} />}><ImageInspectorTool /></ToolShell>
+export const metadata: Metadata = {
+  title: "免费 AI 图片检测与来源检查",
+  description: "在浏览器本地运行 AI 图片像素模型，并检查 C2PA、EXIF、XMP 和生成器来源信号。图片不上传。",
 }
 
+export default function Page() {
+  return <ToolShell
+    title={{ zh: "免费 AI 图片检测", en: "Free AI Image Detector" }}
+    description={{ zh: "同时分析像素生成特征与文件来源证据。模型在你的浏览器中运行，图片不会上传；结果是风险提示，不是绝对真伪结论。", en: "Analyze pixel-generation patterns and file-provenance evidence together. The model runs in your browser and the image is never uploaded; results are risk signals, not an absolute verdict." }}
+    eyebrow="AI Image Detector"
+    icon={ScanSearch}
+    aside={<ToolAside notes={[
+      { zh: "支持 JPEG、PNG、WebP，最大 25MB", en: "Supports JPEG, PNG, and WebP up to 25 MB" },
+      { zh: "首次使用下载约 15–30MB 模型", en: "First use downloads about 15–30 MB" },
+      { zh: "对新模型、插画和重压缩图片可能误判", en: "New generators, illustrations, and heavy compression can be misclassified" },
+    ]} />}
+  ><ImageInspectorTool /></ToolShell>
+}
