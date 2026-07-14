@@ -17,7 +17,7 @@ const faq = [
   { question: "文件真的不会上传吗？", questionEn: "Are files really never uploaded?", answer: "不会。文件由浏览器 File API 读取，处理结果通过本地 Blob 下载；服务端不接收原始文本、图片或结果。", answerEn: "No. The browser File API reads files and results download through local Blob URLs. The server never receives the source text, image, or result." },
   { question: "AI 检测分数准确吗？", questionEn: "Are AI detection scores accurate?", answer: "任何检测器都会误判。PicoKit 展示分段证据、稳定度和限制，不把分数描述为作者身份事实。", answerEn: "Every detector produces false positives. PicoKit shows segment evidence, stability, and limits instead of presenting a score as proof of authorship." },
   { question: "清除元数据后就不会显示 Made with AI 吗？", questionEn: "Will removing metadata remove every Made with AI label?", answer: "不保证。平台还可能使用像素分类器、不可见水印或自己的上传历史。", answerEn: "Not guaranteed. Platforms may also use pixel classifiers, invisible watermarks, or their own upload history." },
-  { question: "为什么第一次使用较慢？", questionEn: "Why is the first run slower?", answer: "AI 模型需要首次下载到浏览器缓存。后续使用会复用缓存，图片容器工具则无需下载模型。", answerEn: "AI models download to the browser cache on first use. Later visits reuse the cache, while image-container tools do not need a model download." },
+  { question: "为什么第一次使用较慢？", questionEn: "Why is the first run slower?", answer: "部分工具首次使用时需要准备本地运行组件。后续会复用浏览器缓存，启动和处理都会更快。", answerEn: "Some tools need to prepare local components on first use. Later visits reuse the browser cache for faster startup and processing." },
 ]
 
 export default function Home() {

@@ -45,15 +45,15 @@ export function ImageInspectorTool() {
   async function analyze() {
     if (!file) return
     const runId = ++runRef.current
-    setRunning(true); setProgress(2); setStatus(pick("正在并行读取来源证据和准备像素模型", "Reading provenance and preparing the pixel model")); setError(""); setInspection(null); setPixel(null)
+    setRunning(true); setProgress(2); setStatus(pick("正在读取来源证据并准备本地检测", "Reading provenance and preparing local detection")); setError(""); setInspection(null); setPixel(null)
     const [inspectionOutcome, pixelOutcome] = await Promise.allSettled([inspectImage(file), runPixelDetection(file)])
     if (runRef.current !== runId) return
     const nextInspection = inspectionOutcome.status === "fulfilled" ? inspectionOutcome.value : null
     const nextPixel = pixelOutcome.status === "fulfilled" ? pixelOutcome.value : null
     setInspection(nextInspection); setPixel(nextPixel); setProgress(100); setStatus(pick("本地分析完成", "Local analysis complete")); setRunning(false)
     if (!nextInspection && !nextPixel) setError(pick("图片检测失败，请刷新页面后重试。", "Image detection failed. Refresh the page and try again."))
-    else if (!nextPixel) setError(pick("像素模型未能运行，以下结果仅包含文件来源证据。", "The pixel model could not run. The result below contains file-provenance evidence only."))
-    else if (!nextInspection) setError(pick("来源证据读取失败，以下结果仅包含像素模型判断。", "Provenance inspection failed. The result below contains the pixel-model estimate only."))
+    else if (!nextPixel) setError(pick("画面特征检测未能运行，以下结果仅包含文件来源证据。", "Visual-pattern detection could not run. The result below contains file-provenance evidence only."))
+    else if (!nextInspection) setError(pick("来源证据读取失败，以下结果仅包含画面特征判断。", "Provenance inspection failed. The result below contains only the visual-pattern estimate."))
   }
 
   function runPixelDetection(source: File) {
@@ -65,8 +65,7 @@ export function ImageInspectorTool() {
         const message = event.data
         if (message.type === "progress") {
           setProgress(Math.max(3, Math.min(82, Number(message.progress) * 0.82 || 3)))
-          const name = message.file?.split("/").pop()
-          setStatus(name ? pick(`正在下载模型文件 ${name}`, `Downloading model file ${name}`) : pick("正在下载本地模型", "Downloading local model"))
+          setStatus(pick("正在准备首次检测所需组件", "Preparing detection for first use"))
         }
         if (message.type === "status") {
           if (message.stage === "decoding-image") { setProgress((value) => Math.max(value, 84)); setStatus(pick("正在解码图片", "Decoding image")) }
@@ -90,7 +89,7 @@ export function ImageInspectorTool() {
 
   return <div className="space-y-6">
     <Card className="border-white/10 bg-[#0d0d0d] shadow-sm">
-      <CardHeader><CardTitle className="text-base text-zinc-100">{pick("上传待检测图片", "Choose an image to inspect")}</CardTitle><p className="mt-1.5 text-sm leading-6 text-zinc-500">{pick("像素模型与来源证据会在本地并行分析。首次检测需要下载约 15–30MB 模型。", "The pixel model and provenance evidence run locally in parallel. The first check downloads about 15–30 MB of model files.")}</p></CardHeader>
+      <CardHeader><CardTitle className="text-base text-zinc-100">{pick("上传待检测图片", "Choose an image to inspect")}</CardTitle><p className="mt-1.5 text-sm leading-6 text-zinc-500">{pick("画面特征与来源证据会在本地并行分析。首次准备可能稍慢，之后会复用浏览器缓存。", "Visual patterns and provenance are analyzed locally in parallel. First-time setup may take longer, then the browser reuses its cache.")}</p></CardHeader>
       <CardContent className="space-y-5"><FileDropzone file={file} onFile={handleFile} disabled={running} />
         {file && previewUrl ? <div className="grid gap-5 rounded-xl border border-white/10 bg-black/30 p-4 sm:grid-cols-[160px_minmax(0,1fr)]"><div className="relative h-40 overflow-hidden rounded-lg bg-black"><Image src={previewUrl} alt={pick("待检测图片预览", "Image preview")} fill unoptimized className="object-contain" /></div><div className="flex min-w-0 flex-col justify-center"><p className="truncate text-sm font-medium text-zinc-100">{file.name}</p><p className="mt-1 text-xs text-zinc-500">{formatBytes(file.size)} · {file.type}</p><div className="mt-4 flex flex-wrap gap-3"><Button size="lg" onClick={analyze} disabled={running}><Play />{pick("开始双通道检测", "Run two-channel detection")}</Button>{running ? <Button variant="outline" size="lg" onClick={cancel}><RotateCcw />{pick("取消", "Cancel")}</Button> : null}</div></div></div> : null}
         {running ? <div className="space-y-2"><div className="flex items-center justify-between gap-4 text-xs text-zinc-500"><span className="flex min-w-0 items-center gap-2"><LoaderCircle className="size-3.5 shrink-0 animate-spin text-cyan-300" /><span className="truncate">{status}</span></span><span>{Math.round(progress)}%</span></div><Progress value={progress} /></div> : null}

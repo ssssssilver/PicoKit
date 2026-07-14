@@ -16,7 +16,7 @@ export function SiteFooter() {
             {pick("文件留在你的设备上", "Files stay on your device")}
           </div>
           <p className="mt-2 max-w-xl text-sm leading-6 text-zinc-500">
-            {pick("PicoKit 不接收原始文本、图片、Canvas 像素或处理结果。模型与代码会下载到浏览器，计算由你的 CPU/GPU 完成。", "PicoKit never receives your source text, images, canvas pixels, or results. Models and code download to the browser, while your CPU/GPU performs the work.")}
+            {pick("PicoKit 不接收原始文本、图片、Canvas 像素或处理结果。所需组件在浏览器中运行，计算由你的 CPU/GPU 完成。", "PicoKit never receives your source text, images, canvas pixels, or results. Required components run in the browser, while your CPU/GPU performs the work.")}
           </p>
         </div>
         <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm text-zinc-500 sm:grid-cols-4">

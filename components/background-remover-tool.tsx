@@ -77,14 +77,13 @@ export function BackgroundRemoverTool() {
     setResult(null)
     setError("")
     setProgress(1)
-    setStatus(pick("正在准备本地模型", "Preparing the local model"))
+    setStatus(pick("正在准备本地抠图", "Preparing local background removal"))
 
     worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
       const message = event.data
       if (message.type === "progress") {
         setProgress(Math.max(2, Math.min(95, Number(message.progress) || 2)))
-        const filename = message.file?.split("/").pop()
-        setStatus(filename ? pick(`正在下载 ${filename}`, `Downloading ${filename}`) : pick("正在下载模型", "Downloading the model"))
+        setStatus(pick("正在准备首次使用所需组件", "Preparing for first use"))
       }
       if (message.type === "status") {
         setStatus(localizeStage(message.stage, language))
@@ -178,7 +177,7 @@ export function BackgroundRemoverTool() {
                 {running ? pick("正在本地抠图", "Removing locally") : pick("一键移除背景", "Remove background")}
               </Button>
               {running ? <Button size="lg" variant="outline" onClick={cancel}><X />{pick("取消", "Cancel")}</Button> : null}
-              <p className="text-xs text-zinc-500">{pick("首次运行按设备下载约 7–13MB 模型，随后使用浏览器缓存。", "The first run downloads an approximately 7–13MB model for your device, then reuses the browser cache.")}</p>
+              <p className="text-xs text-zinc-500">{pick("首次准备可能稍慢，完成后会复用浏览器缓存。", "First-time setup may take longer; the browser will reuse its cache afterward.")}</p>
             </div>
           ) : null}
           {running ? (
@@ -202,7 +201,7 @@ export function BackgroundRemoverTool() {
             <div className="grid gap-3 sm:grid-cols-3">
               <Info label={pick("输出尺寸", "Output size")} value={`${result.width} × ${result.height}`} />
               <Info label={pick("PNG 大小", "PNG size")} value={formatBytes(result.blob.size)} />
-              <Info label={pick("本地模型", "Local model")} value="MODNet" />
+              <Info label={pick("处理位置", "Processing location")} value={pick("当前设备", "This device")} />
             </div>
             <Button size="lg" onClick={() => downloadBlob(result.blob, `${file.name.replace(/\.[^.]+$/, "")}-removebg-picokit.png`)}><Download />{pick("下载透明 PNG", "Download transparent PNG")}</Button>
           </CardContent>
@@ -214,7 +213,7 @@ export function BackgroundRemoverTool() {
 
 function localizeStage(stage: string | undefined, language: "zh-CN" | "en") {
   const stages: Record<string, [string, string]> = {
-    "loading-model": ["正在加载本地 MODNet 模型", "Loading the local MODNet model"],
+    "loading-model": ["正在准备人像抠图", "Preparing portrait background removal"],
     "removing-background": ["正在计算前景透明度", "Computing the foreground alpha matte"],
     "encoding-png": ["正在生成透明 PNG", "Encoding the transparent PNG"],
   }

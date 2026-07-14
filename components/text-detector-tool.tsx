@@ -50,7 +50,7 @@ export function TextDetectorTool() {
     worker.onmessage = (event: MessageEvent<Record<string, unknown>>) => {
       if (event.data.type === "progress") {
         setProgress(Math.max(2, Number(event.data.progress) || 2))
-        setStatus(event.data.file ? pick(`正在下载 ${String(event.data.file).split("/").pop()}`, `Downloading ${String(event.data.file).split("/").pop()}`) : pick("正在下载模型", "Downloading model"))
+        setStatus(pick("正在准备首次检测所需组件", "Preparing the detector for first use"))
       }
       if (event.data.type === "status") setStatus(language === "en" ? "Analyzing locally" : String(event.data.stage || "正在分析"))
       if (event.data.type === "result") {
@@ -64,7 +64,7 @@ export function TextDetectorTool() {
         setRunning(false)
       }
     }
-    worker.onerror = () => { setError(pick("本地模型 Worker 启动失败，请刷新后重试。", "The local model worker failed to start. Refresh the page and try again.")); setRunning(false) }
+    worker.onerror = () => { setError(pick("本地检测组件启动失败，请刷新后重试。", "The local detector failed to start. Refresh the page and try again.")); setRunning(false) }
     const nav = navigator as Navigator & { gpu?: unknown }
     worker.postMessage({ type: "analyze", text, preferWebGpu: Boolean(nav.gpu) })
   }
@@ -94,7 +94,7 @@ export function TextDetectorTool() {
         <CardHeader className="grid grid-cols-1 items-start gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-6">
           <div className="min-w-0">
             <CardTitle className="text-base text-zinc-100">{pick("粘贴英文文本", "Paste English text")}</CardTitle>
-            <p className="mt-1.5 text-sm leading-6 text-zinc-500">{pick("模型主要针对英文，建议输入至少 150–200 个英文词。", "The model is designed mainly for English. Enter at least 150–200 words.")}</p>
+            <p className="mt-1.5 text-sm leading-6 text-zinc-500">{pick("检测更适合较长的英文内容，建议输入至少 150–200 个英文词。", "Detection works best with longer English content. Enter at least 150–200 words.")}</p>
           </div>
           <div className="grid w-full grid-cols-2 gap-2 sm:w-auto" aria-label={pick("文本统计", "Text statistics")}>
             <TextCount value={count.characters} label={pick("字符数", "Characters")} />
@@ -123,10 +123,10 @@ export function TextDetectorTool() {
               <Badge className="mt-4 bg-white/10 text-white">{localizedBand(result.score, result.band, language)}</Badge>
             </div>
             <div className="space-y-4">
-              <p className="max-w-xl text-sm leading-6 text-slate-300">{pick("这是模型对文本模式的统计判断，不是作者身份鉴定。改写、翻译、短文本、专业模板和非英语内容都可能造成误判。", "This is a statistical judgment about text patterns, not proof of authorship. Rewriting, translation, short text, professional templates, and non-English content can all cause false results.")}</p>
+              <p className="max-w-xl text-sm leading-6 text-slate-300">{pick("这是对文本模式的统计判断，不是作者身份鉴定。改写、翻译、短文本、专业模板和非英语内容都可能造成误判。", "This is a statistical estimate of text patterns, not proof of authorship. Rewriting, translation, short text, professional templates, and non-English content can all cause false results.")}</p>
               <div className="grid gap-3 sm:grid-cols-3">
                 <Metric label={pick("结果稳定度", "Result stability")} value={`${Math.round(result.confidence * 100)}%`} />
-                <Metric label={pick("运行后端", "Runtime backend")} value={result.backend.toUpperCase()} />
+                <Metric label={pick("本地处理方式", "Local processing")} value={result.backend.toUpperCase()} />
                 <Metric label={pick("分析片段", "Segments analyzed")} value={`${result.segments.length}`} />
               </div>
               <Button variant="secondary" onClick={exportReport}><Download />{pick("导出 JSON 报告", "Export JSON report")}</Button>
