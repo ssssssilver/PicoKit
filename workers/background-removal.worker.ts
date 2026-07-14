@@ -1,5 +1,7 @@
 /// <reference lib="webworker" />
 
+import { toModelProxyUrl } from "@/lib/model-proxy"
+
 const MODEL_ID = "Xenova/modnet"
 
 type BackgroundResult = {
@@ -18,6 +20,26 @@ async function loadRemover(preferWebGpu: boolean) {
   const { env, pipeline } = await import("@huggingface/transformers")
   env.allowLocalModels = false
   env.useBrowserCache = true
+  const nativeFetch = fetch.bind(globalThis)
+  env.fetch = async (input, init) => {
+    const request = new Request(input, init)
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      throw new Error("Model downloads only support GET and HEAD requests")
+    }
+    const requestInit: RequestInit = {
+      method: request.method,
+      headers: request.headers,
+      redirect: request.redirect,
+      signal: request.signal,
+    }
+    try {
+      return await nativeFetch(request.url, requestInit)
+    } catch (error) {
+      const proxyUrl = toModelProxyUrl(request.url, self.location.origin)
+      if (!proxyUrl) throw error
+      return nativeFetch(proxyUrl, requestInit)
+    }
+  }
 
   const progress_callback = (progress: { status?: string; progress?: number; file?: string }) => {
     self.postMessage({

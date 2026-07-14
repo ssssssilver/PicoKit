@@ -1,7 +1,11 @@
 const HUGGING_FACE_ORIGIN = "https://huggingface.co"
 const MODEL_PROXY_PREFIX = "/_models/"
 
-const ALLOWED_MODELS = ["onnx-community/tmr-ai-text-detector-ONNX"] as const
+const ALLOWED_MODELS = [
+  "onnx-community/tmr-ai-text-detector-ONNX",
+  "onnx-community/ai-image-detect-distilled-ONNX",
+  "Xenova/modnet",
+] as const
 
 function allowedModelPath(pathname: string) {
   return ALLOWED_MODELS.some((model) => pathname.startsWith(`/${model}/resolve/`))

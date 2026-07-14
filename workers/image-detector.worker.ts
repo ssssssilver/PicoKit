@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 
 import { aggregateImageViews, type ImageClassifierLabel } from "@/lib/image-detector-core"
+import { toModelProxyUrl } from "@/lib/model-proxy"
 
 const MODEL_ID = "onnx-community/ai-image-detect-distilled-ONNX"
 
@@ -20,6 +21,26 @@ async function loadClassifier(preferWebGpu: boolean) {
   const { env, pipeline } = await import("@huggingface/transformers")
   env.allowLocalModels = false
   env.useBrowserCache = true
+  const nativeFetch = fetch.bind(globalThis)
+  env.fetch = async (input, init) => {
+    const request = new Request(input, init)
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      throw new Error("Model downloads only support GET and HEAD requests")
+    }
+    const requestInit: RequestInit = {
+      method: request.method,
+      headers: request.headers,
+      redirect: request.redirect,
+      signal: request.signal,
+    }
+    try {
+      return await nativeFetch(request.url, requestInit)
+    } catch (error) {
+      const proxyUrl = toModelProxyUrl(request.url, self.location.origin)
+      if (!proxyUrl) throw error
+      return nativeFetch(proxyUrl, requestInit)
+    }
+  }
   const progress_callback = (progress: { status?: string; progress?: number; file?: string }) => {
     self.postMessage({ type: "progress", stage: progress.status || "loading", progress: progress.progress || 0, file: progress.file })
   }

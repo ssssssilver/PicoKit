@@ -32,10 +32,15 @@ describe("text detector core", () => {
 })
 
 describe("model download fallback", () => {
-  const remote = "https://huggingface.co/onnx-community/tmr-ai-text-detector-ONNX/resolve/main/onnx/model_quantized.onnx"
-  const proxy = "https://picokit.example/_models/onnx-community/tmr-ai-text-detector-ONNX/resolve/main/onnx/model_quantized.onnx"
+  const approvedModels = [
+    "onnx-community/tmr-ai-text-detector-ONNX",
+    "onnx-community/ai-image-detect-distilled-ONNX",
+    "Xenova/modnet",
+  ]
 
-  it("maps the approved text model to a same-origin fallback", () => {
+  it.each(approvedModels)("maps the approved %s model to a same-origin fallback", (model) => {
+    const remote = `https://huggingface.co/${model}/resolve/main/onnx/model_quantized.onnx`
+    const proxy = `https://picokit.example/_models/${model}/resolve/main/onnx/model_quantized.onnx`
     expect(toModelProxyUrl(remote, "https://picokit.example")).toBe(proxy)
     expect(isModelProxyRequest(proxy)).toBe(true)
     expect(resolveModelProxyTarget(proxy)).toBe(remote)
