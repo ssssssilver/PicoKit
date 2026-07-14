@@ -18,7 +18,12 @@ describe("local-processing privacy boundary", () => {
     const files = (await Promise.all(["app", "components", "lib", "workers"].map(sourceFiles))).flat()
     const sources = await Promise.all(files.map(async (file) => ({ file, source: await readFile(path.join(root, file), "utf8") })))
     const forbidden = /\b(FormData|XMLHttpRequest|sendBeacon|axios)\b|fetch\s*\(/i
-    const violations = sources.filter(({ source }) => forbidden.test(source)).map(({ file }) => file)
+    const modelDownloadOnly = new Set([path.join("workers", "text-detector.worker.ts")])
+    const violations = sources.filter(({ file, source }) => forbidden.test(source) && !modelDownloadOnly.has(file)).map(({ file }) => file)
     expect(violations).toEqual([])
+
+    const modelWorker = sources.find(({ file }) => modelDownloadOnly.has(file))?.source || ""
+    expect(modelWorker).toContain('request.method !== "GET" && request.method !== "HEAD"')
+    expect(modelWorker).not.toMatch(/\b(FormData|XMLHttpRequest|sendBeacon|axios)\b/i)
   })
 })

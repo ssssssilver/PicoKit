@@ -1,6 +1,7 @@
 /** Cloudflare Worker entry point for the vinext-starter template. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
+import { isModelProxyRequest, resolveModelProxyTarget } from "../lib/model-proxy";
 
 interface Env {
   ASSETS: Fetcher;
@@ -28,7 +29,20 @@ const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     let response: Response;
-    if (url.pathname === "/_vinext/image") {
+    if (isModelProxyRequest(request.url)) {
+      const target = resolveModelProxyTarget(request.url);
+      if (!target) response = new Response("Model not found", { status: 404 });
+      else if (request.method !== "GET" && request.method !== "HEAD") {
+        response = new Response("Method not allowed", { status: 405, headers: { Allow: "GET, HEAD" } });
+      } else {
+        const headers = new Headers();
+        for (const name of ["range", "if-none-match", "if-modified-since"]) {
+          const value = request.headers.get(name);
+          if (value) headers.set(name, value);
+        }
+        response = await fetch(target, { method: request.method, headers, redirect: "follow" });
+      }
+    } else if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
       response = await handleImageOptimization(request, {
         fetchAsset: (path) => env.ASSETS.fetch(new Request(new URL(path, request.url))),

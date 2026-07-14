@@ -5,6 +5,7 @@ import { outputSize, searchTargetSize, sourceCrop } from "@/lib/image-transforme
 import { aiScore, normalizeOutput, splitText } from "@/lib/text-detector-core"
 import { aggregateImageViews, aiImageScore, fuseImageDetection } from "@/lib/image-detector-core"
 import type { ImageInspection } from "@/lib/image-types"
+import { isModelProxyRequest, resolveModelProxyTarget, toModelProxyUrl } from "@/lib/model-proxy"
 
 describe("image file validation", () => {
   it("detects supported formats from magic bytes instead of the filename", () => {
@@ -27,6 +28,22 @@ describe("text detector core", () => {
     expect(normalized).toHaveLength(1)
     expect(aiScore(normalized[0])).toBeCloseTo(0.2)
     expect(aiScore([{ label: "Real", score: 0.3 }])).toBeCloseTo(0.7)
+  })
+})
+
+describe("model download fallback", () => {
+  const remote = "https://huggingface.co/onnx-community/tmr-ai-text-detector-ONNX/resolve/main/onnx/model_quantized.onnx"
+  const proxy = "https://picokit.example/_models/onnx-community/tmr-ai-text-detector-ONNX/resolve/main/onnx/model_quantized.onnx"
+
+  it("maps the approved text model to a same-origin fallback", () => {
+    expect(toModelProxyUrl(remote, "https://picokit.example")).toBe(proxy)
+    expect(isModelProxyRequest(proxy)).toBe(true)
+    expect(resolveModelProxyTarget(proxy)).toBe(remote)
+  })
+
+  it("does not turn PicoKit into an open proxy", () => {
+    expect(toModelProxyUrl("https://example.com/model.onnx", "https://picokit.example")).toBeNull()
+    expect(resolveModelProxyTarget("https://picokit.example/_models/other/model/resolve/main/model.onnx")).toBeNull()
   })
 })
 
