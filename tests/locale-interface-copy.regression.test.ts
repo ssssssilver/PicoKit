@@ -115,6 +115,16 @@ describe("localized interface copy", () => {
     })
   })
 
+  it("uses natural Korean timer and product wording", () => {
+    expect(readLocale("ko")).toMatchObject({
+      "Batch image optimizer": "일괄 이미지 최적화",
+      "Local completion history": "이 브라우저의 완료 기록",
+      "Closing the page stops active timing": "페이지를 닫으면 실행 중인 타이머가 중지됩니다.",
+      "Local Timer Toolkit": "로컬 타이머 도구 모음",
+    })
+    expect(Object.values(readLocale("ko")).join(" ")).not.toMatch(/TabNative은(?:\(는\))?|지역 완료 내역|활성 타이밍/)
+  })
+
   it("uses natural Korean labels for common controls", () => {
     expect(readLocale("ko")).toMatchObject({
       Characters: "글자",
