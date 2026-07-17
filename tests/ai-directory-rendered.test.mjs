@@ -37,4 +37,5 @@ test("sitemap includes the AI directory and both lightweight-tool batches", asyn
   for (const route of ["/ai-tools", "/password-uuid-generator", "/date-time-tools", "/unit-ratio-converter", "/color-tools", "/regex-url-tools", "/svg-tools", "/avatar-emoji-generator", "/random-picker", "/timer-tools", "/screen-recorder"]) {
     assert.match(sitemap, new RegExp(route.replaceAll("/", "\\/")))
   }
+  assert.doesNotMatch(sitemap, /\/image-metadata-checker|\/ai-watermark-remover/)
 })
