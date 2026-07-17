@@ -36,6 +36,7 @@ import {
 } from "@/lib/image-detector-core"
 import { validateImageFile } from "@/lib/file-validation"
 import { inspectImage } from "@/lib/image-inspector"
+import { localizedImageSignalLabel } from "@/lib/image-signal-label"
 import type { ImageInspection, ImageSignal } from "@/lib/image-types"
 import { loadLocalAsset, localAssetFile } from "@/lib/local-asset-transfer"
 import {
@@ -1111,7 +1112,7 @@ function SignalRow({ signal }: { signal: ImageSignal }) {
           ) : (
             <FileSearch className="size-4 text-zinc-500" />
           )}
-          {localizedSignalLabel(signal, pick)}
+          {localizedImageSignalLabel(signal, pick)}
         </p>
         <p className="mt-1 break-all text-xs text-zinc-500">{signal.value}</p>
       </div>
@@ -1124,21 +1125,6 @@ function SignalRow({ signal }: { signal: ImageSignal }) {
       </Badge>
     </div>
   )
-}
-
-function localizedSignalLabel(
-  signal: ImageSignal,
-  pick: (zh: string, en: string) => string,
-) {
-  if (signal.id === "c2pa-container") {
-    return pick("检测到 C2PA/JUMBF 容器", "C2PA/JUMBF container detected")
-  }
-  if (signal.id === "software") return pick("写入软件", "Writing software")
-  if (signal.id === "camera") return pick("相机信息", "Camera information")
-  if (signal.id.startsWith("ai-")) {
-    return pick(signal.label, "AI generator or workflow metadata")
-  }
-  return signal.label
 }
 
 function getSummaryCopy(

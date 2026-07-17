@@ -19,6 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FileDropzone, formatBytes } from "@/components/file-dropzone";
 import { inspectImage } from "@/lib/image-inspector";
+import { localizedImageSignalLabel } from "@/lib/image-signal-label";
 import { downloadBlob, sanitizeImage } from "@/lib/image-sanitizer";
 import type {
   ImageInspection,
@@ -212,7 +213,9 @@ export function MetadataCleanerTool({ mode }: { mode: SanitizeMode }) {
                     className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3"
                   >
                     <div>
-                      <p className="text-sm font-medium">{signal.label}</p>
+                      <p className="text-sm font-medium">
+                        {localizedImageSignalLabel(signal, pick)}
+                      </p>
                       <p className="mt-0.5 text-xs text-slate-500">
                         {signal.value}
                       </p>
