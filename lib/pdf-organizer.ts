@@ -33,6 +33,15 @@ export type PdfOrganizerExportOptions = {
   pageNumbers?: boolean
   pageNumberStart?: number
   watermark?: PdfWatermarkOptions | null
+  clearMetadata?: boolean
+  metadata?: PdfDocumentMetadata | null
+}
+
+export type PdfDocumentMetadata = {
+  title?: string
+  author?: string
+  subject?: string
+  keywords?: string[]
 }
 
 export type PdfImageFormat = "jpeg" | "png"
@@ -203,6 +212,8 @@ export async function organizePdfBytes(
     }
   })
 
+  applyPdfOutputMetadata(output, options)
+
   return output.save()
 }
 
@@ -257,7 +268,39 @@ export async function organizePdfWorkspaceBytes(
     onProgress?.(completed + index + 1, plan.length * 2)
   })
 
+  applyPdfOutputMetadata(output, options)
+
   return output.save()
+}
+
+function applyPdfOutputMetadata(document: import("pdf-lib").PDFDocument, options: PdfOrganizerExportOptions) {
+  if (options.clearMetadata) {
+    // pdf-lib creates a new document rather than copying the source Info
+    // dictionary. Blank the common generated fields as well, and use a fixed
+    // date so the rebuilt file does not disclose the local export time.
+    document.setTitle("")
+    document.setAuthor("")
+    document.setSubject("")
+    document.setKeywords([])
+    document.setCreator("")
+    document.setProducer("")
+    document.setCreationDate(new Date(0))
+    document.setModificationDate(new Date(0))
+    return
+  }
+
+  const metadata = options.metadata
+  if (!metadata) return
+  // Custom mode also starts from a privacy-clean baseline: do not add the
+  // library name or the user's local export time behind the explicit fields.
+  document.setCreator("")
+  document.setProducer("")
+  document.setCreationDate(new Date(0))
+  document.setModificationDate(new Date(0))
+  if (metadata.title?.trim()) document.setTitle(metadata.title.trim())
+  if (metadata.author?.trim()) document.setAuthor(metadata.author.trim())
+  if (metadata.subject?.trim()) document.setSubject(metadata.subject.trim())
+  if (metadata.keywords?.length) document.setKeywords(metadata.keywords.map((keyword) => keyword.trim()).filter(Boolean))
 }
 
 function applyPdfPageDecoration(

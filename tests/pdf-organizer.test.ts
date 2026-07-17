@@ -139,6 +139,32 @@ describe("multi-source PDF workspace", () => {
     expect(output.getPage(2).getSize()).toEqual({ width: 200, height: 300 })
   })
 
+  it("clears common output metadata or writes reviewed custom fields", async () => {
+    const source = await PDFDocument.create()
+    source.addPage([200, 300])
+    source.setTitle("Sensitive source title")
+    source.setAuthor("Source author")
+    const plan = createPdfWorkspacePages("source", 1)
+
+    const cleanedBytes = await organizePdfWorkspaceBytes([{ id: "source", bytes: await source.save() }], plan, { clearMetadata: true })
+    const cleaned = await PDFDocument.load(cleanedBytes, { updateMetadata: false })
+    expect(cleaned.getTitle()).toBe("")
+    expect(cleaned.getAuthor()).toBe("")
+    expect(cleaned.getCreationDate()?.getTime()).toBe(0)
+
+    const customBytes = await organizePdfWorkspaceBytes([{ id: "source", bytes: await source.save() }], plan, {
+      metadata: { title: "Delivery copy", author: "TabNative user", subject: "Reviewed", keywords: ["local", "pdf"] },
+    })
+    const custom = await PDFDocument.load(customBytes, { updateMetadata: false })
+    expect(custom.getTitle()).toBe("Delivery copy")
+    expect(custom.getAuthor()).toBe("TabNative user")
+    expect(custom.getSubject()).toBe("Reviewed")
+    expect(custom.getKeywords()).toContain("local")
+    expect(custom.getCreator()).toBe("")
+    expect(custom.getProducer()).toBe("")
+    expect(custom.getModificationDate()?.getTime()).toBe(0)
+  })
+
   it("ships one persistent workspace with lazy thumbnails and cancellable Worker export", async () => {
     const [workspace, tool, previewWorker, exportWorker] = await Promise.all([
       readFile("components/pdf-workspace.tsx", "utf8"),

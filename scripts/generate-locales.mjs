@@ -55,6 +55,7 @@ for (const value of [
   // temporarily hidden by the unified PDF workspace.
   "Merge PDFs",
   "Process page ranges",
+  "Export organized PDF",
 ]) sourceKeys.add(value)
 
 const keys = [...sourceKeys].filter(Boolean).sort((a, b) => a.localeCompare(b))
@@ -112,6 +113,7 @@ function applyOverrides(output, language) {
     workflowContinuityOverrides[language] ?? {},
     refinementZoomOverrides[language] ?? {},
     pdfWorkspaceOverrides[language] ?? {},
+    pdfConversionOverrides[language] ?? {},
   )
 }
 
@@ -1567,6 +1569,44 @@ const pdfWorkspaceOverrides = {
   tr: {
     "Page workspace": "Sayfa çalışma alanı", "PDF page workspace": "PDF sayfa çalışma alanı", "Add source PDFs": "PDF ekle", "Checking PDFs": "PDF'ler kontrol ediliyor", "Drop PDFs here, or click to choose": "PDF'leri buraya bırakın veya seçmek için tıklayın", "Source files": "Kaynak dosyalar", "Select pages": "Sayfaları seç", "Select all": "Tümünü seç", "Clear selection": "Seçimi temizle", "Reset order": "Sıralamayı sıfırla", "Move selected pages earlier": "Seçili sayfaları öne taşı", "Move selected pages later": "Seçili sayfaları arkaya taşı", "Rotate left": "Sola döndür", "Rotate right": "Sağa döndür", "Remove selected": "Seçili sayfaları kaldır", "Source page {page}": "Kaynak sayfa {page}", "Hide source pages": "Kaynak sayfaları gizle", "Show source pages": "Kaynak sayfaları göster", "Remove source file": "Kaynak dosyayı kaldır", "Export complete PDF ({count} pages)": "PDF'nin tamamını dışa aktar ({count} sayfa)", "Extract selected pages ({count})": "Seçili sayfaları dışa aktar ({count})", "Cancel export": "Dışa aktarmayı iptal et", "PDF created": "PDF oluşturuldu", "Unable to complete the action": "İşlem tamamlanamadı", "Add one or more PDFs, then merge, reorder, rotate, remove, or extract pages in one workspace.": "Bir veya daha fazla PDF ekleyin; sayfaları tek çalışma alanında birleştirin, yeniden sıralayın, döndürün, kaldırın veya dışa aktarın.",
     "Add multiple PDFs to one page workspace, drag to reorder, batch-rotate, remove, or extract pages, and export in a background Worker. Image conversion remains available separately.": "Birden fazla PDF'yi tek bir sayfa çalışma alanına ekleyin; sürükleyerek sıralayın, sayfaları topluca döndürün veya kaldırın, seçilenleri çıkarın ve arka planda dışa aktarın. Görsel dönüştürme ayrı olarak kullanılabilir.", "Source PDFs are never changed": "Kaynak PDF'ler hiçbir zaman değiştirilmez", "Thumbnails and exports run in background Workers": "Küçük resimler ve dışa aktarma arka planda işlenir", "150 MB per file and 300 MB per workspace": "Dosya başına 150 MB, çalışma alanı başına 300 MB",
+  },
+}
+
+// Reviewed labels for the PDF conversion and delivery workflows. These are
+// deliberately concise because they appear in tabs, selects, and status cards.
+const pdfConversionOverrides = {
+  ja: {
+    "Images to PDF workspace": "画像からPDFへの作業スペース", "PDF to images workspace": "PDFから画像への作業スペース", "Image queue": "画像リスト", "Page size": "ページサイズ", "Match each image": "画像ごとに合わせる", "Orientation": "ページの向き", "Auto": "自動", "Portrait": "縦向き", "Landscape": "横向き", "Image fit": "画像の配置", "Fit inside": "全体を収める", "Fill and crop": "全面に配置して切り抜く", "Page range": "ページ範囲", "Output format": "出力形式", "Resolution scale": "解像度倍率", "Output filename": "出力ファイル名", "Document properties": "文書プロパティ", "Clear common properties": "一般的なプロパティを消去", "Write custom properties": "カスタムプロパティを書き込む", "Delivery file verified": "納品ファイルを検証しました", "Download delivery report": "納品レポートをダウンロード", "Export organized PDF": "整理した PDF を書き出す",
+  },
+  ko: {
+    "Images to PDF workspace": "이미지를 PDF로 변환", "PDF to images workspace": "PDF를 이미지로 변환", "Image queue": "이미지 목록", "Page size": "페이지 크기", "Match each image": "이미지 크기에 맞춤", "Orientation": "페이지 방향", "Auto": "자동", "Portrait": "세로", "Landscape": "가로", "Image fit": "이미지 맞춤", "Fit inside": "전체가 보이게 맞춤", "Fill and crop": "페이지를 채우고 자르기", "Page range": "페이지 범위", "Output format": "출력 형식", "Resolution scale": "해상도 배율", "Output filename": "출력 파일 이름", "Document properties": "문서 속성", "Clear common properties": "일반 속성 지우기", "Write custom properties": "사용자 지정 속성 쓰기", "Delivery file verified": "결과 파일 검증 완료", "Download delivery report": "결과 보고서 다운로드",
+  },
+  es: {
+    "Images to PDF workspace": "Área de imágenes a PDF", "PDF to images workspace": "Área de PDF a imágenes", "Image queue": "Cola de imágenes", "Page size": "Tamaño de página", "Match each image": "Ajustar a cada imagen", "Orientation": "Orientación", "Auto": "Automática", "Portrait": "Vertical", "Landscape": "Horizontal", "Image fit": "Ajuste de imagen", "Fit inside": "Mostrar completa", "Fill and crop": "Rellenar y recortar", "Page range": "Rango de páginas", "Output format": "Formato de salida", "Resolution scale": "Escala de resolución", "Output filename": "Nombre del archivo de salida", "Document properties": "Propiedades del documento", "Clear common properties": "Borrar propiedades comunes", "Write custom properties": "Escribir propiedades personalizadas", "Delivery file verified": "Archivo de entrega verificado", "Download delivery report": "Descargar informe de entrega",
+  },
+  pt: {
+    "Images to PDF workspace": "Área de imagens para PDF", "PDF to images workspace": "Área de PDF para imagens", "Image queue": "Fila de imagens", "Page size": "Tamanho da página", "Match each image": "Ajustar a cada imagem", "Orientation": "Orientação", "Auto": "Automática", "Portrait": "Vertical", "Landscape": "Horizontal", "Image fit": "Ajuste da imagem", "Fit inside": "Mostrar por inteiro", "Fill and crop": "Preencher e recortar", "Page range": "Intervalo de páginas", "Output format": "Formato de saída", "Resolution scale": "Escala de resolução", "Output filename": "Nome do ficheiro de saída", "Document properties": "Propriedades do documento", "Clear common properties": "Limpar propriedades comuns", "Write custom properties": "Definir propriedades personalizadas", "Delivery file verified": "Ficheiro de entrega verificado", "Download delivery report": "Transferir relatório de entrega",
+  },
+  id: {
+    "Images to PDF workspace": "Ruang kerja gambar ke PDF", "PDF to images workspace": "Ruang kerja PDF ke gambar", "Image queue": "Antrean gambar", "Page size": "Ukuran halaman", "Match each image": "Ikuti ukuran tiap gambar", "Orientation": "Orientasi", "Auto": "Otomatis", "Portrait": "Potret", "Landscape": "Lanskap", "Image fit": "Penempatan gambar", "Fit inside": "Tampilkan seluruh gambar", "Fill and crop": "Penuhi halaman dan pangkas", "Page range": "Rentang halaman", "Output format": "Format keluaran", "Resolution scale": "Skala resolusi", "Output filename": "Nama file keluaran", "Document properties": "Properti dokumen", "Clear common properties": "Hapus properti umum", "Write custom properties": "Tulis properti khusus", "Delivery file verified": "File hasil telah diverifikasi", "Download delivery report": "Unduh laporan hasil",
+  },
+  de: {
+    "Images to PDF workspace": "Arbeitsbereich Bilder zu PDF", "PDF to images workspace": "Arbeitsbereich PDF zu Bildern", "Image queue": "Bildreihenfolge", "Page size": "Seitengröße", "Match each image": "An jedes Bild anpassen", "Orientation": "Ausrichtung", "Auto": "Automatisch", "Portrait": "Hochformat", "Landscape": "Querformat", "Image fit": "Bildanpassung", "Fit inside": "Vollständig einpassen", "Fill and crop": "Ausfüllen und zuschneiden", "Page range": "Seitenbereich", "Output format": "Ausgabeformat", "Resolution scale": "Auflösungsfaktor", "Output filename": "Name der Ausgabedatei", "Document properties": "Dokumenteigenschaften", "Clear common properties": "Übliche Eigenschaften löschen", "Write custom properties": "Eigene Eigenschaften eintragen", "Delivery file verified": "Ausgabedatei geprüft", "Download delivery report": "Ausgabebericht herunterladen",
+  },
+  pl: {
+    "Images to PDF workspace": "Obszar obrazów do PDF", "PDF to images workspace": "Obszar PDF do obrazów", "Image queue": "Kolejka obrazów", "Page size": "Rozmiar strony", "Match each image": "Dopasuj do każdego obrazu", "Orientation": "Orientacja", "Auto": "Automatyczna", "Portrait": "Pionowa", "Landscape": "Pozioma", "Image fit": "Dopasowanie obrazu", "Fit inside": "Pokaż cały obraz", "Fill and crop": "Wypełnij i przytnij", "Page range": "Zakres stron", "Output format": "Format wyjściowy", "Resolution scale": "Skala rozdzielczości", "Output filename": "Nazwa pliku wyjściowego", "Document properties": "Właściwości dokumentu", "Clear common properties": "Wyczyść typowe właściwości", "Write custom properties": "Zapisz własne właściwości", "Delivery file verified": "Plik wynikowy zweryfikowany", "Download delivery report": "Pobierz raport wynikowy",
+  },
+  ru: {
+    "Images to PDF workspace": "Преобразование изображений в PDF", "PDF to images workspace": "Преобразование PDF в изображения", "Image queue": "Очередь изображений", "Page size": "Размер страницы", "Match each image": "По размеру каждого изображения", "Orientation": "Ориентация", "Auto": "Автоматически", "Portrait": "Книжная", "Landscape": "Альбомная", "Image fit": "Размещение изображения", "Fit inside": "Вписать целиком", "Fill and crop": "Заполнить и обрезать", "Page range": "Диапазон страниц", "Output format": "Формат вывода", "Resolution scale": "Масштаб разрешения", "Output filename": "Имя выходного файла", "Document properties": "Свойства документа", "Clear common properties": "Очистить основные свойства", "Write custom properties": "Записать свои свойства", "Delivery file verified": "Итоговый файл проверен", "Download delivery report": "Скачать отчёт о результате",
+  },
+  fr: {
+    "Images to PDF workspace": "Espace Images vers PDF", "PDF to images workspace": "Espace PDF vers images", "Image queue": "File d’images", "Page size": "Format de page", "Match each image": "Adapter à chaque image", "Orientation": "Orientation", "Auto": "Automatique", "Portrait": "Portrait", "Landscape": "Paysage", "Image fit": "Ajustement de l’image", "Fit inside": "Afficher en entier", "Fill and crop": "Remplir et recadrer", "Page range": "Plage de pages", "Output format": "Format de sortie", "Resolution scale": "Échelle de résolution", "Output filename": "Nom du fichier de sortie", "Document properties": "Propriétés du document", "Clear common properties": "Effacer les propriétés courantes", "Write custom properties": "Définir des propriétés personnalisées", "Delivery file verified": "Fichier de livraison vérifié", "Download delivery report": "Télécharger le rapport de livraison",
+  },
+  ar: {
+    "Images to PDF workspace": "مساحة تحويل الصور إلى PDF", "PDF to images workspace": "مساحة تحويل PDF إلى صور", "Image queue": "قائمة الصور", "Page size": "حجم الصفحة", "Match each image": "مطابقة حجم كل صورة", "Orientation": "اتجاه الصفحة", "Auto": "تلقائي", "Portrait": "عمودي", "Landscape": "أفقي", "Image fit": "ملاءمة الصورة", "Fit inside": "إظهار الصورة كاملة", "Fill and crop": "ملء الصفحة والاقتصاص", "Page range": "نطاق الصفحات", "Output format": "تنسيق الإخراج", "Resolution scale": "مقياس الدقة", "Output filename": "اسم ملف الإخراج", "Document properties": "خصائص المستند", "Clear common properties": "مسح الخصائص الشائعة", "Write custom properties": "كتابة خصائص مخصصة", "Delivery file verified": "تم التحقق من ملف الإخراج", "Download delivery report": "تنزيل تقرير الإخراج",
+  },
+  tr: {
+    "Images to PDF workspace": "Görsellerden PDF çalışma alanı", "PDF to images workspace": "PDF’den görsellere çalışma alanı", "Image queue": "Görsel sırası", "Page size": "Sayfa boyutu", "Match each image": "Her görsele göre ayarla", "Orientation": "Yön", "Auto": "Otomatik", "Portrait": "Dikey", "Landscape": "Yatay", "Image fit": "Görsel yerleşimi", "Fit inside": "Tamamını sığdır", "Fill and crop": "Doldur ve kırp", "Page range": "Sayfa aralığı", "Output format": "Çıktı biçimi", "Resolution scale": "Çözünürlük ölçeği", "Output filename": "Çıktı dosyası adı", "Document properties": "Belge özellikleri", "Clear common properties": "Yaygın özellikleri temizle", "Write custom properties": "Özel özellikleri yaz", "Delivery file verified": "Çıktı dosyası doğrulandı", "Download delivery report": "Çıktı raporunu indir",
   },
 }
 

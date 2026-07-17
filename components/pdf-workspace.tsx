@@ -12,6 +12,7 @@ import {
   Download,
   Eye,
   EyeOff,
+  FileCheck2,
   FilePlus2,
   GripVertical,
   Hash,
@@ -21,6 +22,7 @@ import {
   RotateCcw,
   RotateCw,
   Stamp,
+  ShieldCheck,
   Trash2,
   Undo2,
   X,
@@ -34,6 +36,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
 import { baseName, canvasToBlob, downloadBlob, formatBytes } from "@/lib/browser-files"
+import { sanitizePdfFileName } from "@/lib/pdf-conversion"
 import {
   createPdfWorkspacePages,
   deletePdfWorkspacePages,
@@ -68,6 +71,15 @@ type ExportMessage = {
   code?: string
   error?: string
 }
+type DeliveryResult = {
+  blob: Blob
+  filename: string
+  pages: number
+  bytes: number
+  selectedOnly: boolean
+  metadataMode: "clear" | "custom"
+  sourceNames: string[]
+}
 
 const sourceColors = ["#22d3ee", "#a78bfa", "#fb7185", "#fbbf24", "#34d399", "#60a5fa", "#f97316", "#c084fc"]
 const historyLimit = 50
@@ -101,6 +113,13 @@ export function PdfWorkspace() {
   const [addWatermark, setAddWatermark] = useState(false)
   const [watermarkText, setWatermarkText] = useState("")
   const [watermarkOpacity, setWatermarkOpacity] = useState(18)
+  const [outputName, setOutputName] = useState("tabnative-organized.pdf")
+  const [metadataMode, setMetadataMode] = useState<"clear" | "custom">("clear")
+  const [documentTitle, setDocumentTitle] = useState("")
+  const [documentAuthor, setDocumentAuthor] = useState("")
+  const [documentSubject, setDocumentSubject] = useState("")
+  const [documentKeywords, setDocumentKeywords] = useState("")
+  const [delivery, setDelivery] = useState<DeliveryResult | null>(null)
 
   useEffect(() => () => {
     exportWorkerRef.current?.terminate()
@@ -212,6 +231,7 @@ export function PdfWorkspace() {
 
       if (accepted.length) {
         setSources((current) => [...current, ...accepted])
+        if (!sources.length) setOutputName(`${baseName(accepted[0].file.name)}-organized.pdf`)
         replacePlanAfterSourceChange([
           ...pagePlanRef.current,
           ...accepted.flatMap((source) => createPdfWorkspacePages(source.id, source.pages)),
@@ -310,6 +330,7 @@ export function PdfWorkspace() {
     }
     setRunning(true)
     setError("")
+    setDelivery(null)
     setProgress(1)
     setProgressText(pick("正在读取源文件", "Reading source files"))
     exportCancelledRef.current = false
@@ -353,15 +374,50 @@ export function PdfWorkspace() {
             pageNumbers: addPageNumbers,
             pageNumberStart,
             watermark: watermarkBytes ? { pngBytes: watermarkBytes, opacity: watermarkOpacity / 100 } : null,
+            clearMetadata: metadataMode === "clear",
+            metadata: metadataMode === "custom" ? {
+              title: documentTitle,
+              author: documentAuthor,
+              subject: documentSubject,
+              keywords: documentKeywords.split(/[,，]/).map((keyword) => keyword.trim()).filter(Boolean),
+            } : null,
           },
         }, transfer)
       })
 
       const firstSource = sourceById.get(pages[0].sourceId)
       const prefix = sources.length > 1 ? "tabnative-merged" : baseName(firstSource?.file.name ?? "tabnative-pdf")
-      downloadBlob(new Blob([buffer], { type: "application/pdf" }), `${prefix}${selectedOnly ? "-selected" : "-organized"}.pdf`)
+      setProgressText(pick("正在校验导出文件", "Verifying the exported file"))
+      const { PDFDocument } = await import("pdf-lib")
+      const verified = await PDFDocument.load(buffer, { ignoreEncryption: false, updateMetadata: false })
+      if (verified.getPageCount() !== pages.length) throw new Error("verification:page-count")
+      const generatedProperties = [verified.getCreator(), verified.getProducer()]
+      const generatedDates = [verified.getCreationDate(), verified.getModificationDate()]
+      if (generatedProperties.some((value) => value) || generatedDates.some((value) => value && value.getTime() !== 0)) {
+        throw new Error("verification:generated-metadata")
+      }
+      if (metadataMode === "clear") {
+        if ([verified.getTitle(), verified.getAuthor(), verified.getSubject(), verified.getKeywords()].some((value) => value)) {
+          throw new Error("verification:metadata")
+        }
+      } else {
+        const expectedKeywords = documentKeywords.split(/[,，]/).map((keyword) => keyword.trim()).filter(Boolean)
+        if (
+          (verified.getTitle() ?? "") !== documentTitle.trim()
+          || (verified.getAuthor() ?? "") !== documentAuthor.trim()
+          || (verified.getSubject() ?? "") !== documentSubject.trim()
+          || expectedKeywords.some((keyword) => !verified.getKeywords()?.includes(keyword))
+        ) throw new Error("verification:custom-metadata")
+      }
+      const defaultName = `${prefix}${selectedOnly ? "-selected" : "-organized"}.pdf`
+      const requestedName = sanitizePdfFileName(outputName, defaultName)
+      const filename = selectedOnly ? `${baseName(requestedName)}-selected.pdf` : requestedName
+      const blob = new Blob([buffer], { type: "application/pdf" })
+      const sourceNames = sources.filter((source) => new Set(pages.map((page) => page.sourceId)).has(source.id)).map((source) => source.file.name)
+      setDelivery({ blob, filename, pages: pages.length, bytes: blob.size, selectedOnly, metadataMode, sourceNames })
+      downloadBlob(blob, filename)
       setProgress(100)
-      setProgressText(pick("PDF 已生成", "PDF created"))
+      setProgressText(pick("PDF 已生成并通过页数与文档属性校验", "PDF created and verified for page count and document properties"))
     } catch (reason) {
       if (reason instanceof Error && reason.message !== "cancelled") setError(exportErrorText(reason, pick))
     } finally {
@@ -380,6 +436,27 @@ export function PdfWorkspace() {
     exportRejectRef.current = null
     setProgress(0)
     setProgressText(pick("已取消当前导出。", "The current export was cancelled."))
+  }
+
+  function downloadDeliveryReport() {
+    if (!delivery) return
+    const report = {
+      product: "TabNative",
+      filename: delivery.filename,
+      generatedAt: new Date().toISOString(),
+      sources: delivery.sourceNames,
+      output: {
+        pages: delivery.pages,
+        bytes: delivery.bytes,
+        selectedPagesOnly: delivery.selectedOnly,
+        pageNumbers: addPageNumbers,
+        watermark: addWatermark,
+        documentProperties: delivery.metadataMode === "clear" ? "common-fields-cleared" : "custom-fields-written",
+      },
+      verification: { pageCount: "passed", documentProperties: "passed" },
+      privacy: "Generated locally; this report contains filenames and settings, not file contents.",
+    }
+    downloadBlob(new Blob([JSON.stringify(report, null, 2)], { type: "application/json" }), `${baseName(delivery.filename)}-report.json`)
   }
 
   return <div className="space-y-6">
@@ -487,6 +564,22 @@ export function PdfWorkspace() {
       <CardHeader><CardTitle>{pick("导出设置", "Export settings")}</CardTitle><p className="text-sm text-muted-foreground">{format("将从 {files} 个来源生成 {pages} 页 PDF；已从原始文档中移除 {removed} 页。", "The output uses {files} sources and {pages} pages; {removed} source pages are removed.", { files: new Set(pagePlan.map((page) => page.sourceId)).size, pages: pagePlan.length, removed: totalSourcePages - pagePlan.length })}</p></CardHeader>
       <CardContent className="space-y-4">
         <Alert className="border-amber-500/30 bg-amber-500/[.06] text-amber-950 dark:text-amber-100"><AlertTriangle /><AlertTitle>{pick("导出会重建 PDF", "Export rebuilds the PDF")}</AlertTitle><AlertDescription>{pick("数字签名通常会失效；交互表单、书签、附件等文档级结构可能无法保留。请保留原文件并检查导出结果。", "Digital signatures usually become invalid. Forms, bookmarks, attachments, and other document-level structures may not be preserved. Keep the originals and verify the output.")}</AlertDescription></Alert>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <label className="space-y-2 text-sm"><span className="font-semibold">{pick("输出文件名", "Output filename")}</span><Input value={outputName} maxLength={120} onChange={(event) => setOutputName(event.target.value)} /><span className="block text-xs leading-5 text-muted-foreground">{pick("提取所选页面时会自动追加 selected。", "Selected-page exports automatically add selected to the name.")}</span></label>
+          <fieldset className="rounded-xl border border-border p-4">
+            <legend className="px-1 text-sm font-semibold">{pick("文档属性", "Document properties")}</legend>
+            <div className="mt-1 grid gap-2 sm:grid-cols-2">
+              <label className={`flex cursor-pointer gap-3 rounded-lg border p-3 ${metadataMode === "clear" ? "border-cyan-500 bg-cyan-500/10" : "border-border"}`}><input type="radio" name="pdf-metadata-mode" checked={metadataMode === "clear"} onChange={() => setMetadataMode("clear")} className="mt-1 accent-cyan-500" /><span><span className="flex items-center gap-2 text-sm font-semibold"><ShieldCheck className="size-4 text-cyan-500" />{pick("清理常见属性", "Clear common properties")}</span><span className="mt-1 block text-xs leading-5 text-muted-foreground">{pick("不复制来源标题、作者、主题、关键词和导出时间。", "Do not copy source title, author, subject, keywords, or local export time.")}</span></span></label>
+              <label className={`flex cursor-pointer gap-3 rounded-lg border p-3 ${metadataMode === "custom" ? "border-cyan-500 bg-cyan-500/10" : "border-border"}`}><input type="radio" name="pdf-metadata-mode" checked={metadataMode === "custom"} onChange={() => setMetadataMode("custom")} className="mt-1 accent-cyan-500" /><span><span className="text-sm font-semibold">{pick("写入自定义属性", "Write custom properties")}</span><span className="mt-1 block text-xs leading-5 text-muted-foreground">{pick("只写入你在下方确认的字段。", "Write only the fields you confirm below.")}</span></span></label>
+            </div>
+          </fieldset>
+        </div>
+        {metadataMode === "custom" ? <div className="grid gap-3 rounded-xl border border-border bg-muted/10 p-4 sm:grid-cols-2">
+          <label className="space-y-2 text-sm"><span>{pick("标题", "Title")}</span><Input value={documentTitle} maxLength={180} onChange={(event) => setDocumentTitle(event.target.value)} /></label>
+          <label className="space-y-2 text-sm"><span>{pick("作者", "Author")}</span><Input value={documentAuthor} maxLength={180} onChange={(event) => setDocumentAuthor(event.target.value)} /></label>
+          <label className="space-y-2 text-sm"><span>{pick("主题", "Subject")}</span><Input value={documentSubject} maxLength={240} onChange={(event) => setDocumentSubject(event.target.value)} /></label>
+          <label className="space-y-2 text-sm"><span>{pick("关键词（逗号分隔）", "Keywords (comma-separated)")}</span><Input value={documentKeywords} maxLength={300} onChange={(event) => setDocumentKeywords(event.target.value)} /></label>
+        </div> : null}
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-xl border border-border p-4">
             <label className="flex items-start gap-3"><input type="checkbox" checked={addPageNumbers} onChange={(event) => setAddPageNumbers(event.target.checked)} className="mt-1 size-4 accent-cyan-500" /><span><span className="flex items-center gap-2 text-sm font-semibold"><Hash className="size-4 text-cyan-500" />{pick("添加页码", "Add page numbers")}</span><span className="mt-1 block text-xs text-muted-foreground">{pick("页码显示在每页底部中央。", "Page numbers appear at the bottom center.")}</span></span></label>
@@ -498,6 +591,7 @@ export function PdfWorkspace() {
           </div>
         </div>
         {running || progress ? <div className="space-y-2 rounded-xl border border-cyan-500/25 bg-cyan-500/[.06] p-4"><div className="flex items-center justify-between gap-3 text-sm"><span>{progressText}</span><span>{progress}%</span></div><Progress value={progress} />{running ? <Button size="sm" variant="outline" onClick={cancelExport}><X />{pick("取消导出", "Cancel export")}</Button> : null}</div> : null}
+        {delivery ? <Alert className="border-emerald-500/30 bg-emerald-500/[.07] text-emerald-950 dark:text-emerald-100"><FileCheck2 /><AlertTitle>{pick("交付文件已校验", "Delivery file verified")}</AlertTitle><AlertDescription><p>{format("{name} · {pages} 页 · {size}", "{name} · {pages} pages · {size}", { name: delivery.filename, pages: delivery.pages, size: formatBytes(delivery.bytes) })}</p><p className="mt-1 text-xs opacity-80">{pick("已核对页数和文档属性设置；请仍人工检查表单、链接和版面。", "Page count and document-property settings were checked; still review forms, links, and layout manually.")}</p><div className="mt-3 flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => downloadBlob(delivery.blob, delivery.filename)}><Download />{pick("再次下载", "Download again")}</Button><Button size="sm" variant="outline" onClick={downloadDeliveryReport}><Download />{pick("下载交付报告", "Download delivery report")}</Button></div></AlertDescription></Alert> : null}
         <div className="flex flex-wrap gap-2">
           <Button disabled={running} onClick={() => void exportPages(pagePlan, false)}>{running ? <LoaderCircle className="animate-spin" /> : <Download />}{format("导出完整 PDF（{count} 页）", "Export complete PDF ({count} pages)", { count: pagePlan.length })}</Button>
           <Button variant="outline" disabled={running || !selectedPages.length} onClick={() => void exportPages(selectedPages, true)}><Download />{format("提取所选页面（{count} 页）", "Extract selected pages ({count})", { count: selectedPages.length })}</Button>
@@ -645,6 +739,7 @@ function previewErrorText(reason: unknown, pick: (zh: string, en: string) => str
 }
 
 function exportErrorText(reason: Error, pick: (zh: string, en: string) => string) {
+  if (reason.message.startsWith("verification:")) return pick("导出文件未通过本地校验，请重新添加来源文件后再试。", "The exported file did not pass local verification. Add the source files again and retry.")
   if (reason.message.startsWith("encrypted:")) return pick("至少一个 PDF 已加密，无法重建。", "At least one PDF is encrypted and cannot be rebuilt.")
   if (reason.message.startsWith("memory:")) return pick("浏览器内存不足，请减少文件或页面后重试。", "The browser ran out of memory. Retry with fewer files or pages.")
   if (reason.message.startsWith("invalid-pdf:")) return pick("页面计划或源 PDF 无效，请重新添加文件。", "The page plan or a source PDF is invalid. Add the files again.")
