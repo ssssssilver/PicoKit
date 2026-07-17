@@ -71,6 +71,15 @@ describe("localized interface copy", () => {
     expect(readLocale("fr")).toMatchObject({ Background: "Arrière-plan" })
   })
 
+  it("uses natural French date and time labels", () => {
+    expect(readLocale("fr")).toMatchObject({
+      "Time input": "Saisie de la date ou de l’heure",
+      "Use current time": "Utiliser l’heure actuelle",
+      "Display time zone": "Fuseau horaire d’affichage",
+      "Age on": "Date de calcul",
+    })
+  })
+
   it("uses natural Korean labels for common controls", () => {
     expect(readLocale("ko")).toMatchObject({
       Characters: "글자",
