@@ -27,6 +27,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import { useLanguage } from "@/components/language-provider"
@@ -73,6 +74,7 @@ const transparent = "rgba(0,0,0,0)"
 
 export function QuickImageEditor() {
   const { pick, format } = useLanguage()
+  const router = useRouter()
   const workflowMemory = useImageWorkflowMemory()
   const inputRef = useRef<HTMLInputElement>(null)
   const queueRef = useRef<EditorQueueItem[]>([])
@@ -84,9 +86,15 @@ export function QuickImageEditor() {
   const [pasteError, setPasteError] = useState("")
   const [zipping, setZipping] = useState(false)
   const [handingOff, setHandingOff] = useState(false)
+  const [restoringHandoff, setRestoringHandoff] = useState(false)
   const handoffAttemptedRef = useRef(false)
 
   useEffect(() => { activeIdRef.current = activeId }, [activeId])
+
+  useEffect(() => {
+    if (!restoringHandoff) return
+    requestAnimationFrame(() => document.getElementById("quick-edit-queue")?.scrollIntoView({ block: "start" }))
+  }, [restoringHandoff])
 
   const replaceQueue = useCallback((update: (items: EditorQueueItem[]) => EditorQueueItem[]) => {
     setQueue((items) => {
@@ -130,12 +138,14 @@ export function QuickImageEditor() {
     const batchId = params.get("batch")
     const assetId = params.get("asset")
     if (!batchId && !assetId) return
+    setRestoringHandoff(true)
     void (batchId ? loadLocalAssetBatch(batchId) : loadLocalAsset(assetId!))
       .then(async (record) => {
         if (!record) throw new Error(pick("临时图片队列已过期，请从上一步重新发送。", "The temporary image queue has expired. Send it again from the previous tool."))
         await addFiles("kind" in record ? localAssetBatchFiles(record) : [localAssetFile(record)], Boolean(batchId))
       })
       .catch((reason) => setPasteError(reason instanceof Error ? reason.message : pick("无法读取上一步的图片队列", "Unable to read the image queue from the previous tool")))
+      .finally(() => setRestoringHandoff(false))
   }, [addFiles, format, pick])
 
   useEffect(() => {
@@ -242,7 +252,7 @@ export function QuickImageEditor() {
         blob: item.edited?.blob ?? item.file,
         name: item.edited?.name ?? item.file.name,
       })), "image-editor")
-      window.location.assign(`/image-compressor?batch=${encodeURIComponent(batchId)}`)
+      router.push(`/image-compressor?batch=${encodeURIComponent(batchId)}`)
     } catch {
       setPasteError(pick("无法把当前队列交给批量优化。请减少图片数量或文件总大小后重试。", "The queue could not be passed to batch optimization. Reduce the number or total size of the images and try again."))
       setHandingOff(false)
@@ -251,11 +261,12 @@ export function QuickImageEditor() {
 
   return (
     <div className="space-y-6">
-      <Card className="border-white/10 bg-[#0d0d0d] text-zinc-100 shadow-none">
+      <Card id="quick-edit-queue" className="scroll-mt-24 border-white/10 bg-[#0d0d0d] text-zinc-100 shadow-none">
         <CardHeader><CardTitle className="flex items-center gap-2"><Images className="size-5 text-cyan-300" />{pick("快速修图队列", "Quick-edit queue")}</CardTitle><p className="text-sm leading-6 text-zinc-500">{pick("一次加入多张图片，点击队列项逐张编辑；保存到队列后再切换下一张。", "Add multiple images, select one from the queue to edit, save it to the queue, then continue with the next image.")}</p></CardHeader>
         <CardContent className="space-y-4">
-          <Button variant="outline" onClick={() => inputRef.current?.click()} disabled={adding}><Upload />{adding ? pick("正在检查图片", "Checking images") : pick("添加图片", "Add images")}</Button>
+          <Button variant="outline" onClick={() => inputRef.current?.click()} disabled={adding || restoringHandoff}><Upload />{adding || restoringHandoff ? pick("正在检查图片", "Checking images") : pick("添加图片", "Add images")}</Button>
           <input ref={inputRef} type="file" multiple accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" className="sr-only" onChange={(event) => { void addFiles(Array.from(event.target.files ?? [])); event.currentTarget.value = "" }} />
+          {restoringHandoff ? <div role="status" aria-live="polite" className="flex items-center gap-3 rounded-xl border border-cyan-300/30 bg-cyan-300/[.08] px-4 py-3 text-sm text-zinc-200"><LoaderCircle className="size-5 shrink-0 animate-spin text-cyan-300" /><strong>{pick("正在恢复上一步的图片队列", "Loading the local image from the previous tool and validating its contents")}</strong></div> : null}
           {adding ? <div role="status" aria-live="polite" className="flex items-center gap-3 rounded-xl border border-cyan-300/30 bg-cyan-300/[.08] px-4 py-3 text-sm text-zinc-200"><LoaderCircle className="size-5 shrink-0 animate-spin text-cyan-300" /><span><strong>{pick("图片正在加入修图队列", "Adding images to the editing queue")}</strong><span className="ml-2 text-zinc-500">{pick("正在逐张读取并校验，请稍候；完成后会自动显示缩略图。", "Reading and validating images one at a time. Thumbnails will appear automatically when ready.")}</span></span></div> : null}
           {queue.length ? <div className="flex gap-3 overflow-x-auto pb-2">{queue.map((item, index) => <button key={item.id} type="button" onClick={() => selectItem(item.id)} className={cn("w-28 shrink-0 overflow-hidden rounded-xl border p-2 text-left transition", item.id === active?.id ? "border-cyan-300 bg-cyan-300/[.08]" : "border-white/10 bg-white/[.025] hover:border-white/25")}>
             <span className="relative grid aspect-square place-items-center overflow-hidden rounded-lg bg-black/30">
@@ -278,6 +289,7 @@ export function QuickImageEditor() {
 
 function FabricWorkspace({ file, outputNameSource, onReplace, onSaveToQueue, onDirtyChange, queueMode = false }: { file: File; outputNameSource?: string; onReplace: () => void; onSaveToQueue?: (blob: Blob, name: string) => void; onDirtyChange?: (dirty: boolean) => void; queueMode?: boolean }) {
   const { language, pick } = useLanguage()
+  const router = useRouter()
   const canvasElementRef = useRef<HTMLCanvasElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
   const fabricRef = useRef<FabricNamespace | null>(null)
@@ -879,7 +891,7 @@ function FabricWorkspace({ file, outputNameSource, onReplace, onSaveToQueue, onD
       const outputName = editorOutputName(outputNameSource ?? file.name, exportFormat)
       if (destination === "optimizer") {
         const assetId = await saveLocalAsset(blob, outputName, "image-editor")
-        window.location.assign(`/image-compressor?asset=${encodeURIComponent(assetId)}`)
+        router.push(`/image-compressor?asset=${encodeURIComponent(assetId)}`)
         return
       }
       if (destination === "queue" && onSaveToQueue) {

@@ -1,6 +1,7 @@
 "use client"
 
 import { Archive, ArrowRight, Download, Images, LoaderCircle, MousePointerClick, OctagonX, Pencil, Play, Square, Trash2, Upload, X } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { flushSync } from "react-dom"
 
@@ -31,6 +32,7 @@ const MAX_FILE_BYTES = 15 * 1024 * 1024
 
 export function BackgroundRemovalBatchStudio() {
   const { pick, format } = useLanguage()
+  const router = useRouter()
   const workflowMemory = useImageWorkflowMemory()
   const inputRef = useRef<HTMLInputElement>(null)
   const refinementRef = useRef<HTMLElement>(null)
@@ -265,7 +267,7 @@ export function BackgroundRemovalBatchStudio() {
         blob: item.result.blob,
         name: backgroundRemovalOutputName(item.file.name),
       })), "background-remover")
-      window.location.assign(`/image-editor?batch=${encodeURIComponent(batchId)}`)
+      router.push(`/image-editor?batch=${encodeURIComponent(batchId)}`)
     } catch {
       setError(pick("无法把当前队列交给批量快速修图。请减少图片数量或文件总大小后重试。", "The queue could not be passed to batch quick editing. Reduce the number or total size of the images and try again."))
       setHandingOff(false)
