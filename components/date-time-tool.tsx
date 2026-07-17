@@ -65,7 +65,8 @@ function DateInput({ value, onValueChange }: { value: string; onValueChange: (va
 }
 
 function Result({ label, value, wide }: { label: string; value: string; wide?: boolean }) {
-  return <div className={`rounded-lg border border-white/10 p-4 ${wide ? "sm:col-span-2" : ""}`}><p className="text-xs text-zinc-500">{label}</p><div className="mt-2 flex items-start justify-between gap-3"><p className="min-w-0 break-all font-mono text-sm text-zinc-200">{value}</p><button type="button" onClick={() => navigator.clipboard.writeText(value)} className="shrink-0 text-zinc-500 hover:text-cyan-300" aria-label={`Copy ${label}`}><Copy className="size-4" /></button></div></div>
+  const { format } = useLanguage()
+  return <div className={`rounded-lg border border-white/10 p-4 ${wide ? "sm:col-span-2" : ""}`}><p className="text-xs text-zinc-500">{label}</p><div className="mt-2 flex items-start justify-between gap-3"><p className="min-w-0 break-all font-mono text-sm text-zinc-200">{value}</p><button type="button" onClick={() => navigator.clipboard.writeText(value)} className="shrink-0 text-zinc-500 hover:text-cyan-300" aria-label={format("复制 {label}", "Copy {label}", { label })}><Copy className="size-4" /></button></div></div>
 }
 
 export function parseDateTimeInput(input: string) {
