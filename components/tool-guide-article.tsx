@@ -19,8 +19,8 @@ export function ToolGuideArticle({ slug }: { slug: string }) {
           <nav className="flex flex-wrap items-center gap-2 text-xs text-zinc-600" aria-label={pick("面包屑", "Breadcrumb")}>
             <Link href="/blog" className="transition hover:text-cyan-300">{pick("教程", "Guides")}</Link><span>/</span><span>{pick(guide.categoryTitle, guide.categoryTitleEn)}</span><span>/</span><span className="text-zinc-400">{pick(guide.title, guide.titleEn)}</span>
           </nav>
-          <div className="mt-8 grid gap-9 lg:grid-cols-[1fr_250px] lg:items-end">
-            <div>
+          <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-9 lg:grid-cols-[minmax(0,1fr)_250px] lg:items-end">
+            <div className="min-w-0">
               <p className="font-mono text-[11px] uppercase tracking-[.2em] text-cyan-300">{pick("工具使用教程", "Tool guide")}</p>
               <h1 className="mt-5 max-w-4xl text-[clamp(2.5rem,5.5vw,4.75rem)] font-black leading-[1] tracking-[-0.06em] text-white">{format("如何使用{name}", "How to use {name}", { name: pick(guide.title, guide.titleEn) })}</h1>
               <p className="mt-6 max-w-3xl text-base leading-7 text-zinc-400 sm:text-lg">{pick(guide.description, guide.descriptionEn)}</p>
