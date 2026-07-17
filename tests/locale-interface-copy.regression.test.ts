@@ -80,6 +80,14 @@ describe("localized interface copy", () => {
     })
   })
 
+  it("uses the measurement meaning of area in the unit converter", () => {
+    expect(readLocale("ar")).toMatchObject({ Area: "المساحة" })
+    expect(readLocale("de")).toMatchObject({ Area: "Fläche" })
+    expect(readLocale("id")).toMatchObject({ Area: "Luas" })
+    expect(readLocale("ja")).toMatchObject({ Area: "面積" })
+    expect(readLocale("pl")).toMatchObject({ Area: "Powierzchnia" })
+  })
+
   it("uses natural Korean labels for common controls", () => {
     expect(readLocale("ko")).toMatchObject({
       Characters: "글자",
