@@ -62,23 +62,11 @@ export function HomeToolDirectory() {
         view === "mine" ||
         view === "all" ||
         tool.category === view;
-      const categoryDetails = toolCategories.find(
-        (item) => item.id === tool.category,
-      );
       const matchesQuery = matchesLocalizedQuery(
         normalized,
         [
           { zh: tool.title, en: tool.titleEn },
           { zh: tool.description, en: tool.descriptionEn },
-          ...(categoryDetails
-            ? [
-                { zh: categoryDetails.title, en: categoryDetails.titleEn },
-                {
-                  zh: categoryDetails.description,
-                  en: categoryDetails.descriptionEn,
-                },
-              ]
-            : []),
         ],
         pick,
       );
