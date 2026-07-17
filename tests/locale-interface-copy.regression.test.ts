@@ -36,6 +36,17 @@ describe("localized interface copy", () => {
     expect(readLocale("tr")).toMatchObject({ Clear: "Temizle", "Close menu": "Menüyü kapat" })
   })
 
+  it("uses model-analysis terminology instead of human confidence or instruction-manual wording", () => {
+    expect(readLocale("ar")).toMatchObject({ Manual: "يدوي", Confidence: "درجة الثقة" })
+    expect(readLocale("de")).toMatchObject({ Manual: "Manuell", "Manual selection": "Manuelle Auswahl", Confidence: "Konfidenz" })
+    expect(readLocale("es")).toMatchObject({ Manual: "Manual", Original: "Original", "Inference backend": "Motor de inferencia" })
+    expect(readLocale("ja")).toMatchObject({ Manual: "手動", Confidence: "確信度", "Not identified": "未特定" })
+    expect(readLocale("ko")).toMatchObject({ Manual: "수동", Confidence: "신뢰도", "Not identified": "식별되지 않음" })
+    expect(readLocale("pl")).toMatchObject({ Manual: "Ręcznie", Confidence: "Poziom pewności" })
+    expect(readLocale("pt")).toMatchObject({ Manual: "Manual", Original: "Original" })
+    expect(readLocale("tr")).toMatchObject({ Confidence: "Güven düzeyi", "Not identified": "Belirlenemedi" })
+  })
+
   it("uses natural Korean labels for common controls", () => {
     expect(readLocale("ko")).toMatchObject({
       Characters: "글자",
