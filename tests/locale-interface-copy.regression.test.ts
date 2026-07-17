@@ -27,6 +27,15 @@ describe("localized interface copy", () => {
     }
   })
 
+  it("uses action verbs for common buttons instead of literal adjectives or acknowledgements", () => {
+    expect(readLocale("ar")).toMatchObject({ Copy: "نسخ", Clear: "مسح", Remove: "إزالة" })
+    expect(readLocale("de")).toMatchObject({ Clear: "Leeren" })
+    expect(readLocale("fr")).toMatchObject({ Copy: "Copier", Clear: "Effacer", Remove: "Supprimer" })
+    expect(readLocale("id")).toMatchObject({ Clear: "Bersihkan", "Open menu": "Buka menu" })
+    expect(readLocale("ru")).toMatchObject({ Copy: "Копировать", Clear: "Очистить", Remove: "Удалить" })
+    expect(readLocale("tr")).toMatchObject({ Clear: "Temizle", "Close menu": "Menüyü kapat" })
+  })
+
   it("uses natural Korean labels for common controls", () => {
     expect(readLocale("ko")).toMatchObject({
       Characters: "글자",
