@@ -54,7 +54,7 @@ export function SiteHeader() {
             <Blocks className="size-5 sm:size-6" strokeWidth={2.2} />
           </span>
           <span className="text-lg font-semibold tracking-[-0.03em] sm:text-xl">TabNative</span>
-          <span className="hidden whitespace-nowrap rounded-full border border-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-200 sm:inline">
+          <span className="hidden whitespace-nowrap rounded-full border border-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-200 sm:inline xl:hidden">
             on-device
           </span>
         </Link>
