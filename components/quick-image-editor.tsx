@@ -138,14 +138,23 @@ export function QuickImageEditor() {
     const batchId = params.get("batch")
     const assetId = params.get("asset")
     if (!batchId && !assetId) return
-    setRestoringHandoff(true)
-    void (batchId ? loadLocalAssetBatch(batchId) : loadLocalAsset(assetId!))
-      .then(async (record) => {
-        if (!record) throw new Error(pick("临时图片队列已过期，请从上一步重新发送。", "The temporary image queue has expired. Send it again from the previous tool."))
-        await addFiles("kind" in record ? localAssetBatchFiles(record) : [localAssetFile(record)], Boolean(batchId))
-      })
-      .catch((reason) => setPasteError(reason instanceof Error ? reason.message : pick("无法读取上一步的图片队列", "Unable to read the image queue from the previous tool")))
-      .finally(() => setRestoringHandoff(false))
+    let cancelled = false
+    queueMicrotask(() => {
+      if (cancelled) return
+      setRestoringHandoff(true)
+      void (batchId ? loadLocalAssetBatch(batchId) : loadLocalAsset(assetId!))
+        .then(async (record) => {
+          if (!record) throw new Error(pick("临时图片队列已过期，请从上一步重新发送。", "The temporary image queue has expired. Send it again from the previous tool."))
+          await addFiles("kind" in record ? localAssetBatchFiles(record) : [localAssetFile(record)], Boolean(batchId))
+        })
+        .catch((reason) => {
+          if (!cancelled) setPasteError(reason instanceof Error ? reason.message : pick("无法读取上一步的图片队列", "Unable to read the image queue from the previous tool"))
+        })
+        .finally(() => {
+          if (!cancelled) setRestoringHandoff(false)
+        })
+    })
+    return () => { cancelled = true }
   }, [addFiles, format, pick])
 
   useEffect(() => {

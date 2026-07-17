@@ -7,8 +7,9 @@ const editorSource = readFileSync(new URL("../components/quick-image-editor.tsx"
 describe("quick-edit handoff loading regression", () => {
   it("announces restoration while a queue from the previous workflow step is loading", () => {
     expect(editorSource).toContain("const [restoringHandoff, setRestoringHandoff] = useState(false)")
+    expect(editorSource).toContain("queueMicrotask(() => {")
     expect(editorSource).toContain("setRestoringHandoff(true)")
-    expect(editorSource).toContain(".finally(() => setRestoringHandoff(false))")
+    expect(editorSource).toMatch(/\.finally\(\(\) => \{\s+if \(!cancelled\) setRestoringHandoff\(false\)/)
     expect(editorSource).toContain("正在恢复上一步的图片队列")
     expect(editorSource).toContain("Loading the local image from the previous tool and validating its contents")
     expect(editorSource).toMatch(/restoringHandoff[\s\S]*?role="status"[\s\S]*?aria-live="polite"/)
