@@ -818,7 +818,7 @@
   "Group sizes differ by no more than one person.": "Grup büyüklükleri en fazla bir kişi fark eder.",
   "Guide categories": "Rehber kategorileri",
   "guides": "Rehberler",
-  "Guides": "Kılavuzlar",
+  "Guides": "Rehberler",
   "Handle duplicates": "Tutucu kopyaları",
   "Hash matched": "Hash eşleşti",
   "Hashing a Base64-decoded file should reproduce the source SHA-256.": "Base64 kod çözülmüş bir dosyayı hash etmek, kaynak SHA-256 yeniden üretmelidir.",

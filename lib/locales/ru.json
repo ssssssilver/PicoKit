@@ -818,7 +818,7 @@
   "Group sizes differ by no more than one person.": "Размеры групп различаются не более чем на одного человека.",
   "Guide categories": "Категории руководств",
   "guides": "Путеводители",
-  "Guides": "Инструкции",
+  "Guides": "Руководства",
   "Handle duplicates": "Обработка дубликатов",
   "Hash matched": "Хеш совпадение",
   "Hashing a Base64-decoded file should reproduce the source SHA-256.": "Хеширование файла, декодированного Base64, должно воспроизвести исходный SHA-256.",
