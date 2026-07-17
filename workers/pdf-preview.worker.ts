@@ -1,6 +1,7 @@
 /// <reference lib="webworker" />
 
 import type { PDFDocumentProxy } from "pdfjs-dist"
+import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url"
 
 type LoadSourceMessage = { type: "load-source"; requestId: string; sourceId: string; buffer: ArrayBuffer }
 type ThumbnailMessage = { type: "thumbnail"; requestId: string; sourceId: string; pageIndex: number; targetWidth: number; rotation: number }
@@ -30,7 +31,11 @@ self.onmessage = (event: MessageEvent<RequestMessage>) => {
 async function loadSource(message: LoadSourceMessage) {
   try {
     const pdfjs = await import("pdfjs-dist")
-    pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs"
+    // This module already runs in a dedicated Worker. When PDF.js falls back to
+    // its in-process worker, it imports workerSrc from here, so the URL must be
+    // emitted by Vite instead of pointing at a /public asset (which Vite blocks
+    // when imported as source code during development).
+    pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
     const previous = documents.get(message.sourceId)
     if (previous) await destroyDocument(previous)
     const loadingTask = pdfjs.getDocument({ data: new Uint8Array(message.buffer) })
