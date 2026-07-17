@@ -125,6 +125,18 @@ describe("localized interface copy", () => {
     expect(Object.values(readLocale("ko")).join(" ")).not.toMatch(/TabNative은(?:\(는\))?|지역 완료 내역|활성 타이밍/)
   })
 
+  it("uses natural Russian SVG actions and on-device wording", () => {
+    expect(readLocale("ru")).toMatchObject({
+      "Open a local SVG": "Открыть SVG-файл",
+      "SVG source": "Исходный код SVG",
+      Format: "Форматировать",
+      "Download safe SVG": "Скачать безопасный SVG",
+      "PNG width (16–4096)": "Ширина PNG (16–4096)",
+      "Free · No account · On-device": "Бесплатно · Без аккаунта · На устройстве",
+    })
+    expect(Object.values(readLocale("ru")).join(" ")).not.toMatch(/минимини|местный SVG|Встроенный аппарат/)
+  })
+
   it("uses natural Korean labels for common controls", () => {
     expect(readLocale("ko")).toMatchObject({
       Characters: "글자",
