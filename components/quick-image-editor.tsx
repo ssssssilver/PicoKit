@@ -48,7 +48,7 @@ import {
   IMAGE_EDITOR_MAX_PIXELS,
   type EditorExportFormat,
 } from "@/lib/image-editor"
-import { loadLocalAsset, loadLocalAssetBatch, localAssetBatchFiles, localAssetFile, saveLocalAsset, saveLocalAssetBatch } from "@/lib/local-asset-transfer"
+import { IMAGE_PIPELINE_BATCH_MAX_ITEMS, loadLocalAsset, loadLocalAssetBatch, localAssetBatchFiles, localAssetFile, saveLocalAsset, saveLocalAssetBatch } from "@/lib/local-asset-transfer"
 import { cn } from "@/lib/utils"
 
 type FabricNamespace = typeof import("fabric")
@@ -112,7 +112,7 @@ export function QuickImageEditor() {
     const known = new Set(queueRef.current.map((item) => `${item.file.name}:${item.file.size}:${item.file.lastModified}`))
     const accepted: EditorQueueItem[] = []
     for (const candidate of candidates) {
-      if (queueRef.current.length + accepted.length >= 30) { setPasteError(pick("快速修图队列最多加入 30 张图片。", "The quick-edit queue accepts up to 30 images.")); break }
+      if (queueRef.current.length + accepted.length >= IMAGE_PIPELINE_BATCH_MAX_ITEMS) { setPasteError(format("快速修图队列最多加入 {count} 张图片。", "The quick-edit queue accepts up to {count} images.", { count: IMAGE_PIPELINE_BATCH_MAX_ITEMS })); break }
       const fingerprint = `${candidate.name}:${candidate.size}:${candidate.lastModified}`
       if (known.has(fingerprint)) continue
       try {
@@ -288,7 +288,7 @@ export function QuickImageEditor() {
           <div className="flex flex-wrap gap-2">{queue.filter((item) => item.edited).map((item) => <Button key={item.id} size="sm" variant="ghost" onClick={() => item.edited && downloadBlob(item.edited.blob, item.edited.name)}><Download />{item.file.name}</Button>)}{queue.some((item) => item.edited) ? <Button size="sm" variant="outline" onClick={() => void downloadAll()} disabled={zipping || handingOff}>{zipping ? <LoaderCircle className="animate-spin" /> : <Archive />}{pick("下载已编辑 ZIP", "Download edited ZIP")}</Button> : null}</div>
           {queue.length ? <div className="flex flex-col gap-3 rounded-xl border border-cyan-300/25 bg-cyan-300/[.055] p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-semibold text-zinc-100">{pick("下一步：批量优化与交付", "Next: batch optimization and delivery")}</p><p className="mt-1 text-xs leading-5 text-zinc-500">{pick("已保存的修图结果会优先进入下一步，未编辑图片会保持当前版本。", "Saved edits continue to the next step; unedited images keep their current version.")}</p></div><Button className="shrink-0" disabled={handingOff} onClick={() => void continueToBatchOptimizer()}>{handingOff ? <LoaderCircle className="animate-spin" /> : <ArrowRight />}{handingOff ? pick("处理中", "Processing") : format("继续批量优化（{count} 张）", "Continue to batch optimization ({count})", { count: queue.length })}</Button></div> : null}
           {pasteError ? <p role="alert" className="text-sm text-red-400">{pasteError}</p> : null}
-          <div className="flex flex-wrap gap-2 font-mono text-[11px] uppercase tracking-[.14em] text-zinc-600"><span>JPG</span><span>PNG</span><span>WEBP</span><span>·</span><span>{pick("最多 30 张 / 每张 25MB", "Up to 30 images / 25MB each")}</span></div>
+          <div className="flex flex-wrap gap-2 font-mono text-[11px] uppercase tracking-[.14em] text-zinc-600"><span>JPG</span><span>PNG</span><span>WEBP</span><span>·</span><span>{format("最多 {count} 张 / 每张 25MB", "Up to {count} images / 25MB each", { count: IMAGE_PIPELINE_BATCH_MAX_ITEMS })}</span></div>
         </CardContent>
       </Card>
       {active ? <FabricWorkspace key={`${active.id}:${active.edited?.file.lastModified ?? 0}`} file={active.edited?.file ?? active.file} outputNameSource={active.file.name} onReplace={() => { if (!dirty || window.confirm(pick("当前修改尚未保存，确定移出队列吗？", "Current edits are not saved. Remove this image from the queue?"))) removeItem(active.id) }} onSaveToQueue={(blob, name) => saveEdited(active.id, blob, name)} onDirtyChange={setDirty} queueMode /> : null}

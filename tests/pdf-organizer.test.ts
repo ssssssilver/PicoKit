@@ -1,14 +1,26 @@
+import { readFile } from "node:fs/promises"
 import { PDFDocument } from "pdf-lib"
 import { describe, expect, it } from "vitest"
 
 import {
   createPdfPagePlan,
+  createPdfWorkspacePages,
+  deletePdfWorkspacePages,
   deletePdfPage,
   detectPdfImageFormat,
+  movePdfWorkspacePages,
+  movePdfWorkspaceSelection,
   movePdfPage,
   normalizePdfRotation,
   organizePdfBytes,
+  organizePdfWorkspaceBytes,
+  reorderPdfWorkspaceSources,
+  rotatePdfWorkspacePages,
   rotatePdfPage,
+  PDF_MAX_BATCH_BYTES,
+  PDF_MAX_FILE_BYTES,
+  PDF_MAX_SOURCE_COUNT,
+  PDF_MAX_WORKSPACE_PAGES,
 } from "@/lib/pdf-organizer"
 
 describe("PDF image input validation", () => {
@@ -77,5 +89,74 @@ describe("PDF organizer export", () => {
     })
 
     expect((await PDFDocument.load(bytes)).getPageCount()).toBe(1)
+  })
+})
+
+describe("multi-source PDF workspace", () => {
+  it("keeps browser-safe workspace limits explicit", () => {
+    expect(PDF_MAX_FILE_BYTES).toBe(150 * 1024 * 1024)
+    expect(PDF_MAX_BATCH_BYTES).toBe(300 * 1024 * 1024)
+    expect(PDF_MAX_SOURCE_COUNT).toBe(20)
+    expect(PDF_MAX_WORKSPACE_PAGES).toBe(1_000)
+  })
+
+  it("moves multi-selected pages, applies batch actions, and regroups sources", () => {
+    const first = createPdfWorkspacePages("first", 3)
+    const second = createPdfWorkspacePages("second", 2)
+    const plan = [...first, ...second]
+    const selected = new Set([first[1].id, first[2].id])
+
+    const moved = movePdfWorkspacePages(plan, selected, plan.length)
+    expect(moved.map((page) => page.id)).toEqual([first[0].id, second[0].id, second[1].id, first[1].id, first[2].id])
+    expect(movePdfWorkspaceSelection(moved, selected, -1).map((page) => page.id)).toEqual([first[0].id, second[0].id, first[1].id, first[2].id, second[1].id])
+    expect(rotatePdfWorkspacePages(plan, selected).filter((page) => selected.has(page.id)).every((page) => page.rotation === 90)).toBe(true)
+    expect(deletePdfWorkspacePages(plan, selected).map((page) => page.id)).toEqual([first[0].id, second[0].id, second[1].id])
+    expect(reorderPdfWorkspaceSources(moved, ["first", "second"]).map((page) => page.sourceId)).toEqual(["first", "first", "first", "second", "second"])
+  })
+
+  it("exports pages from multiple PDFs in workspace order", async () => {
+    const first = await PDFDocument.create()
+    first.addPage([200, 300])
+    first.addPage([210, 310])
+    const second = await PDFDocument.create()
+    second.addPage([400, 500])
+
+    const firstPages = createPdfWorkspacePages("first", 2)
+    const secondPages = createPdfWorkspacePages("second", 1)
+    const plan = [secondPages[0], firstPages[1], firstPages[0]]
+    plan[1] = { ...plan[1], rotation: 90 }
+
+    const bytes = await organizePdfWorkspaceBytes([
+      { id: "first", bytes: await first.save() },
+      { id: "second", bytes: await second.save() },
+    ], plan, { pageNumbers: true })
+    const output = await PDFDocument.load(bytes)
+
+    expect(output.getPageCount()).toBe(3)
+    expect(output.getPage(0).getSize()).toEqual({ width: 400, height: 500 })
+    expect(output.getPage(1).getSize()).toEqual({ width: 210, height: 310 })
+    expect(output.getPage(1).getRotation().angle).toBe(90)
+    expect(output.getPage(2).getSize()).toEqual({ width: 200, height: 300 })
+  })
+
+  it("ships one persistent workspace with lazy thumbnails and cancellable Worker export", async () => {
+    const [workspace, tool, previewWorker, exportWorker] = await Promise.all([
+      readFile("components/pdf-workspace.tsx", "utf8"),
+      readFile("components/pdf-tool.tsx", "utf8"),
+      readFile("workers/pdf-preview.worker.ts", "utf8"),
+      readFile("workers/pdf-export.worker.ts", "utf8"),
+    ])
+
+    expect(tool).toContain('<div className={mode === "workspace" ? "" : "hidden"}><PdfWorkspace /></div>')
+    expect(workspace).toContain("IntersectionObserver")
+    expect(workspace).toContain("draggable={!running}")
+    expect(workspace).toContain("event.shiftKey")
+    expect(workspace).toContain("event.ctrlKey || event.metaKey")
+    expect(workspace).toContain("movePdfWorkspacePages")
+    expect(workspace).toContain("replacePlanAfterSourceChange")
+    expect(workspace).toContain("exportWorkerRef.current?.terminate()")
+    expect(previewWorker).toContain("OffscreenCanvas")
+    expect(previewWorker).toContain("page.rotate + message.rotation")
+    expect(exportWorker).toContain("organizePdfWorkspaceBytes")
   })
 })

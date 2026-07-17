@@ -17,7 +17,7 @@ import { downloadBlob, waitForBrowserPaint } from "@/lib/browser-files"
 import { validateImageFile } from "@/lib/file-validation"
 import { backgroundRemovalOutputName, canRefineBackground } from "@/lib/background-removal"
 import { IMAGE_EDITOR_MAX_PIXELS } from "@/lib/image-editor"
-import { saveLocalAssetBatch } from "@/lib/local-asset-transfer"
+import { IMAGE_PIPELINE_BATCH_MAX_ITEMS, saveLocalAssetBatch } from "@/lib/local-asset-transfer"
 
 type QueueStatus = "queued" | "processing" | "done" | "error"
 type RemovalResult = { blob: Blob; url: string; width: number; height: number; backend: string }
@@ -26,7 +26,6 @@ type StoredQueueItem = Omit<QueueItem, "previewUrl" | "result"> & { result?: Omi
 type BackgroundQueueSnapshot = { items: StoredQueueItem[] }
 type WorkerMessage = { type: "progress" | "status" | "result" | "error"; stage?: string; progress?: number; buffer?: ArrayBuffer; width?: number; height?: number; backend?: string; code?: string }
 
-const MAX_FILES = 30
 const MAX_TOTAL_BYTES = 150 * 1024 * 1024
 const MAX_FILE_BYTES = 15 * 1024 * 1024
 
@@ -119,7 +118,7 @@ export function BackgroundRemovalBatchStudio() {
     const accepted: QueueItem[] = []
     const rejected: string[] = []
     for (const candidate of files) {
-      if (current.length + accepted.length >= MAX_FILES) { rejected.push(pick("最多加入 30 张图片", "You can add up to 30 images")); break }
+      if (current.length + accepted.length >= IMAGE_PIPELINE_BATCH_MAX_ITEMS) { rejected.push(format("最多加入 {count} 张图片", "The queue accepts up to {count} images", { count: IMAGE_PIPELINE_BATCH_MAX_ITEMS })); break }
       if (candidate.size > MAX_FILE_BYTES) { rejected.push(`${candidate.name}：${pick("超过 15 MB", "larger than 15 MB")}`); continue }
       if (totalBytes + candidate.size > MAX_TOTAL_BYTES) { rejected.push(pick("源图片合计不能超过 150 MB", "Source images cannot exceed 150 MB in total")); break }
       const fingerprint = `${candidate.name}:${candidate.size}:${candidate.lastModified}`
@@ -279,7 +278,7 @@ export function BackgroundRemovalBatchStudio() {
       <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Images className="size-4 text-cyan-300" />{pick("批量移除背景", "Batch background removal")}</CardTitle><p className="text-sm text-zinc-500">{pick("一次加入多张图片，按顺序处理，避免同时占用过多显存和内存。", "Add multiple images and process them sequentially to limit GPU and memory use.")}</p></CardHeader>
       <CardContent className="space-y-4">
         <button type="button" aria-busy={adding} disabled={running || adding} onClick={() => inputRef.current?.click()} onDragEnter={(event) => { event.preventDefault(); setDragging(true) }} onDragOver={(event) => event.preventDefault()} onDragLeave={() => setDragging(false)} onDrop={(event) => { event.preventDefault(); setDragging(false); void addFiles(Array.from(event.dataTransfer.files)) }} className={`flex min-h-36 w-full flex-col items-center justify-center rounded-xl border border-dashed px-5 text-center transition ${adding ? "border-cyan-300/60 bg-cyan-300/[.08]" : dragging ? "border-cyan-300 bg-cyan-300/10" : "border-white/15 bg-white/[.025] hover:border-cyan-300/45"}`}>
-          {adding ? <LoaderCircle className="size-8 animate-spin text-cyan-300" /> : <Upload className="size-8 text-cyan-300" />}<span className="mt-3 text-sm font-semibold text-zinc-100">{adding ? pick("正在检查图片", "Checking images") : pick("拖入多张图片，或点击选择", "Drop multiple images, or click to choose")}</span><span className="mt-1 text-xs text-zinc-500">JPG · PNG · WEBP · {pick("最多 30 张", "Up to 30 images")}</span>
+          {adding ? <LoaderCircle className="size-8 animate-spin text-cyan-300" /> : <Upload className="size-8 text-cyan-300" />}<span className="mt-3 text-sm font-semibold text-zinc-100">{adding ? pick("正在检查图片", "Checking images") : pick("拖入多张图片，或点击选择", "Drop multiple images, or click to choose")}</span><span className="mt-1 text-xs text-zinc-500">JPG · PNG · WEBP · {format("最多 {count} 张", "Up to {count} images", { count: IMAGE_PIPELINE_BATCH_MAX_ITEMS })}</span>
         </button>
         <input ref={inputRef} type="file" multiple accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" className="sr-only" onChange={(event) => { void addFiles(Array.from(event.target.files ?? [])); event.currentTarget.value = "" }} />
         {adding ? <div role="status" aria-live="polite" className="flex items-center gap-3 rounded-xl border border-cyan-300/30 bg-cyan-300/[.08] px-4 py-3 text-sm text-zinc-200"><LoaderCircle className="size-5 shrink-0 animate-spin text-cyan-300" /><span><strong>{pick("图片正在加入队列", "Adding images to the queue")}</strong><span className="ml-2 text-zinc-500">{pick("正在逐张读取并校验，请稍候；完成后会自动显示预览。", "Reading and validating images one at a time. Previews will appear automatically when ready.")}</span></span></div> : null}

@@ -35,6 +35,7 @@ import {
   type BatchTransformSettings,
 } from "@/lib/image-batch"
 import { validateImageFile } from "@/lib/file-validation"
+import { IMAGE_PIPELINE_BATCH_MAX_ITEMS } from "@/lib/local-asset-transfer"
 import { transformImage, type TransformResult } from "@/lib/image-transformer"
 
 type QueueStatus = "queued" | "processing" | "done" | "error"
@@ -62,7 +63,6 @@ export type ImageDeliveryStudioProps = {
 }
 
 const emptyInitialFiles: readonly File[] = []
-const maxBatchFiles = 50
 const maxBatchTotalBytes = 250 * 1024 * 1024
 const maxBatchImagePixels = 40_000_000
 const defaultSettings: BatchTransformSettings = {
@@ -167,8 +167,8 @@ export function ImageDeliveryStudio({ initialFiles = emptyInitialFiles }: ImageD
     const rejected: string[] = []
 
     for (const candidate of candidates) {
-      if (current.length + accepted.length >= maxBatchFiles) {
-        rejected.push(format("最多加入 {count} 张图片", "The queue accepts up to {count} images", { count: maxBatchFiles }))
+      if (current.length + accepted.length >= IMAGE_PIPELINE_BATCH_MAX_ITEMS) {
+        rejected.push(format("最多加入 {count} 张图片", "The queue accepts up to {count} images", { count: IMAGE_PIPELINE_BATCH_MAX_ITEMS }))
         break
       }
       const fingerprint = fileFingerprint(candidate)
@@ -374,7 +374,7 @@ export function ImageDeliveryStudio({ initialFiles = emptyInitialFiles }: ImageD
           >
             {adding ? <LoaderCircle className="size-8 animate-spin text-cyan-500" /> : <Upload className="size-8 text-cyan-500" />}
             <span className="mt-3 text-sm font-semibold text-foreground">{adding ? pick("正在逐张检查图片", "Checking images one at a time") : pick("拖入多张图片，或点击选择", "Drop multiple images, or click to choose")}</span>
-            <span className="mt-1 text-xs text-muted-foreground">JPG · PNG · WEBP · {pick("最多 50 张 / 源文件合计 250 MB", "Up to 50 images / 250 MB total source size")}</span>
+            <span className="mt-1 text-xs text-muted-foreground">JPG · PNG · WEBP · {format("最多 {count} 张 / 源文件合计 250 MB", "Up to {count} images / 250 MB total source size", { count: IMAGE_PIPELINE_BATCH_MAX_ITEMS })}</span>
           </button>
           <input
             ref={inputRef}

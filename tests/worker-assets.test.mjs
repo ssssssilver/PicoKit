@@ -15,7 +15,7 @@ test("every browser Worker referenced by a client chunk is deployed as a client 
     for (const match of source.matchAll(/\/assets\/([^"'`()]+\.worker-[A-Za-z0-9_-]+\.js)/g)) references.add(match[1])
   }
 
-  assert.ok(references.size >= 4, `expected at least four browser Worker references, found ${references.size}`)
+  assert.ok(references.size >= 6, `expected at least six browser Worker references, found ${references.size}`)
   for (const file of references) {
     assert.equal(existsSync(join(assetsDirectory, file)), true, `missing deployed Worker asset: ${file}`)
   }

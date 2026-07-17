@@ -7,22 +7,22 @@ import { ToolShell } from "@/components/tool-shell"
 
 export const metadata: Metadata = {
   title: "免费本地 PDF 页面整理、合并与转换",
-  description: "在浏览器本地重排、旋转或删除 PDF 页面，添加页码与文字水印，并完成合并、提取和图片互转。",
+  description: "在统一的浏览器本地工作台中合并多个 PDF，拖拽、多选、旋转、删除或提取页面，并完成图片互转。",
 }
 
 export default function Page() {
   return <ToolShell
     title={{ zh: "PDF 页面整理、合并与转换", en: "Organize, Merge, and Convert PDFs" }}
     description={{
-      zh: "重排、逐页旋转或删除页面，添加页码与文字水印，也可合并、按范围处理 PDF 和完成图片互转。所有文件只在当前设备处理。",
-      en: "Reorder, rotate, or remove individual pages, add page numbers and text watermarks, merge PDFs, process page ranges, and convert images—all on this device.",
+      zh: "把多个 PDF 加入同一页面工作台，拖拽排序、多选旋转、删除或提取页面，并在后台 Worker 中导出；图片互转仍可独立使用。",
+      en: "Add multiple PDFs to one page workspace, drag to reorder, batch-rotate, remove, or extract pages, and export in a background Worker. Image conversion remains available separately.",
     }}
     eyebrow="Local PDF Toolkit"
     icon={FileText}
     aside={<ToolAside notes={[
-      { zh: "页面整理不会修改原始 PDF", en: "Page organization never changes the source PDF" },
-      { zh: "页码与文字水印在导出时本地添加", en: "Page numbers and text watermarks are added locally during export" },
-      { zh: "建议单个文件不超过 150 MB", en: "Files up to 150 MB are recommended" },
+      { zh: "原始 PDF 不会被修改", en: "Source PDFs are never changed" },
+      { zh: "缩略图与导出均在后台 Worker 中处理", en: "Thumbnails and exports run in background Workers" },
+      { zh: "单个最大 150 MB，整批最大 300 MB", en: "150 MB per file and 300 MB per workspace" },
     ]} />}
   ><PdfTool /></ToolShell>
 }

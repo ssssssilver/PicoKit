@@ -1,7 +1,8 @@
 export const LOCAL_ASSET_DB_NAME = "tabnative-local-assets"
 export const LOCAL_ASSET_STORE_NAME = "assets"
 export const LOCAL_ASSET_MAX_AGE_MS = 2 * 60 * 60 * 1000
-export const LOCAL_ASSET_BATCH_MAX_ITEMS = 50
+export const IMAGE_PIPELINE_BATCH_MAX_ITEMS = 30
+export const LOCAL_ASSET_BATCH_MAX_ITEMS = IMAGE_PIPELINE_BATCH_MAX_ITEMS
 export const LOCAL_ASSET_BATCH_MAX_BYTES = 250 * 1024 * 1024
 
 export type LocalAssetSource = "background-remover" | "image-editor" | "image-optimizer" | "unknown"

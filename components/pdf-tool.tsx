@@ -19,6 +19,7 @@ import {
 import { useEffect, useRef, useState } from "react"
 
 import { useLanguage } from "@/components/language-provider"
+import { PdfWorkspace } from "@/components/pdf-workspace"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -35,7 +36,7 @@ import {
   type PdfPagePlanItem,
 } from "@/lib/pdf-organizer"
 
-type Mode = "organize" | "merge" | "pages" | "images" | "export"
+type Mode = "workspace" | "organize" | "merge" | "pages" | "images" | "export"
 type PdfInfo = { file: File; pages: number }
 type PdfJsDestroyable = { destroy: () => Promise<void> | void }
 type PdfJsDocument = { cleanup: () => Promise<void> | void; loadingTask: PdfJsDestroyable }
@@ -46,7 +47,7 @@ const maxThumbnailCount = 60
 
 export function PdfTool() {
   const { pick, format } = useLanguage()
-  const [mode, setMode] = useState<Mode>("organize")
+  const [mode, setMode] = useState<Mode>("workspace")
   const [files, setFiles] = useState<PdfInfo[]>([])
   const [images, setImages] = useState<File[]>([])
   const [pageSpec, setPageSpec] = useState("1")
@@ -220,6 +221,7 @@ export function PdfTool() {
   function chooseMode(nextMode: Mode) {
     setMode(nextMode)
     setError("")
+    if (nextMode === "workspace") return
     if (nextMode === "images" || nextMode === "merge") {
       invalidateThumbnailPreview()
       setPagePlan([])
@@ -387,28 +389,12 @@ export function PdfTool() {
           ? <Download />
           : <FilePlus2 />
 
-  return <div className="space-y-6">
+  const legacyTools = <div className="space-y-6">
     <Card>
       <CardHeader>
-        <CardTitle>{pick("PDF 工具箱", "PDF toolbox")}</CardTitle>
+        <CardTitle>{mode === "images" ? pick("图片转 PDF", "Images to PDF") : pick("PDF 转图片", "PDF to images")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
-        <div className="flex flex-wrap gap-2">
-          {(["organize", "merge", "pages", "images", "export"] as Mode[]).map((item) => (
-            <Button key={item} variant={mode === item ? "default" : "outline"} onClick={() => chooseMode(item)}>
-              {item === "organize"
-                ? pick("整理页面", "Organize pages")
-                : item === "merge"
-                  ? pick("合并 PDF", "Merge PDFs")
-                  : item === "pages"
-                    ? pick("按页码处理", "Process page ranges")
-                    : item === "images"
-                      ? pick("图片转 PDF", "Images to PDF")
-                      : pick("PDF 转图片", "PDF to images")}
-            </Button>
-          ))}
-        </div>
-
         {mode === "images"
           ? <FilePicker
               accept="image/png,image/jpeg"
@@ -573,6 +559,21 @@ export function PdfTool() {
         </div>
       </CardContent>
     </Card> : null}
+  </div>
+
+  return <div className="space-y-6">
+    <Card>
+      <CardHeader><CardTitle>{pick("PDF 工具箱", "PDF toolbox")}</CardTitle></CardHeader>
+      <CardContent>
+        <div className="flex flex-wrap gap-2">
+          {(["workspace", "images", "export"] as Mode[]).map((item) => <Button key={item} variant={mode === item ? "default" : "outline"} onClick={() => chooseMode(item)}>
+            {item === "workspace" ? pick("页面工作台", "Page workspace") : item === "images" ? pick("图片转 PDF", "Images to PDF") : pick("PDF 转图片", "PDF to images")}
+          </Button>)}
+        </div>
+      </CardContent>
+    </Card>
+    <div className={mode === "workspace" ? "" : "hidden"}><PdfWorkspace /></div>
+    <div className={mode === "workspace" ? "hidden" : ""}>{legacyTools}</div>
   </div>
 }
 
