@@ -105,6 +105,16 @@ describe("localized interface copy", () => {
     expect(readLocale("ru")).toMatchObject({ "Test and replace": "Проверить и заменить" })
   })
 
+  it("uses Arabic text-processing meanings for characters, lines, and workbench", () => {
+    expect(readLocale("ar")).toMatchObject({
+      Characters: "الأحرف",
+      Lines: "الأسطر",
+      "No spaces": "من دون مسافات",
+      "Text workbench": "مساحة أدوات النص",
+      "Batch image optimizer": "محسّن الصور الدفعي",
+    })
+  })
+
   it("uses natural Korean labels for common controls", () => {
     expect(readLocale("ko")).toMatchObject({
       Characters: "글자",
