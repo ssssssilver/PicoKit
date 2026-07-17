@@ -1,4 +1,5 @@
 {
+  "Group {number}": "{number}조",
   "Copy {label}": "{label} 복사",
   "Choose foreground color": "전경색 선택",
   "Pick foreground color from screen": "화면에서 전경색 선택",
