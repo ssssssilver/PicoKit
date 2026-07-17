@@ -7,6 +7,26 @@ const readLocale = (locale: string) => JSON.parse(
 ) as Record<string, string>
 
 describe("localized interface copy", () => {
+  it("does not translate CPU threads as topics or message threads", () => {
+    const expected = {
+      ar: "خيوط المعالج",
+      de: "CPU-Threads",
+      es: "Hilos de CPU",
+      fr: "Threads du processeur",
+      id: "Thread CPU",
+      ja: "CPU スレッド",
+      ko: "CPU 스레드",
+      pl: "Wątki procesora",
+      pt: "Threads da CPU",
+      ru: "Потоки процессора",
+      tr: "CPU iş parçacıkları",
+    }
+
+    for (const [locale, label] of Object.entries(expected)) {
+      expect(readLocale(locale)["CPU threads"]).toBe(label)
+    }
+  })
+
   it("uses natural Korean labels for common controls", () => {
     expect(readLocale("ko")).toMatchObject({
       Characters: "글자",
