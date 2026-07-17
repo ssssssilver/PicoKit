@@ -8,7 +8,7 @@ const AI_PATTERNS: Array<{ pattern: RegExp; label: string; severity: "high" | "m
   { pattern: /dall[·\- ]?e|openai image|gpt-image/i, label: "OpenAI 图片来源字段", severity: "high" },
   { pattern: /adobe\s*firefly|generative fill/i, label: "Adobe 生成式编辑字段", severity: "high" },
   { pattern: /google\s*(gemini|imagen)|gemini/i, label: "Google AI 来源字段", severity: "medium" },
-  { pattern: /negative\s*prompt|sampler|cfg\s*scale|seed\s*[:=]|workflow/i, label: "生成参数或工作流", severity: "medium" },
+  { pattern: /negative\s*prompt|sampler|cfg\s*scale|seed\s*[:=]/i, label: "生成参数", severity: "medium" },
   { pattern: /made\s+with\s+ai|ai[- ]generated|generated\s+by\s+ai/i, label: "Made with AI 标签信号", severity: "high" },
 ]
 
@@ -59,14 +59,35 @@ function detectFormat(bytes: Uint8Array, fallback: string) {
   return { format: fallback.split("/")[1]?.toUpperCase() || "未知", mime: fallback || "application/octet-stream" }
 }
 
-async function readDimensions(file: File) {
+function abortError() {
+  const error = new Error("Image inspection cancelled")
+  error.name = "AbortError"
+  return error
+}
+
+function throwIfAborted(signal?: AbortSignal) {
+  if (signal?.aborted) throw abortError()
+}
+
+async function sha256Hex(bytes: Uint8Array) {
+  const stableBytes = new Uint8Array(bytes.byteLength)
+  stableBytes.set(bytes)
+  const digest = await crypto.subtle.digest("SHA-256", stableBytes.buffer)
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("")
+}
+
+async function readDimensions(file: File, signal?: AbortSignal) {
+  let bitmap: ImageBitmap | null = null
   try {
-    const bitmap = await createImageBitmap(file)
-    const dimensions = { width: bitmap.width, height: bitmap.height }
-    bitmap.close()
-    return dimensions
+    throwIfAborted(signal)
+    bitmap = await createImageBitmap(file)
+    throwIfAborted(signal)
+    return { width: bitmap.width, height: bitmap.height }
   } catch {
+    if (signal?.aborted) throw abortError()
     return {}
+  } finally {
+    bitmap?.close()
   }
 }
 
@@ -93,15 +114,20 @@ function makeSignals(searchText: string, metadata: MetadataEntry[], hasC2paBytes
   return signals.filter((item, index, items) => items.findIndex((candidate) => candidate.label === item.label) === index)
 }
 
-async function inspectC2pa(file: File, likelyPresent: boolean): Promise<C2paInspection> {
+async function inspectC2pa(file: File, likelyPresent: boolean, signal?: AbortSignal): Promise<C2paInspection> {
+  throwIfAborted(signal)
   if (!likelyPresent) return { present: false, validated: null, summary: "未发现 C2PA 容器信号" }
   try {
     const { createC2pa } = await import("@contentauth/c2pa-web")
+    throwIfAborted(signal)
     const c2pa = await createC2pa({ wasmSrc: "/c2pa.wasm" })
+    throwIfAborted(signal)
     const reader = await c2pa.reader.fromBlob(file.type || "application/octet-stream", file)
     if (!reader) return { present: true, validated: null, summary: "检测到 C2PA 字节，但 SDK 未返回可读取的清单" }
     try {
+      throwIfAborted(signal)
       const manifest = await reader.manifestStore()
+      throwIfAborted(signal)
       const serialized = JSON.stringify(manifest)
       const failed = /invalid|failure|mismatch|untrusted/i.test(serialized)
       return {
@@ -114,6 +140,7 @@ async function inspectC2pa(file: File, likelyPresent: boolean): Promise<C2paInsp
       await reader.free()
     }
   } catch (error) {
+    if (signal?.aborted || (error instanceof Error && error.name === "AbortError")) throw abortError()
     return {
       present: true,
       validated: null,
@@ -122,24 +149,33 @@ async function inspectC2pa(file: File, likelyPresent: boolean): Promise<C2paInsp
   }
 }
 
-export async function inspectImage(file: File): Promise<ImageInspection> {
+export async function inspectImage(file: File, options: { signal?: AbortSignal } = {}): Promise<ImageInspection> {
+  const inspectedAt = new Date().toISOString()
+  throwIfAborted(options.signal)
   const bytes = new Uint8Array(await file.arrayBuffer())
+  throwIfAborted(options.signal)
+  const sha256 = await sha256Hex(bytes)
+  throwIfAborted(options.signal)
   const { format, mime } = detectFormat(bytes, file.type)
   const searchText = decodeSearchText(bytes)
   const hasC2paBytes = C2PA_PATTERN.test(searchText)
-  const dimensions = await readDimensions(file)
+  const dimensions = await readDimensions(file, options.signal)
 
   let metadata: MetadataEntry[] = []
   try {
     const exifr = await import("exifr")
+    throwIfAborted(options.signal)
     const parsed = await exifr.parse(file, true)
+    throwIfAborted(options.signal)
     metadata = flattenMetadata(parsed)
-  } catch {
+  } catch (error) {
+    if (options.signal?.aborted || (error instanceof Error && error.name === "AbortError")) throw abortError()
     metadata = []
   }
 
   const signals = makeSignals(searchText, metadata, hasC2paBytes)
-  const c2pa = await inspectC2pa(file, hasC2paBytes)
+  const c2pa = await inspectC2pa(file, hasC2paBytes, options.signal)
+  throwIfAborted(options.signal)
   const highSignals = signals.filter((signal) => signal.severity === "high")
 
   return {
@@ -147,6 +183,8 @@ export async function inspectImage(file: File): Promise<ImageInspection> {
     mime,
     format,
     bytes: file.size,
+    sha256,
+    inspectedAt,
     ...dimensions,
     metadata,
     signals,

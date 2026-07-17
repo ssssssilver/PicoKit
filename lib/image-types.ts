@@ -25,6 +25,8 @@ export type ImageInspection = {
   mime: string
   format: string
   bytes: number
+  sha256?: string
+  inspectedAt?: string
   width?: number
   height?: number
   metadata: MetadataEntry[]
@@ -43,4 +45,3 @@ export type SanitizeResult = {
   afterPayloadHash: string
   pixelsPreserved: boolean
 }
-

@@ -1,9 +1,13 @@
 /// <reference lib="webworker" />
 
-import { aggregateImageViews, type ImageClassifierLabel } from "@/lib/image-detector-core"
+import {
+  aggregateImageViews,
+  IMAGE_PIXEL_DETECTOR_VERSION,
+  IMAGE_PIXEL_MODEL_ID,
+  IMAGE_PIXEL_MODEL_REVISION,
+  type ImageClassifierLabel,
+} from "@/lib/image-detector-core"
 import { toModelProxyUrl } from "@/lib/model-proxy"
-
-const MODEL_ID = "onnx-community/ai-image-detect-distilled-ONNX"
 
 type RawImageLike = {
   width: number
@@ -30,16 +34,12 @@ async function loadClassifier(preferWebGpu: boolean) {
     const requestInit: RequestInit = {
       method: request.method,
       headers: request.headers,
+      cache: request.cache,
       redirect: request.redirect,
       signal: request.signal,
     }
-    try {
-      return await nativeFetch(request.url, requestInit)
-    } catch (error) {
-      const proxyUrl = toModelProxyUrl(request.url, self.location.origin)
-      if (!proxyUrl) throw error
-      return nativeFetch(proxyUrl, requestInit)
-    }
+    const proxyUrl = toModelProxyUrl(request.url, self.location.origin)
+    return nativeFetch(proxyUrl ?? request.url, requestInit)
   }
   const progress_callback = (progress: { status?: string; progress?: number; file?: string }) => {
     self.postMessage({ type: "progress", stage: progress.status || "loading", progress: progress.progress || 0, file: progress.file })
@@ -48,7 +48,12 @@ async function loadClassifier(preferWebGpu: boolean) {
   if (preferWebGpu && "gpu" in navigator) {
     try {
       activeBackend = "webgpu"
-      classifier = await pipeline("image-classification", MODEL_ID, { device: "webgpu", dtype: "fp16", progress_callback }) as unknown as Classifier
+      classifier = await pipeline("image-classification", IMAGE_PIXEL_MODEL_ID, {
+        device: "webgpu",
+        dtype: "fp16",
+        progress_callback,
+        revision: IMAGE_PIXEL_MODEL_REVISION,
+      }) as unknown as Classifier
       return classifier
     } catch {
       classifier = null
@@ -56,7 +61,12 @@ async function loadClassifier(preferWebGpu: boolean) {
   }
 
   activeBackend = "wasm"
-  classifier = await pipeline("image-classification", MODEL_ID, { device: "wasm", dtype: "q8", progress_callback }) as unknown as Classifier
+  classifier = await pipeline("image-classification", IMAGE_PIXEL_MODEL_ID, {
+    device: "wasm",
+    dtype: "q8",
+    progress_callback,
+    revision: IMAGE_PIXEL_MODEL_REVISION,
+  }) as unknown as Classifier
   return classifier
 }
 
@@ -99,7 +109,7 @@ self.onmessage = async (event: MessageEvent<{ type: "analyze"; buffer: ArrayBuff
     self.postMessage({ type: "status", stage: "analyzing-views", views: views.length })
     const raw = await pipe(views, { top_k: null })
     const outputs = Array.isArray(raw[0]) ? raw as ImageClassifierLabel[][] : [raw as ImageClassifierLabel[]]
-    self.postMessage({ type: "result", result: aggregateImageViews(outputs, names, activeBackend, MODEL_ID) })
+    self.postMessage({ type: "result", result: aggregateImageViews(outputs, names, activeBackend, IMAGE_PIXEL_DETECTOR_VERSION) })
   } catch (error) {
     self.postMessage({ type: "error", error: error instanceof Error ? error.message : "Image model inference failed" })
   }

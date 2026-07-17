@@ -21,7 +21,7 @@ type DetectorResult = {
 }
 
 export function TextDetectorTool() {
-  const { language, pick } = useLanguage()
+  const { pick } = useLanguage()
   const [text, setText] = useState("")
   const [status, setStatus] = useState("")
   const [progress, setProgress] = useState(0)
@@ -52,7 +52,7 @@ export function TextDetectorTool() {
         setProgress(Math.max(2, Number(event.data.progress) || 2))
         setStatus(pick("正在准备首次检测所需组件", "Preparing the detector for first use"))
       }
-      if (event.data.type === "status") setStatus(language === "en" ? "Analyzing locally" : String(event.data.stage || "正在分析"))
+      if (event.data.type === "status") setStatus(pick(String(event.data.stage || "正在分析"), "Analyzing locally"))
       if (event.data.type === "result") {
         setResult(event.data.result as DetectorResult)
         setProgress(100)
@@ -60,7 +60,7 @@ export function TextDetectorTool() {
         setRunning(false)
       }
       if (event.data.type === "error") {
-        setError(language === "en" ? "Detection failed. Refresh the page and try again." : String(event.data.error || "检测失败"))
+        setError(pick(String(event.data.error || "检测失败"), "Detection failed. Refresh the page and try again."))
         setRunning(false)
       }
     }
@@ -83,7 +83,7 @@ export function TextDetectorTool() {
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement("a")
     anchor.href = url
-    anchor.download = `picokit-text-report-${Date.now()}.json`
+    anchor.download = `tabnative-text-report-${Date.now()}.json`
     anchor.click()
     window.setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
@@ -103,7 +103,7 @@ export function TextDetectorTool() {
         </CardHeader>
         <CardContent>
           <Textarea value={text} onChange={(event) => setText(event.target.value)} placeholder={pick("粘贴需要检测的英文文本…", "Paste the English text you want to review…")} className="min-h-72 resize-y border-white/10 bg-white/[.02] px-3.5 py-3 text-base leading-7 placeholder:text-zinc-600" disabled={running} />
-          {running ? <div className="mt-4 space-y-2"><div className="flex items-center justify-between text-xs text-slate-500"><span className="flex items-center gap-2"><LoaderCircle className="size-3.5 animate-spin" />{status}</span><span>{Math.round(progress)}%</span></div><Progress value={progress} /></div> : null}
+          {running ? <div className="mt-4 space-y-2"><div className="flex items-center justify-between gap-3 text-xs text-slate-500"><span className="flex items-center gap-2"><LoaderCircle className="size-3.5 shrink-0 animate-spin" />{status}</span><span>{Math.round(progress)}%</span></div><Progress value={progress} />{progress < 100 ? <p className="text-xs leading-5 text-slate-400">{pick("首次准备通常需要约 30–60 秒；后续会复用浏览器缓存。你可以随时取消，不会上传文本。", "First-time setup usually takes about 30–60 seconds. Later runs reuse the browser cache. You can cancel at any time, and text is never uploaded.")}</p> : null}</div> : null}
           {error ? <Alert variant="destructive" className="mt-4"><AlertTriangle /><AlertTitle>{pick("无法检测", "Unable to detect")}</AlertTitle><AlertDescription>{error}</AlertDescription></Alert> : null}
           <div className="mt-5 flex flex-wrap gap-3">
             <Button size="lg" onClick={analyze} disabled={running}><Play data-icon="inline-start" />{pick("开始本地检测", "Start local detection")}</Button>
@@ -120,7 +120,7 @@ export function TextDetectorTool() {
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">{pick("AI 风险估计", "AI risk estimate")}</p>
               <div className="mt-3 text-6xl font-semibold tracking-[-0.06em]">{Math.round(result.score * 100)}<span className="text-2xl text-slate-400">%</span></div>
-              <Badge className="mt-4 bg-white/10 text-white">{localizedBand(result.score, result.band, language)}</Badge>
+              <Badge className="mt-4 bg-white/10 text-white">{localizedBand(result.score, result.band, pick)}</Badge>
             </div>
             <div className="space-y-4">
               <p className="max-w-xl text-sm leading-6 text-slate-300">{pick("这是对文本模式的统计判断，不是作者身份鉴定。改写、翻译、短文本、专业模板和非英语内容都可能造成误判。", "This is a statistical estimate of text patterns, not proof of authorship. Rewriting, translation, short text, professional templates, and non-English content can all cause false results.")}</p>
@@ -149,11 +149,10 @@ export function TextDetectorTool() {
   )
 }
 
-function localizedBand(score: number, fallback: string, language: "zh-CN" | "en") {
-  if (language !== "en") return fallback
-  if (score >= 0.7) return "Higher AI-pattern risk"
-  if (score >= 0.4) return "Uncertain / mixed"
-  return "Lower AI-pattern risk"
+function localizedBand(score: number, fallback: string, pick: (zh: string, en: string) => string) {
+  if (score >= 0.7) return pick(fallback, "Higher AI-pattern risk")
+  if (score >= 0.4) return pick(fallback, "Uncertain / mixed")
+  return pick(fallback, "Lower AI-pattern risk")
 }
 
 function Metric({ label, value }: { label: string; value: string }) {

@@ -4,7 +4,7 @@ const MODEL_PROXY_PREFIX = "/_models/"
 const ALLOWED_MODELS = [
   "onnx-community/tmr-ai-text-detector-ONNX",
   "onnx-community/ai-image-detect-distilled-ONNX",
-  "Xenova/modnet",
+  "Heliosoph/u2net-onnx",
 ] as const
 
 function allowedModelPath(pathname: string) {

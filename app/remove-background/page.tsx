@@ -1,25 +1,27 @@
 import type { Metadata } from "next"
 import { Scissors } from "lucide-react"
 
-import { BackgroundRemoverTool } from "@/components/background-remover-tool"
+import { BackgroundRemovalBatchStudio } from "@/components/background-removal-batch-studio"
+import { ImageWorkflowNav } from "@/components/image-workflow-nav"
 import { ToolAside } from "@/components/tool-aside"
 import { ToolShell } from "@/components/tool-shell"
 
 export const metadata: Metadata = {
-  title: "免费在线移除图片背景",
-  description: "在浏览器本地移除人像背景并导出透明 PNG；无需登录，不上传图片。",
+  title: "免费批量移除图片背景",
+  description: "在浏览器本地批量移除人物、商品、动物、车辆与家具背景，逐项修正边缘，并把成功队列一键传入批量快速修图。",
 }
 
 export default function Page() {
   return <ToolShell
-    title={{ zh: "一键移除图片背景", en: "Remove Image Backgrounds" }}
-    description={{ zh: "最适合主体清晰的单人半身或全身人像。处理在浏览器本地完成，可直接导出透明 PNG，图片不会上传。", en: "Best for clear single-person half-body or full-body portraits. Processing stays in your browser and exports a transparent PNG without uploading your image." }}
+    title={{ zh: "移除图片背景", en: "Remove Image Background" }}
+    description={{ zh: "一次加入多张图片，在设备端按队列顺序生成透明背景；可直接选中结果手动修边，并将整个成功队列继续交给批量快速修图。", en: "Add multiple images, create transparent backgrounds sequentially on your device, refine any result in the queue, then pass the completed batch directly to quick editing." }}
     eyebrow="On-device RemoveBG"
     icon={Scissors}
     aside={<ToolAside notes={[
-      { zh: "最适合单人、前景清晰的人像照片", en: "Works best on clear, single-person portraits" },
-      { zh: "商品、动物和复杂多主体场景可能不准确", en: "Products, animals, and complex multi-subject scenes may be inaccurate" },
-      { zh: "首选 WebGPU，不支持时自动回退 WASM", en: "Prefers WebGPU and automatically falls back to WASM" },
+      { zh: "自动识别主要主体，无需选择处理模式", en: "Automatically detects the main subject with no processing mode to choose" },
+      { zh: "主体越清晰、与背景对比越明显，自动结果越稳定", en: "Automatic results are most reliable when the subject is clear and contrasts with the background" },
+      { zh: "可在结果中手动补回主体、擦除残留背景并柔化边缘", en: "Restore the subject, erase leftover background, and soften edges in the result" },
+      { zh: "首次使用约需准备 4.6 MB，优先使用 GPU，并自动回退到本机 CPU", en: "The first run prepares about 4.6 MB, prefers the GPU, and automatically falls back to this device's CPU" },
     ]} />}
-  ><BackgroundRemoverTool /></ToolShell>
+  ><ImageWorkflowNav active="remove" /><BackgroundRemovalBatchStudio /></ToolShell>
 }

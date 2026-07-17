@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
-import Link from "next/link"
-import { ArrowRight, Check, ShieldCheck } from "lucide-react"
+import { Check, ShieldCheck } from "lucide-react"
 
+import { HomeHeroBanner } from "@/components/home-hero-banner"
 import { HomeToolDirectory } from "@/components/home-tool-directory"
 import { Localized } from "@/components/localized"
 import { SiteFooter } from "@/components/site-footer"
@@ -9,13 +9,13 @@ import { SiteHeader } from "@/components/site-header"
 import { siteConfig } from "@/lib/site"
 
 export const metadata: Metadata = {
-  title: "PicoKit — 免费本地 AI Detector 与图片隐私工具",
+  title: "TabNative — 本地图片处理、AI 来源检查与 PDF 工具",
   description: siteConfig.description,
 }
 
 const faq = [
-  { question: "文件真的不会上传吗？", questionEn: "Are files really never uploaded?", answer: "不会。文件由浏览器 File API 读取，处理结果通过本地 Blob 下载；服务端不接收原始文本、图片或结果。", answerEn: "No. The browser File API reads files and results download through local Blob URLs. The server never receives the source text, image, or result." },
-  { question: "AI 检测分数准确吗？", questionEn: "Are AI detection scores accurate?", answer: "任何检测器都会误判。PicoKit 展示分段证据、稳定度和限制，不把分数描述为作者身份事实。", answerEn: "Every detector produces false positives. PicoKit shows segment evidence, stability, and limits instead of presenting a score as proof of authorship." },
+  { question: "文件真的不会上传吗？", questionEn: "Are files really never uploaded?", answer: "不会。文件由浏览器 File API 读取，处理结果通过本地 Blob 下载；服务端不接收原始文本、图片、文档、音视频、3D 模型或处理结果。", answerEn: "No. The browser File API reads files, and results download through local Blob URLs. The server never receives source text, images, documents, audio, video, 3D models, or processing results." },
+  { question: "AI 图片检测能证明图片来源吗？", questionEn: "Can AI image detection prove an image's origin?", answer: "不能只靠一个分数证明。TabNative 会分开显示文件来源证据、可见平台标记和像素模型估计，并注明不可用通道与限制。", answerEn: "Not from one score alone. TabNative separates file-provenance evidence, visible platform marks, and pixel-model estimates, with unavailable channels and limits clearly identified." },
   { question: "清除元数据后就不会显示 Made with AI 吗？", questionEn: "Will removing metadata remove every Made with AI label?", answer: "不保证。平台还可能使用像素分类器、不可见水印或自己的上传历史。", answerEn: "Not guaranteed. Platforms may also use pixel classifiers, invisible watermarks, or their own upload history." },
   { question: "为什么第一次使用较慢？", questionEn: "Why is the first run slower?", answer: "部分工具首次使用时需要准备本地运行组件。后续会复用浏览器缓存，启动和处理都会更快。", answerEn: "Some tools need to prepare local components on first use. Later visits reuse the browser cache for faster startup and processing." },
 ]
@@ -24,7 +24,7 @@ export default function Home() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: "PicoKit",
+    name: "TabNative",
     applicationCategory: "UtilitiesApplication",
     operatingSystem: "Web",
     offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
@@ -35,38 +35,22 @@ export default function Home() {
     <div className="min-h-screen bg-[#080808] text-zinc-100">
       <SiteHeader />
       <main>
-        <section className="border-b border-white/10">
-          <div className="mx-auto max-w-[1280px] px-5 pb-8 pt-20 text-center sm:px-8 lg:pb-10 lg:pt-24">
-            <h1 className="mx-auto max-w-6xl text-[clamp(3rem,5.5vw,5rem)] font-black leading-[1.02] tracking-[-0.065em] text-white">
-              <Localized zh="本地 AI 检测与图片隐私工具" en="On-device AI detection and image privacy tools" />
-            </h1>
-            <p className="mx-auto mt-10 max-w-2xl text-base leading-7 tracking-[.08em] text-zinc-400 sm:text-xl">
-              <Localized zh="文件不上传，计算留在你的设备上" en="No uploads. The work stays on your device." />
-            </p>
-            <div className="mt-9 flex flex-wrap items-center justify-center gap-4">
-              <Link href="/ai-text-detector" className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-cyan-300 px-7 text-sm font-bold text-[#07111f] transition hover:bg-cyan-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-cyan-300/25">
-                <Localized zh="开始检测" en="Start checking" /> <ArrowRight className="size-4" />
-              </Link>
-              <Link href="/methodology" className="inline-flex h-12 items-center justify-center gap-3 rounded-lg px-5 text-sm font-semibold text-zinc-100 transition hover:bg-white/5">
-                <Localized zh="了解更多" en="Learn more" /> <ArrowRight className="size-4" />
-              </Link>
-            </div>
-          </div>
-        </section>
+        <HomeHeroBanner />
 
         <HomeToolDirectory />
 
         <section className="border-t border-white/10 bg-[#0d0d0d]">
           <div className="mx-auto grid max-w-[1280px] gap-10 px-5 py-16 sm:px-8 lg:grid-cols-[.85fr_1.15fr] lg:py-20">
             <div>
-              <p className="font-mono text-[11px] uppercase tracking-[.2em] text-cyan-300">Local processing</p>
-              <h2 className="mt-4 max-w-lg text-3xl font-bold tracking-[-.04em] text-white sm:text-4xl"><Localized zh="不是云端黑盒，是你设备上的工具箱" en="A toolbox on your device, not a cloud black box" /></h2>
-              <p className="mt-5 max-w-xl text-sm leading-7 text-zinc-400"><Localized zh="模型、容器解析和图片编码都在浏览器中运行。广告区域只能读取页面访问，不能读取文件对象、文本输入或 Canvas 像素。" en="Models, container parsing, and image encoding all run in the browser. Ad areas can observe page visits, but cannot access File objects, text input, or canvas pixels." /></p>
+              <p className="font-mono text-[11px] uppercase tracking-[.2em] text-cyan-300"><Localized zh="本地图片工作流" en="Local image workflow" /></p>
+              <h2 className="mt-4 max-w-lg text-3xl font-bold tracking-[-.04em] text-white sm:text-4xl"><Localized zh="上传一次，在本地完成整条交付流程" en="One input, one local path to a finished asset" /></h2>
+              <p className="mt-5 max-w-xl text-sm leading-7 text-zinc-400"><Localized zh="从移除图片背景、快速修图到批量压缩、格式转换和目标大小，结果可通过浏览器临时存储直接接力。AI 来源检查与 PDF 整理同样在当前设备运行。" en="Move from background removal and quick edits to batch compression, conversion, and target sizing through temporary storage in this browser. AI provenance checks and PDF organization also stay on this device." /></p>
             </div>
             <div className="divide-y divide-white/10 border-y border-white/10">
               <ProofRow title="无需账号" titleEn="No account" body="打开即可使用，不设置登录墙或按次付费。" bodyEn="Open a tool and use it. No login wall or pay-per-use gate." />
-              <ProofRow title="不传文件" titleEn="No uploads" body="原始文本、图片和处理结果都不会进入 PicoKit 服务端。" bodyEn="Source text, images, and results never enter the PicoKit server." />
-              <ProofRow title="结果可解释" titleEn="Explainable results" body="展示命中字段、容器证据与限制，不把检测分数包装成事实。" bodyEn="See matched fields, container evidence, and limitations instead of a score presented as fact." />
+              <ProofRow title="不传文件" titleEn="No uploads" body="原始文本、图片、文档、音视频、3D 模型和处理结果都不会进入 TabNative 服务端。" bodyEn="Source text, images, documents, audio, video, 3D models, and results never enter the TabNative server." />
+              <ProofRow title="连续完成" titleEn="Connected workflow" body="处理结果可直接进入下一项图片工具，不必下载后重新上传。" bodyEn="Pass a result directly to the next image tool without downloading and uploading it again." />
+              <ProofRow title="证据分层" titleEn="Layered evidence" body="分别展示文件来源、可见标记和模型估计，不把一个分数包装成事实。" bodyEn="Review file provenance, visible marks, and model estimates separately—not one score presented as fact." />
             </div>
           </div>
         </section>

@@ -3,6 +3,13 @@ export type ImageValidation = {
   format: "JPEG" | "PNG" | "WebP"
 }
 
+export type ValidatedImageFile = ImageValidation & {
+  file: File
+  width: number
+  height: number
+  pixels: number
+}
+
 export function detectImageType(bytes: Uint8Array): ImageValidation | null {
   if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
     return { mime: "image/jpeg", format: "JPEG" }
@@ -20,20 +27,26 @@ export function detectImageType(bytes: Uint8Array): ImageValidation | null {
   return null
 }
 
-export async function validateImageFile(file: File, maxPixels = 64_000_000) {
+export async function validateImageFile(file: File, maxPixels = 64_000_000): Promise<ValidatedImageFile> {
   const header = new Uint8Array(await file.slice(0, 16).arrayBuffer())
   const detected = detectImageType(header)
   if (!detected) throw new Error("文件内容不是受支持的 JPG、PNG 或 WebP 图片")
-  if (file.type && file.type !== detected.mime) throw new Error(`文件扩展信息与实际 ${detected.format} 内容不一致`)
+
+  // File.type is supplied by the browser/OS and is often inferred from the
+  // filename. The signature above is the authoritative format, so hand every
+  // downstream tool a File whose MIME matches its actual bytes.
+  const normalizedFile = file.type === detected.mime
+    ? file
+    : new File([file], file.name, { type: detected.mime, lastModified: file.lastModified })
 
   let bitmap: ImageBitmap | null = null
   try {
-    bitmap = await createImageBitmap(file)
+    bitmap = await createImageBitmap(normalizedFile)
     const pixels = bitmap.width * bitmap.height
     if (!pixels || pixels > maxPixels) {
       throw new Error(`图片像素不能超过 ${(maxPixels / 1_000_000).toFixed(0)}MP`)
     }
-    return { ...detected, width: bitmap.width, height: bitmap.height, pixels }
+    return { ...detected, file: normalizedFile, width: bitmap.width, height: bitmap.height, pixels }
   } catch (error) {
     if (error instanceof Error && error.message.includes("图片像素不能超过")) throw error
     throw new Error("浏览器无法解码这张图片，文件可能已损坏")

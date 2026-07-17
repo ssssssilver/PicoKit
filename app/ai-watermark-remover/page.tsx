@@ -1,2 +1,5 @@
-export { default, metadata } from "../gemini-watermark-remover/page"
+import { permanentRedirect } from "next/navigation"
 
+export default function Page() {
+  permanentRedirect("/gemini-watermark-remover")
+}

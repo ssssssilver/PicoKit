@@ -24,16 +24,12 @@ async function loadClassifier(preferWebGpu: boolean) {
     const requestInit: RequestInit = {
       method: request.method,
       headers: request.headers,
+      cache: request.cache,
       redirect: request.redirect,
       signal: request.signal,
     }
-    try {
-      return await nativeFetch(request.url, requestInit)
-    } catch (error) {
-      const proxyUrl = toModelProxyUrl(request.url, self.location.origin)
-      if (!proxyUrl) throw error
-      return nativeFetch(proxyUrl, requestInit)
-    }
+    const proxyUrl = toModelProxyUrl(request.url, self.location.origin)
+    return nativeFetch(proxyUrl ?? request.url, requestInit)
   }
   const progress_callback = (progress: { status?: string; progress?: number; file?: string }) => {
     self.postMessage({ type: "progress", stage: progress.status || "loading", progress: progress.progress || 0, file: progress.file })

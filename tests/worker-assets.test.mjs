@@ -29,3 +29,10 @@ test("browser WASM stays out of the size-limited Cloudflare Worker bundle", () =
     "browser WASM must be deployed as a static client asset, not a server module",
   )
 })
+
+test("Draco decoders needed by compressed glTF are deployed as client assets", () => {
+  const dracoDirectory = join(clientDirectory, "draco")
+  for (const file of ["draco_decoder.js", "draco_decoder.wasm", "draco_wasm_wrapper.js"]) {
+    assert.equal(existsSync(join(dracoDirectory, file)), true, `missing Draco decoder asset: ${file}`)
+  }
+})

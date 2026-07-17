@@ -6,6 +6,14 @@ export type TransformOptions = {
   height?: number
   aspect?: "original" | "1:1" | "4:3" | "16:9"
   rotation?: 0 | 90 | 180 | 270
+  flipX?: boolean
+  flipY?: boolean
+  brightness?: number
+  contrast?: number
+  saturation?: number
+  grayscale?: boolean
+  watermarkText?: string
+  watermarkImage?: { pixels: Uint8ClampedArray; width: number; height: number }
   targetBytes?: number
 }
 
@@ -82,8 +90,42 @@ async function render(source: DrawableSource, sourceWidth: number, sourceHeight:
   if (options.rotation === 180) { context.translate(canvas.width, canvas.height); context.rotate(Math.PI) }
   if (options.rotation === 270) { context.translate(0, canvas.height); context.rotate(-Math.PI / 2) }
   const crop = sourceCrop(sourceWidth, sourceHeight, aspectValue(options.aspect, sourceWidth, sourceHeight))
+  context.filter = `brightness(${options.brightness ?? 100}%) contrast(${options.contrast ?? 100}%) saturate(${options.saturation ?? 100}%) grayscale(${options.grayscale ? 100 : 0}%)`
+  if (options.flipX || options.flipY) {
+    context.translate(options.flipX ? size.width : 0, options.flipY ? size.height : 0)
+    context.scale(options.flipX ? -1 : 1, options.flipY ? -1 : 1)
+  }
   context.drawImage(source, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, size.width, size.height)
   context.restore()
+  if (options.watermarkText?.trim()) {
+    const fontSize = Math.max(14, Math.round(Math.min(canvas.width, canvas.height) * .045))
+    context.font = `600 ${fontSize}px sans-serif`
+    context.textAlign = "right"
+    context.textBaseline = "bottom"
+    const padding = Math.max(12, Math.round(fontSize * .7))
+    context.lineWidth = Math.max(2, fontSize / 12)
+    context.strokeStyle = "rgba(0,0,0,.55)"
+    context.fillStyle = "rgba(255,255,255,.86)"
+    context.strokeText(options.watermarkText.trim(), canvas.width - padding, canvas.height - padding)
+    context.fillText(options.watermarkText.trim(), canvas.width - padding, canvas.height - padding)
+  }
+  if (options.watermarkImage?.width && options.watermarkImage.height) {
+    const mark = makeCanvas(options.watermarkImage.width, options.watermarkImage.height)
+    const markContext = mark.getContext("2d") as OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null
+    if (markContext) {
+      markContext.putImageData(new ImageData(Uint8ClampedArray.from(options.watermarkImage.pixels), options.watermarkImage.width, options.watermarkImage.height), 0, 0)
+      const maxWidth = canvas.width * .24
+      const maxHeight = canvas.height * .18
+      const ratio = Math.min(1, maxWidth / options.watermarkImage.width, maxHeight / options.watermarkImage.height)
+      const markWidth = Math.max(1, Math.round(options.watermarkImage.width * ratio))
+      const markHeight = Math.max(1, Math.round(options.watermarkImage.height * ratio))
+      const padding = Math.max(12, Math.round(Math.min(canvas.width, canvas.height) * .025))
+      context.save()
+      context.globalAlpha = .86
+      context.drawImage(mark, canvas.width - markWidth - padding, padding, markWidth, markHeight)
+      context.restore()
+    }
+  }
   const blob = await canvasToBlob(canvas, options.format, quality)
   return { blob, width: canvas.width, height: canvas.height }
 }

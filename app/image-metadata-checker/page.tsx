@@ -1,2 +1,5 @@
-export { default, metadata } from "../ai-image-detector/page"
+import { permanentRedirect } from "next/navigation"
 
+export default function Page() {
+  permanentRedirect("/ai-image-detector")
+}

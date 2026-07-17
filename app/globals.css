@@ -35,6 +35,29 @@
 :root {
   --font-sans: "Inter", "Arial", "PingFang SC", "Microsoft YaHei", sans-serif;
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  --background: oklch(.975 .004 250);
+  --foreground: oklch(.2 .012 255);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(.2 .012 255);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(.2 .012 255);
+  --primary: oklch(.68 .14 201);
+  --primary-foreground: oklch(.13 .02 240);
+  --secondary: oklch(.94 .008 250);
+  --secondary-foreground: oklch(.25 .012 255);
+  --muted: oklch(.94 .008 250);
+  --muted-foreground: oklch(.48 .015 250);
+  --accent: oklch(.92 .025 220);
+  --accent-foreground: oklch(.36 .1 215);
+  --destructive: oklch(.55 .22 27);
+  --border: oklch(.87 .01 250);
+  --input: oklch(.87 .01 250);
+  --ring: oklch(.68 .14 201);
+  --radius: .55rem;
+  color-scheme: light;
+}
+
+.dark {
   --background: oklch(.105 .006 255);
   --foreground: oklch(.96 .004 250);
   --card: oklch(.145 .006 255);
@@ -54,6 +77,7 @@
   --input: oklch(.27 .006 255);
   --ring: oklch(.84 .14 201);
   --radius: .55rem;
+  color-scheme: dark;
 }
 
 @layer base {
@@ -63,7 +87,6 @@
   button, a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
   ::selection { background: rgba(103, 232, 249, .45); color: #07111f; }
 
-  .dark { color-scheme: dark; }
   .dark .bg-white { background-color: #111111 !important; }
   .dark .bg-slate-50 { background-color: #161616 !important; }
   .dark .bg-slate-100 { background-color: #1c1c1c !important; }
@@ -92,6 +115,131 @@
   .dark .border-emerald-200 { border-color: rgba(16, 185, 129, .28) !important; }
   .dark .bg-violet-50 { background-color: rgba(139, 92, 246, .1) !important; }
   .dark .border-violet-200 { border-color: rgba(139, 92, 246, .28) !important; }
+
+  .light .bg-\[\#080808\] { background-color: #f8fafc !important; }
+  .light .bg-\[\#080808\]\/94 { background-color: rgba(248, 250, 252, .94) !important; }
+  .light .bg-\[\#0b0b0b\],
+  .light .bg-\[\#0c0d0e\],
+  .light .bg-\[\#0d0d0d\],
+  .light .bg-\[\#0f0f0f\],
+  .light .bg-\[\#101010\],
+  .light .bg-\[\#111\],
+  .light .bg-\[\#111111\],
+  .light .bg-\[\#161616\],
+  .light .bg-\[\#171717\] { background-color: #ffffff !important; }
+  .light .bg-black { background-color: #ffffff !important; }
+  .light .bg-slate-950 { background-color: #eef2f7 !important; }
+  .light .text-white,
+  .light .text-zinc-100,
+  .light .text-zinc-200 { color: #18181b !important; }
+  .light .text-zinc-300,
+  .light .text-zinc-400 { color: #3f3f46 !important; }
+  .light .text-zinc-500 { color: #52525b !important; }
+  .light .text-zinc-600 { color: #71717a !important; }
+  .light .text-zinc-700 { color: #a1a1aa !important; }
+  .light .text-cyan-100,
+  .light .text-cyan-200,
+  .light .text-cyan-300 { color: #0e7490 !important; }
+  .light .text-amber-200,
+  .light .text-amber-300,
+  .light .text-amber-400 { color: #b45309 !important; }
+  .light .text-emerald-200,
+  .light .text-emerald-300,
+  .light .text-emerald-400 { color: #047857 !important; }
+  .light .text-violet-300 { color: #6d28d9 !important; }
+  .light .text-red-200 { color: #b91c1c !important; }
+  .light .bg-cyan-300.text-\[\#07111f\],
+  .light .bg-cyan-300.text-black { color: #07111f !important; }
+  .light .border-white\/5,
+  .light .border-white\/10,
+  .light .border-white\/15,
+  .light .border-white\/20 { border-color: rgba(15, 23, 42, .13) !important; }
+  .light .divide-white\/10 > :not(:last-child) { border-color: rgba(15, 23, 42, .13) !important; }
+  .light .bg-white\/5,
+  .light .bg-white\/8,
+  .light .bg-white\/10,
+  .light .bg-white\/\[\.02\],
+  .light .bg-white\/\[\.025\],
+  .light .bg-white\/\[\.035\] { background-color: rgba(15, 23, 42, .045) !important; }
+  .light .hover\:bg-white\/5:hover,
+  .light .hover\:bg-white\/8:hover,
+  .light .hover\:bg-white\/10:hover,
+  .light .hover\:bg-white\/\[\.025\]:hover,
+  .light .hover\:bg-white\/\[\.035\]:hover { background-color: rgba(15, 23, 42, .07) !important; }
+  .light .hover\:text-white:hover,
+  .light .hover\:text-zinc-200:hover { color: #09090b !important; }
+  .light .bg-slate-950\/80.text-white { color: #ffffff !important; }
+  .light .text-white\/10 { color: rgba(15, 23, 42, .1) !important; }
+
+  /* Keep tool-card favorite actions quiet on light surfaces. */
+  .light .bg-\[\#0b0b0b\]\/80 {
+    background-color: rgba(255, 255, 255, .94) !important;
+    border-color: rgba(15, 23, 42, .12) !important;
+    color: #71717a !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+  }
+  .light .bg-\[\#0b0b0b\]\/80:hover {
+    background-color: #f4f7f9 !important;
+    border-color: rgba(71, 85, 105, .22) !important;
+    color: #475569 !important;
+  }
+  .light .bg-cyan-300\/\[\.09\] {
+    background-color: #f0f8f9 !important;
+    border-color: rgba(14, 116, 144, .2) !important;
+    color: #155e75 !important;
+  }
+}
+
+.hero-banner-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, .035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, .035) 1px, transparent 1px);
+}
+
+.light .hero-banner-grid {
+  background-image:
+    linear-gradient(rgba(15, 23, 42, .05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, .05) 1px, transparent 1px);
+}
+
+.hero-banner-arrow {
+  background-color: rgba(8, 8, 8, .78);
+  color: #fff;
+  backdrop-filter: blur(14px);
+}
+
+.light .hero-banner-arrow {
+  border-color: rgba(15, 23, 42, .15) !important;
+  background-color: rgba(255, 255, 255, .92);
+  color: #18181b !important;
+}
+
+.workflow-preview-label {
+  background: rgba(9, 9, 11, .82);
+  color: #ffffff !important;
+}
+
+.workflow-preview-action {
+  border: 1px solid rgba(8, 145, 178, .34);
+  background: rgba(103, 232, 249, .94);
+  color: #083344 !important;
+}
+
+.workflow-preview-pencil {
+  background: rgba(9, 9, 11, .82);
+  color: #a5f3fc !important;
+}
+
+.light .workflow-preview-label,
+.light .workflow-preview-pencil {
+  background: rgba(15, 23, 42, .86) !important;
+  color: #ffffff !important;
+}
+
+.light .workflow-preview-action {
+  border-color: rgba(14, 116, 144, .35) !important;
+  background: #cffafe !important;
+  color: #155e75 !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
