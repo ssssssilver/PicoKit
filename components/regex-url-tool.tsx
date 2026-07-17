@@ -21,7 +21,7 @@ export function RegexUrlTool() {
   const [regexResult, setRegexResult] = useState<RegexResult | null>(null)
   const [regexError, setRegexError] = useState("")
   const [running, setRunning] = useState(false)
-  const [codecText, setCodecText] = useState("https://example.com/search?q=TabNative 工具")
+  const [codecText, setCodecText] = useState("https://example.com/search?q=TabNative tools")
   const [codecResult, setCodecResult] = useState("")
   const [urlInput, setUrlInput] = useState("https://example.com/path?utm_source=tabnative&lang=zh#section")
   const urlDetails = useMemo(() => parseUrlDetails(urlInput), [urlInput])

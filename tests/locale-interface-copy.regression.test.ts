@@ -88,6 +88,23 @@ describe("localized interface copy", () => {
     expect(readLocale("pl")).toMatchObject({ Area: "Powierzchnia" })
   })
 
+  it("uses action labels and regex terminology on the Polish URL tool", () => {
+    expect(readLocale("pl")).toMatchObject({
+      "Test and replace": "Testuj i zamień",
+      "Encode component": "Koduj komponent",
+      "Decode component": "Dekoduj komponent",
+      "Replacement result": "Wynik zamiany",
+      "Copy replacement result": "Kopiuj wynik zamiany",
+    })
+  })
+
+  it("uses regex replacement terminology instead of physical exchange or backup wording", () => {
+    expect(readLocale("ja")).toMatchObject({ "Replacement result": "置換結果", "Test and replace": "テストして置換" })
+    expect(readLocale("ko")).toMatchObject({ "Replacement result": "치환 결과", "Test and replace": "테스트 및 치환" })
+    expect(readLocale("tr")).toMatchObject({ "Replacement result": "Değiştirme sonucu", "Test and replace": "Test et ve değiştir" })
+    expect(readLocale("ru")).toMatchObject({ "Test and replace": "Проверить и заменить" })
+  })
+
   it("uses natural Korean labels for common controls", () => {
     expect(readLocale("ko")).toMatchObject({
       Characters: "글자",

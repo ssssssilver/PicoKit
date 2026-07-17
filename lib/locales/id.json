@@ -606,7 +606,7 @@
   "Enable Ignore duplicate entries when each name should count once.": "Aktifkan Abaikan entri duplikat saat setiap nama harus dihitung sekali.",
   "Enable lowercase, uppercase, numbers, and symbols, and decide whether to exclude ambiguous characters.": "Aktifkan huruf kecil, huruf besar, angka, dan simbol, dan putuskan apakah akan mengecualikan karakter ambigu.",
   "Encode and decode": "Menyandikan dan mendekode",
-  "Encode component": "Mengkodekan komponen",
+  "Encode component": "Enkode komponen",
   "Encode or decode URLs": "Mengkodekan atau memecahkan kode URLs",
   "Encoding locally": "Pengkodean secara lokal",
   "Encoding the transparent PNG": "Mengkodekan PNG transparan",
