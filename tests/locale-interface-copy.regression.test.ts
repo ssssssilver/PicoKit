@@ -47,6 +47,17 @@ describe("localized interface copy", () => {
     expect(readLocale("tr")).toMatchObject({ Confidence: "Güven düzeyi", "Not identified": "Belirlenemedi" })
   })
 
+  it("keeps target-file-size copy free of database, keyboard, or knowledge mistranslations", () => {
+    for (const locale of ["ar", "ja", "ko", "pl"]) {
+      const messages = readLocale(locale)
+      const relevant = Object.entries(messages)
+        .filter(([key]) => /target.?KB|Target size \(KB\)/i.test(key))
+        .map(([, value]) => value)
+        .join(" ")
+      expect(relevant).not.toMatch(/قاعدة بيانات|قاعدة المعلومات|كيبورد|ターゲット知識|目標知識|목표 지식|docelową baz|docelowej bazy|klawiatur/i)
+    }
+  })
+
   it("uses natural Korean labels for common controls", () => {
     expect(readLocale("ko")).toMatchObject({
       Characters: "글자",
