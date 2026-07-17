@@ -1,4 +1,8 @@
 {
+  "Choose foreground color": "Pilih warna latar depan",
+  "Pick foreground color from screen": "Ambil warna latar depan dari layar",
+  "Choose background color": "Pilih warna latar belakang",
+  "Pick background color from screen": "Ambil warna latar belakang dari layar",
   ", followed by nearby-pixel repair. Auto mode leaves the image unchanged below its confidence threshold; manual mode changes only the region selected by the user.": ", diikuti dengan perbaikan piksel terdekat. Mode otomatis membiarkan gambar tidak berubah di bawah ambang batas kepercayaannya; Mode manual hanya mengubah wilayah yang dipilih oleh pengguna.",
   "; {count} more were not added": "; {count} lagi tidak ditambahkan",
   ". Doubao and Jimeng use browser-side glyph localization inspired by": ". Doubao dan Jimeng menggunakan pelokalan mesin terbang sisi browser yang terinspirasi oleh",

@@ -1,4 +1,8 @@
 {
+  "Choose foreground color": "Selecionar cor do primeiro plano",
+  "Pick foreground color from screen": "Capturar a cor do primeiro plano da tela",
+  "Choose background color": "Selecionar cor de fundo",
+  "Pick background color from screen": "Capturar a cor de fundo da tela",
   ", followed by nearby-pixel repair. Auto mode leaves the image unchanged below its confidence threshold; manual mode changes only the region selected by the user.": ", seguido pelo reparo próximo ao pixel. O modo automático mantém a imagem inalterada abaixo do seu limiar de confiança; O modo manual altera apenas a região selecionada pelo usuário.",
   "; {count} more were not added": "; {count} mais não foram adicionados",
   ". Doubao and Jimeng use browser-side glyph localization inspired by": ". Doubao e Jimeng usam localização de glifos no navegador inspirada em",

@@ -60,8 +60,22 @@ export function ColorTool() {
   return <div className="space-y-6">
     <Card><CardHeader><CardTitle>{pick("颜色格式与无障碍对比度", "Color formats and accessibility contrast")}</CardTitle></CardHeader><CardContent className="space-y-5">
       <div className="grid gap-5 md:grid-cols-2">
-        <ColorInput label={pick("前景色", "Foreground")} value={foreground} onChange={setForeground} onPick={() => pickFromScreen("foreground")} />
-        <ColorInput label={pick("背景色", "Background")} value={background} onChange={setBackground} onPick={() => pickFromScreen("background")} />
+        <ColorInput
+          label={pick("前景色", "Foreground")}
+          pickerLabel={pick("选择前景色", "Choose foreground color")}
+          screenPickerLabel={pick("从屏幕拾取前景色", "Pick foreground color from screen")}
+          value={foreground}
+          onChange={setForeground}
+          onPick={() => pickFromScreen("foreground")}
+        />
+        <ColorInput
+          label={pick("背景色", "Background")}
+          pickerLabel={pick("选择背景色", "Choose background color")}
+          screenPickerLabel={pick("从屏幕拾取背景色", "Pick background color from screen")}
+          value={background}
+          onChange={setBackground}
+          onPick={() => pickFromScreen("background")}
+        />
       </div>
       <div className="rounded-xl border border-white/10 p-6 text-center text-2xl font-bold" style={{ color: foregroundRgb ? foreground : undefined, backgroundColor: backgroundRgb ? background : undefined }}>{pick("文字颜色预览 Aa", "Text contrast preview Aa")}</div>
       {foregroundRgb && hsl ? <div className="grid gap-3 sm:grid-cols-3"><Value label="HEX" value={foreground.toUpperCase()} /><Value label="RGB" value={`rgb(${foregroundRgb.r}, ${foregroundRgb.g}, ${foregroundRgb.b})`} /><Value label="HSL" value={`hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`} /></div> : null}
@@ -80,8 +94,8 @@ export function ColorTool() {
   </div>
 }
 
-function ColorInput({ label, value, onChange, onPick }: { label: string; value: string; onChange: (value: string) => void; onPick: () => void }) {
-  return <div className="space-y-2"><span className="text-sm">{label}</span><div className="flex gap-2"><input aria-label={`${label} picker`} type="color" value={parseHexColor(value) ? value : "#000000"} onChange={(event) => onChange(event.target.value)} className="size-10 shrink-0 cursor-pointer rounded border border-white/10 bg-transparent" /><Input aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} className="font-mono" /><Button variant="outline" size="icon" onClick={onPick} aria-label={`${label} screen picker`}><Eye /></Button></div></div>
+function ColorInput({ label, pickerLabel, screenPickerLabel, value, onChange, onPick }: { label: string; pickerLabel: string; screenPickerLabel: string; value: string; onChange: (value: string) => void; onPick: () => void }) {
+  return <div className="space-y-2"><span className="text-sm">{label}</span><div className="flex gap-2"><input aria-label={pickerLabel} type="color" value={parseHexColor(value) ? value : "#000000"} onChange={(event) => onChange(event.target.value)} className="size-10 shrink-0 cursor-pointer rounded border border-white/10 bg-transparent" /><Input aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} className="font-mono" /><Button variant="outline" size="icon" onClick={onPick} aria-label={screenPickerLabel}><Eye /></Button></div></div>
 }
 function Value({ label, value }: { label: string; value: string }) { return <button type="button" onClick={() => navigator.clipboard.writeText(value)} className="rounded-lg border border-white/10 p-3 text-left"><span className="text-xs text-zinc-500">{label}</span><span className="mt-1 flex items-center justify-between gap-2 font-mono text-xs"><span className="break-all">{value}</span><Copy className="size-3.5 shrink-0" /></span></button> }
 function Status({ ok, label }: { ok: boolean; label: string }) { return <span className={`rounded-full border px-2.5 py-1 ${ok ? "border-emerald-400/25 text-emerald-300" : "border-rose-400/25 text-rose-300"}`}>{ok ? "PASS" : "FAIL"} · {label}</span> }

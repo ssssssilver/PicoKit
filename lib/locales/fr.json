@@ -1,4 +1,8 @@
 {
+  "Choose foreground color": "Choisir la couleur de premier plan",
+  "Pick foreground color from screen": "Prélever la couleur de premier plan à l’écran",
+  "Choose background color": "Choisir la couleur d’arrière-plan",
+  "Pick background color from screen": "Prélever la couleur d’arrière-plan à l’écran",
   ", followed by nearby-pixel repair. Auto mode leaves the image unchanged below its confidence threshold; manual mode changes only the region selected by the user.": ", suivie d’une réparation proche du pixel. Le mode Auto laisse l’image inchangée en dessous de son seuil de confiance ; Le mode manuel ne modifie que la région sélectionnée par l’utilisateur.",
   "; {count} more were not added": "; {count} autres n’ont pas été ajoutés",
   ". Doubao and Jimeng use browser-side glyph localization inspired by": ". Doubao et Jimeng utilisent la localisation de glyphes côté navigateur inspirée par",
@@ -185,7 +189,7 @@
   "Awaiting result": "En attente de résultat",
   "Back to all guides": "Retour à tous les guides",
   "Backend": "Backend",
-  "Background": "Contexte",
+  "Background": "Arrière-plan",
   "Background color and safe padding are supported": "La couleur d’arrière-plan et le rembourrage sécurisé sont pris en charge",
   "Background edge-refinement canvas": "Toile de raffinement des contours de fond",
   "Background removal complete": "Retrait des antécédents terminé",

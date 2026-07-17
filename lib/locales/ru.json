@@ -1,4 +1,8 @@
 {
+  "Choose foreground color": "Выбрать цвет переднего плана",
+  "Pick foreground color from screen": "Взять цвет переднего плана с экрана",
+  "Choose background color": "Выбрать цвет фона",
+  "Pick background color from screen": "Взять цвет фона с экрана",
   ", followed by nearby-pixel repair. Auto mode leaves the image unchanged below its confidence threshold; manual mode changes only the region selected by the user.": ", затем ремонт близлежащих пикселей. Режим авто оставляет изображение неизменным ниже порога доверия; Ручной режим меняет только выбранный пользователем регион.",
   "; {count} more were not added": "; {count} больше не были добавлены",
   ". Doubao and Jimeng use browser-side glyph localization inspired by": ". Doubao и Jimeng используют локализацию глифов на стороне браузера, вдохновлённую",

@@ -1,4 +1,8 @@
 {
+  "Choose foreground color": "전경색 선택",
+  "Pick foreground color from screen": "화면에서 전경색 선택",
+  "Choose background color": "배경색 선택",
+  "Pick background color from screen": "화면에서 배경색 선택",
   ", followed by nearby-pixel repair. Auto mode leaves the image unchanged below its confidence threshold; manual mode changes only the region selected by the user.": ", 이어서 근거리 픽셀 복구가 진행됩니다. 자동 모드는 신뢰 임계값 이하로 이미지를 변하지 않게 유지하며; 수동 모드는 사용자가 선택한 지역만 변경합니다.",
   "; {count} more were not added": "; {count} 더 추가되지 않았다",
   ". Doubao and Jimeng use browser-side glyph localization inspired by": ". Doubao와 Jimeng는 브라우저 측 글리프 현지화를 사용합니다.",

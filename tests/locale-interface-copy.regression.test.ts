@@ -67,6 +67,10 @@ describe("localized interface copy", () => {
     expect(Object.values(readLocale("ja")).join(" ")).not.toMatch(/ランターゲット|PDF組織運営|アドバタイズメント|ターゲット知識/)
   })
 
+  it("uses the visual-background meaning in French color and image tools", () => {
+    expect(readLocale("fr")).toMatchObject({ Background: "Arrière-plan" })
+  })
+
   it("uses natural Korean labels for common controls", () => {
     expect(readLocale("ko")).toMatchObject({
       Characters: "글자",

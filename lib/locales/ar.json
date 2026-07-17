@@ -1,4 +1,8 @@
 {
+  "Choose foreground color": "اختر لون المقدمة",
+  "Pick foreground color from screen": "اختر لون المقدمة من الشاشة",
+  "Choose background color": "اختر لون الخلفية",
+  "Pick background color from screen": "اختر لون الخلفية من الشاشة",
   ", followed by nearby-pixel repair. Auto mode leaves the image unchanged below its confidence threshold; manual mode changes only the region selected by the user.": "، يليه إصلاح البكسل القريب. الوضع التلقائي يترك الصورة دون تغيير تحت عتبة الثقة الخاصة بها؛ الوضع اليدوي يغير فقط المنطقة التي يختارها المستخدم.",
   "; {count} more were not added": "; لم تضاف {count} المزيد",
   ". Doubao and Jimeng use browser-side glyph localization inspired by": ". Doubao وJimeng يستخدمون تعريب الرموز على جانب المتصفح مستوحى من",

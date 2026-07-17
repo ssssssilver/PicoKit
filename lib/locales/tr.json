@@ -1,4 +1,8 @@
 {
+  "Choose foreground color": "Ön plan rengini seç",
+  "Pick foreground color from screen": "Ekrandan ön plan rengini seç",
+  "Choose background color": "Arka plan rengini seç",
+  "Pick background color from screen": "Ekrandan arka plan rengini seç",
   ", followed by nearby-pixel repair. Auto mode leaves the image unchanged below its confidence threshold; manual mode changes only the region selected by the user.": ", ardından yakın piksel tamiri yapıldı. Otomatik mod, görüntüyü güven eşiğinin altında değiştirmeden bırakır; Manuel mod yalnızca kullanıcının seçtiği bölgeyi değiştirir.",
   "; {count} more were not added": "; {count} daha fazlası eklenmedi",
   ". Doubao and Jimeng use browser-side glyph localization inspired by": ". Doubao ve Jimeng tarayıcı tarafı glif yerelleştirmesini kullanır,",
