@@ -65,5 +65,8 @@ export function FileCodecTool() {
   </div>
 }
 
-function HashRow({ label, value, warning }: { label: string; value: string; warning?: string }) { return <div className="grid gap-2 rounded-lg border border-white/10 p-3 sm:grid-cols-[100px_1fr_auto]"><span className="text-sm font-semibold">{label}</span><code className="break-all text-xs text-zinc-400">{value}</code><button className="text-xs text-cyan-300" onClick={() => navigator.clipboard.writeText(value)}>Copy {warning ? `· ${warning}` : ""}</button></div> }
+function HashRow({ label, value, warning }: { label: string; value: string; warning?: string }) {
+  const { pick } = useLanguage()
+  return <div className="grid gap-2 rounded-lg border border-white/10 p-3 sm:grid-cols-[100px_1fr_auto]"><span className="text-sm font-semibold">{label}</span><code className="break-all text-xs text-zinc-400">{value}</code><button className="text-xs text-cyan-300" onClick={() => navigator.clipboard.writeText(value)}>{pick("复制", "Copy")} {warning ? `· ${warning}` : ""}</button></div>
+}
 function toHex(buffer: ArrayBuffer) { return [...new Uint8Array(buffer)].map((byte) => byte.toString(16).padStart(2, "0")).join("") }
