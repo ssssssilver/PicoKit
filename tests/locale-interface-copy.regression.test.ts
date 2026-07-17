@@ -58,6 +58,15 @@ describe("localized interface copy", () => {
     }
   })
 
+  it("uses natural Japanese copy on the target-size result screen", () => {
+    expect(readLocale("ja")).toMatchObject({
+      "Target-size Image Compressor": "目標サイズ指定の画像圧縮",
+      "Run target compression": "目標サイズに圧縮",
+      Saved: "削減率",
+    })
+    expect(Object.values(readLocale("ja")).join(" ")).not.toMatch(/ランターゲット|PDF組織運営|アドバタイズメント|ターゲット知識/)
+  })
+
   it("uses natural Korean labels for common controls", () => {
     expect(readLocale("ko")).toMatchObject({
       Characters: "글자",
