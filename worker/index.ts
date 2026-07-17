@@ -55,7 +55,7 @@ const worker = {
     const secured = new Response(response.body, response);
     secured.headers.set("X-Content-Type-Options", "nosniff");
     secured.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-    secured.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()");
+    secured.headers.set("Permissions-Policy", "display-capture=(self), microphone=(self), camera=(), geolocation=(), payment=()");
     secured.headers.set("Cross-Origin-Opener-Policy", "same-origin");
     secured.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
     if (isModelProxyRequest(request.url) && secured.status === 206) {
