@@ -6,7 +6,14 @@ import { readableLoadError } from "@/components/model-converter-tool"
 import { detectImageType, validateImageFile } from "@/lib/file-validation"
 import { outputSize, searchTargetSize, sourceCrop } from "@/lib/image-transformer"
 import { aiScore, normalizeOutput, splitText } from "@/lib/text-detector-core"
-import { aggregateImageViews, aiImageScore, attachVisibleAiMarkEvidence, fuseImageDetection } from "@/lib/image-detector-core"
+import {
+  aggregateImageViews,
+  aiImageScore,
+  attachVisibleAiMarkEvidence,
+  buildImageViewPlan,
+  fuseImageDetection,
+  pixelEstimateBand,
+} from "@/lib/image-detector-core"
 import type { ImageInspection } from "@/lib/image-types"
 import { isModelProxyRequest, resolveModelProxyTarget, toModelProxyUrl } from "@/lib/model-proxy"
 import { isModelInputFormat, modelOutputName, outputKeepsRichScene, selectPrimaryModelFile } from "@/lib/model-converter-core"
@@ -170,9 +177,47 @@ describe("AI image detector core", () => {
       [{ label: "fake", score: 0.7 }],
       [{ label: "fake", score: 0.75 }],
     ], ["full", "center", "top-left"], "wasm", "test-model")
-    expect(result.score).toBeCloseTo(0.75)
+    expect(result.score).toBeCloseTo(0.77)
     expect(result.consistency).toBeGreaterThan(0.8)
     expect(result.views).toHaveLength(3)
+    expect(result.aggregation).toBe("robust-full-region-v2")
+    expect(result.calibration).toBe("conservative-backend-v1")
+  })
+
+  it("does not duplicate the full view for square images", () => {
+    expect(buildImageViewPlan(1024, 1024)).toEqual([
+      { name: "full", bounds: null },
+    ])
+    expect(buildImageViewPlan(1200, 800).map((view) => view.name)).toEqual([
+      "full",
+      "center",
+      "top-left",
+      "top-right",
+    ])
+  })
+
+  it("uses a robust regional median instead of letting one corner dominate", () => {
+    const result = aggregateImageViews([
+      [{ label: "fake", score: 0.2 }],
+      [{ label: "fake", score: 0.22 }],
+      [{ label: "fake", score: 0.18 }],
+      [{ label: "fake", score: 0.98 }],
+    ], ["full", "center", "top-left", "top-right"], "webgpu", "test-model")
+    expect(result.score).toBeCloseTo(0.208)
+    expect(pixelEstimateBand(result)).toBe("uncertain")
+  })
+
+  it("keeps a wider uncertainty interval for quantized WASM inference", () => {
+    const wasm = aggregateImageViews([[{ label: "fake", score: 0.8 }]], ["full"], "wasm", "test-model")
+    const webgpu = aggregateImageViews([[{ label: "fake", score: 0.8 }]], ["full"], "webgpu", "test-model")
+    expect(pixelEstimateBand(wasm)).toBe("uncertain")
+    expect(pixelEstimateBand(webgpu)).toBe("higher")
+  })
+
+  it("returns an explicitly uncertain result when a classifier yields no labels", () => {
+    const result = aggregateImageViews([], [], "wasm", "test-model")
+    expect(result).toMatchObject({ score: 0.5, consistency: 0, spread: 1, views: [] })
+    expect(pixelEstimateBand(result)).toBe("uncertain")
   })
 
   it("keeps uncertain pixel results uncertain without explicit provenance", () => {

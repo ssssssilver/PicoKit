@@ -16,6 +16,7 @@ export default function Page() {
     description={{ zh: "分别检查可验证的文件来源、可见平台标记与像素模型估计。检测在浏览器中完成，结果用于理解证据与限制，不是绝对真伪结论。", en: "Inspect verifiable file provenance, visible platform marks, and pixel-model estimates separately. Checks run in your browser and explain evidence and limits rather than issuing an absolute verdict." }}
     eyebrow="AI Image Provenance"
     icon={ScanSearch}
+    compactHero
     aside={<ToolAside notes={[
       { zh: "支持 JPEG、PNG、WebP，最大 25MB / 24MP", en: "Supports JPEG, PNG, and WebP up to 25 MB / 24 MP" },
       { zh: "首次准备可能稍慢，之后会更快", en: "First-time setup may take longer; later checks are faster" },

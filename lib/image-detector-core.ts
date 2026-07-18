@@ -19,7 +19,16 @@ export type PixelDetectionResult = {
   backend: string
   model: string
   views: ImageViewScore[]
+  aggregation?: "robust-full-region-v2"
+  calibration?: "conservative-backend-v1"
 }
+
+export type ImageViewPlan = {
+  name: string
+  bounds: [number, number, number, number] | null
+}
+
+export type PixelEstimateBand = "higher" | "uncertain" | "lower"
 
 export type ImageDetectionBand = "higher-ai-signals" | "uncertain" | "lower-ai-signals"
 export type ImageDetectionReliability = "high" | "medium" | "low"
@@ -46,9 +55,66 @@ export function aiImageScore(labels: ImageClassifierLabel[]) {
   return clamp(labels[0]?.score ?? 0.5)
 }
 
+export function buildImageViewPlan(width: number, height: number): ImageViewPlan[] {
+  const plan: ImageViewPlan[] = [{ name: "full", bounds: null }]
+  const side = Math.min(width, height)
+  if (side < 320) return plan
+
+  const maxX = width - side
+  const maxY = height - side
+  // A square crop would be byte-for-byte identical to the full image. Keeping
+  // both would double-count the same evidence and inflate consistency.
+  if (maxX === 0 && maxY === 0) return plan
+
+  const positions: Array<[string, number, number]> = [
+    ["center", Math.round(maxX / 2), Math.round(maxY / 2)],
+    ["top-left", 0, 0],
+    ["top-right", maxX, 0],
+    ["bottom-left", 0, maxY],
+    ["bottom-right", maxX, maxY],
+  ]
+  const seen = new Set<string>()
+  for (const [name, x, y] of positions) {
+    const key = `${x}:${y}:${side}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    plan.push({ name, bounds: [x, y, x + side - 1, y + side - 1] })
+  }
+  return plan
+}
+
+function median(values: number[]) {
+  const sorted = [...values].sort((a, b) => a - b)
+  const middle = Math.floor(sorted.length / 2)
+  return sorted.length % 2
+    ? sorted[middle]
+    : (sorted[middle - 1] + sorted[middle]) / 2
+}
+
 export function aggregateImageViews(outputs: ImageClassifierLabel[][], viewNames: string[], backend: string, model: string): PixelDetectionResult {
   const views = outputs.map((labels, index) => ({ view: viewNames[index] || `view-${index + 1}`, score: aiImageScore(labels) }))
-  const score = views.reduce((sum, item) => sum + item.score, 0) / Math.max(1, views.length)
+  const full = views.find((item) => item.view === "full") ?? views[0]
+  if (!full) {
+    return {
+      score: 0.5,
+      consistency: 0,
+      spread: 1,
+      backend,
+      model,
+      views,
+      aggregation: "robust-full-region-v2",
+      calibration: "conservative-backend-v1",
+    }
+  }
+  const regionalScores = views.filter((item) => item !== full).map((item) => item.score)
+  // Keep the whole image as the primary observation and use the median of
+  // unique regions as supporting evidence. A single noisy corner can no
+  // longer dominate the result.
+  const score = clamp(
+    regionalScores.length
+      ? full.score * 0.6 + median(regionalScores) * 0.4
+      : full.score,
+  )
   const variance = views.reduce((sum, item) => sum + (item.score - score) ** 2, 0) / Math.max(1, views.length)
   const spread = Math.sqrt(variance)
   return {
@@ -58,7 +124,24 @@ export function aggregateImageViews(outputs: ImageClassifierLabel[][], viewNames
     backend,
     model,
     views,
+    aggregation: "robust-full-region-v2",
+    calibration: "conservative-backend-v1",
   }
+}
+
+export function pixelEstimateBand(pixel: PixelDetectionResult): PixelEstimateBand {
+  // Region disagreement is more informative than a precise-looking score.
+  // Keep conflicting observations in the uncertain band on every backend.
+  if (pixel.consistency < 0.55 || pixel.spread > 0.22) return "uncertain"
+
+  // Quantized WASM inference gets a wider uncertainty interval until a
+  // browser/backend regression set proves that tighter thresholds are safe.
+  const thresholds = pixel.backend === "wasm"
+    ? { lower: 0.18, higher: 0.82 }
+    : { lower: 0.22, higher: 0.78 }
+  if (pixel.score >= thresholds.higher) return "higher"
+  if (pixel.score <= thresholds.lower) return "lower"
+  return "uncertain"
 }
 
 export function attachVisibleAiMarkEvidence(inspection: ImageInspection, mark: VisibleAiMarkDetection | null): ImageInspection {
@@ -83,8 +166,9 @@ export function fuseImageDetection(pixel: PixelDetectionResult | null, inspectio
   const provenance = inspection.signals.filter((signal) => signal.group === "ai")
   const strong = provenance.filter((signal) => signal.severity === "high")
   const visibleMarks = provenance.filter((signal) => signal.id.startsWith("visible-ai-mark-"))
-  const pixelHigher = Boolean(pixel && pixel.score >= 0.72)
-  const pixelLower = Boolean(pixel && pixel.score <= 0.28)
+  const pixelBand = pixel ? pixelEstimateBand(pixel) : null
+  const pixelHigher = pixelBand === "higher"
+  const pixelLower = pixelBand === "lower"
   const provenanceHigher = strong.length > 0
   const evidenceFloor = visibleMarks.length ? 0.94 : strong.length ? 0.86 : provenance.length ? 0.66 : 0
   const overallScore = clamp(Math.max(pixel?.score ?? 0.5, evidenceFloor))

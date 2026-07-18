@@ -17,7 +17,7 @@ import {
   ShieldQuestion,
 } from "lucide-react"
 import Image from "next/image"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type RefObject } from "react"
 
 import { FileDropzone, formatBytes } from "@/components/file-dropzone"
 import { useLanguage } from "@/components/language-provider"
@@ -32,6 +32,8 @@ import {
   IMAGE_PIXEL_DETECTOR_VERSION,
   IMAGE_PIXEL_MODEL_ID,
   IMAGE_PIXEL_MODEL_REVISION,
+  pixelEstimateBand,
+  type FusedImageDetection,
   type PixelDetectionResult,
 } from "@/lib/image-detector-core"
 import { validateImageFile } from "@/lib/file-validation"
@@ -68,7 +70,7 @@ export type EvidenceSummaryKind =
   | "statistical-estimate"
   | "insufficient"
 
-export const IMAGE_EVIDENCE_REPORT_VERSION = "1.1.0"
+export const IMAGE_EVIDENCE_REPORT_VERSION = "1.2.0"
 export const PROVENANCE_DETECTOR_VERSION = "exif-c2pa-inspector/2"
 export const VISIBLE_MARK_DETECTOR_VERSION = "platform-mark-matcher/2"
 export const IMAGE_INSPECTOR_MAX_BYTES = 25 * 1024 * 1024
@@ -238,6 +240,7 @@ export function ImageInspectorTool() {
   const previewRef = useRef("")
   const runRef = useRef(0)
   const handoffAttemptedRef = useRef(false)
+  const reportHeadingRef = useRef<HTMLHeadingElement>(null)
 
   useEffect(
     () => () => {
@@ -316,6 +319,12 @@ export function ImageInspectorTool() {
   const hasReport = Object.values(channels).some(
     (channel) => channel === "available",
   )
+
+  useEffect(() => {
+    if (!hasReport || running) return
+    const frame = window.requestAnimationFrame(() => reportHeadingRef.current?.focus())
+    return () => window.cancelAnimationFrame(frame)
+  }, [hasReport, running])
 
   function handleFile(next: File | null) {
     runRef.current += 1
@@ -560,7 +569,7 @@ export function ImageInspectorTool() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" aria-busy={running}>
       <Card className="border-white/10 bg-[#0d0d0d] shadow-sm">
         <CardHeader>
           <CardTitle className="text-base text-zinc-100">
@@ -624,7 +633,7 @@ export function ImageInspectorTool() {
             </div>
           ) : null}
           {running ? (
-            <div className="space-y-2">
+            <div className="space-y-2" role="status" aria-live="polite" aria-atomic="true">
               <div className="flex items-center justify-between gap-4 text-xs text-zinc-500">
                 <span className="flex min-w-0 items-center gap-2">
                   <LoaderCircle className="size-3.5 shrink-0 animate-spin text-cyan-300" />
@@ -656,6 +665,7 @@ export function ImageInspectorTool() {
           visibleMark={visibleMark}
           channels={channels}
           onExport={exportReport}
+          headingRef={reportHeadingRef}
         />
       ) : null}
     </div>
@@ -668,12 +678,14 @@ function SourceEvidenceReport({
   visibleMark,
   channels,
   onExport,
+  headingRef,
 }: {
   inspection: ImageInspection | null
   pixel: PixelDetectionResult | null
   visibleMark: VisibleAiMarkDetection | null
   channels: DetectionChannelAvailability
   onExport: () => void
+  headingRef: RefObject<HTMLHeadingElement | null>
 }) {
   const { pick, format } = useLanguage()
   const summary = summarizeImageEvidence({ inspection, pixel, visibleMark })
@@ -683,6 +695,11 @@ function SourceEvidenceReport({
     inspection?.signals.filter(
       (signal) => signal.group !== "ai" && !isVisibleMarkSignal(signal),
     ) ?? []
+  const relationship = inspection
+    ? fuseImageDetection(pixel, inspection).evidenceAgreement
+    : "insufficient"
+  const relationshipCopy = getRelationshipCopy(relationship, pick)
+  const pixelBand = pixel ? pixelEstimateBand(pixel) : null
 
   return (
     <div className="space-y-6">
@@ -698,12 +715,22 @@ function SourceEvidenceReport({
                   {pick("报告版本", "Report version")} {IMAGE_EVIDENCE_REPORT_VERSION}
                 </Badge>
               </div>
-              <h2 className="mt-4 text-2xl font-semibold tracking-tight text-white">
+              <h2
+                ref={headingRef}
+                tabIndex={-1}
+                className="mt-4 text-2xl font-semibold tracking-tight text-white outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+              >
                 {pick("图片来源证据报告", "Image source-evidence report")}
               </h2>
               <p className="mt-3 text-sm leading-6 text-zinc-400">
                 {summaryCopy.description}
               </p>
+              <div className={`mt-4 rounded-xl border p-4 ${relationshipCopy.className}`}>
+                <p className="text-sm font-semibold">{relationshipCopy.label}</p>
+                <p className="mt-1 text-xs leading-5 opacity-80">
+                  {relationshipCopy.description}
+                </p>
+              </div>
             </div>
             <Button variant="secondary" onClick={onExport}>
               <Download />
@@ -715,7 +742,7 @@ function SourceEvidenceReport({
           <div className="flex items-center gap-2">
             <ScanSearch className="size-4 text-cyan-300" />
             <h3 className="text-sm font-semibold text-zinc-100">
-              {pick("通道可用性与版本", "Channel availability and versions")}
+              {pick("三类证据概览", "Three-channel evidence overview")}
             </h3>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-3">
@@ -723,16 +750,35 @@ function SourceEvidenceReport({
               label={pick("文件来源", "File provenance")}
               status={channels.provenance}
               version={PROVENANCE_DETECTOR_VERSION}
+              finding={
+                channels.provenance === "available"
+                  ? fileAiSignals.length
+                    ? format("发现 {count} 项明确记录", "{count} explicit record(s) found", { count: fileAiSignals.length })
+                    : pick("未发现明确 AI 文件记录", "No explicit AI file record")
+                  : pick("本次未完成", "Not completed this run")
+              }
             />
             <ChannelStatusCard
               label={pick("可见平台标记", "Visible platform marks")}
               status={channels.visibleMark}
               version={VISIBLE_MARK_DETECTOR_VERSION}
+              finding={
+                channels.visibleMark === "available"
+                  ? visibleMark
+                    ? format("匹配到 {provider}", "Matched {provider}", { provider: providerLabel(visibleMark.provider) })
+                    : pick("未匹配到支持的标记", "No supported mark matched")
+                  : pick("本次未完成", "Not completed this run")
+              }
             />
             <ChannelStatusCard
               label={pick("像素统计", "Pixel statistics")}
               status={channels.pixel}
               version={IMAGE_PIXEL_DETECTOR_VERSION}
+              finding={
+                pixelBand
+                  ? getPixelBandCopy(pixelBand, pick).label
+                  : pick("本次未完成", "Not completed this run")
+              }
             />
           </div>
         </CardContent>
@@ -749,20 +795,27 @@ function SourceEvidenceReport({
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <Info
-                  label="C2PA"
-                  value={
-                    inspection.c2pa.present
-                      ? inspection.c2pa.validated
-                        ? pick("存在且可读", "Present and readable")
-                        : pick("存在，未完整验证", "Present, not fully verified")
-                      : pick("未检测到", "Not detected")
-                  }
+                  label={pick("C2PA 凭证", "C2PA credential")}
+                  value={inspection.c2pa.present ? pick("已检测到", "Detected") : pick("未检测到", "Not detected")}
+                />
+                <Info
+                  label={pick("签名检查", "Signature check")}
+                  value={c2paValidationLabel(inspection, pick)}
+                />
+                <Info
+                  label={pick("来源信任", "Signer trust")}
+                  value={c2paTrustLabel(inspection, pick)}
                 />
                 <Info
                   label={pick("元数据字段", "Metadata fields")}
                   value={`${inspection.metadata.length}`}
                 />
               </div>
+              {inspection.c2pa.present ? (
+                <p className="rounded-lg border border-white/10 bg-white/[.02] px-3 py-2 text-xs leading-5 text-zinc-500">
+                  {c2paSummaryLabel(inspection, pick)}
+                </p>
+              ) : null}
               {fileAiSignals.length ? (
                 <div className="space-y-3">
                   <p className="text-xs leading-5 text-zinc-500">
@@ -879,13 +932,13 @@ function SourceEvidenceReport({
                 <p className="text-xs text-zinc-500">
                   {pick("AI 类像素模式估计", "AI-like pixel-pattern estimate")}
                 </p>
-                <p className="mt-1 text-3xl font-semibold text-zinc-100">
-                  {Math.round(pixel.score * 100)}%
+                <p className="mt-1 text-2xl font-semibold text-zinc-100">
+                  {getPixelBandCopy(pixelEstimateBand(pixel), pick).label}
                 </p>
                 <p className="mt-2 text-xs leading-5 text-zinc-500">
                   {pick(
-                    "该数值不是“图片由 AI 创作的概率”，只能描述当前模型对画面模式的估计。",
-                    "This is not the probability that AI authored the image; it only describes the current model's estimate of visual patterns.",
+                    `模型原始输出 ${Math.round(pixel.score * 100)}%，不是“图片由 AI 创作的概率”。结果已结合区域差异与当前推理后端，优先显示保守区间。`,
+                    `Raw model output: ${Math.round(pixel.score * 100)}%. This is not the probability of AI authorship. The displayed band also accounts for regional disagreement and the current inference backend.`,
                   )}
                 </p>
               </div>
@@ -894,17 +947,26 @@ function SourceEvidenceReport({
                   label={pick("区域一致性", "Region consistency")}
                   value={`${Math.round(pixel.consistency * 100)}%`}
                 />
-                <Info label={pick("推理后端", "Backend")} value={pixel.backend} />
+                <Info
+                  label={pick("区域差异", "Regional spread")}
+                  value={`${Math.round(pixel.spread * 100)} ${pick("个百分点", "points")}`}
+                />
               </div>
-              <div className="space-y-3">
-                {pixel.views.map((view) => (
-                  <ViewBar
-                    key={view.view}
-                    name={viewLabel(view.view, pick)}
-                    score={view.score}
-                  />
-                ))}
-              </div>
+              <Info label={pick("推理后端", "Backend")} value={pixel.backend} />
+              <details className="rounded-xl border border-white/10">
+                <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-zinc-300">
+                  {format("查看 {count} 个区域的原始输出", "View raw output for {count} region(s)", { count: pixel.views.length })}
+                </summary>
+                <div className="space-y-3 border-t border-white/10 p-4">
+                  {pixel.views.map((view) => (
+                    <ViewBar
+                      key={view.view}
+                      name={viewLabel(view.view, pick)}
+                      score={view.score}
+                    />
+                  ))}
+                </div>
+              </details>
               <p className="break-all font-mono text-[11px] text-zinc-600">
                 {pixel.model}
               </p>
@@ -976,10 +1038,12 @@ function ChannelStatusCard({
   label,
   status,
   version,
+  finding,
 }: {
   label: string
   status: DetectionChannelStatus
   version: string
+  finding: string
 }) {
   const { pick } = useLanguage()
   const available = status === "available"
@@ -1001,6 +1065,7 @@ function ChannelStatusCard({
               : pick("未运行", "Not run")}
         </Badge>
       </div>
+      <p className="mt-3 text-sm leading-5 text-zinc-300">{finding}</p>
       <p className="mt-2 break-all font-mono text-[10px] text-zinc-600">
         {version}
       </p>
@@ -1165,6 +1230,117 @@ function getSummaryCopy(
       "The available channels do not provide enough evidence to establish the image's origin. No detected evidence does not prove human authorship.",
     ),
   }
+}
+
+function getRelationshipCopy(
+  relationship: FusedImageDetection["evidenceAgreement"],
+  pick: (zh: string, en: string) => string,
+) {
+  if (relationship === "agree") {
+    return {
+      label: pick("多类证据方向一致", "Evidence channels point in the same direction"),
+      description: pick(
+        "文件或平台记录与像素统计形成同向结果。仍应结合原始文件和使用场景复核。",
+        "File or platform records align with the pixel estimate. Review the original file and context before acting on it.",
+      ),
+      className: "border-emerald-300/20 bg-emerald-300/[.04] text-emerald-100",
+    }
+  }
+  if (relationship === "conflict") {
+    return {
+      label: pick("检测证据存在冲突", "Detection evidence conflicts"),
+      description: pick(
+        "优先查看可重复读取的文件记录或可见平台标记；像素统计不能覆盖这些证据，也不应被强行调高。",
+        "Prioritize repeatable file records or visible platform marks. Pixel statistics cannot override them and should not be forced upward.",
+      ),
+      className: "border-amber-300/25 bg-amber-300/[.05] text-amber-100",
+    }
+  }
+  if (relationship === "provenance-only") {
+    return {
+      label: pick("来源或平台证据独立成立", "Provenance or platform evidence stands alone"),
+      description: pick(
+        "像素通道没有形成同向结论，但不影响已经读取到的来源或平台处理记录。",
+        "The pixel channel did not form a matching result, but that does not invalidate the provenance or platform record already found.",
+      ),
+      className: "border-cyan-300/20 bg-cyan-300/[.04] text-cyan-100",
+    }
+  }
+  if (relationship === "pixel-only") {
+    return {
+      label: pick("只有像素模型形成明显方向", "Only the pixel model has a clear direction"),
+      description: pick(
+        "没有文件来源或支持的平台标记作为佐证，结论强度有限，建议保留为线索。",
+        "No file provenance or supported platform mark corroborates it, so treat this as a limited clue.",
+      ),
+      className: "border-amber-300/20 bg-amber-300/[.04] text-amber-100",
+    }
+  }
+  return {
+    label: pick("当前证据不足", "Current evidence is insufficient"),
+    description: pick(
+      "三个通道没有形成可确认来源的组合证据。未检测到信号不等于真人创作。",
+      "The channels did not form enough combined evidence to establish origin. No detected signal does not prove human authorship.",
+    ),
+    className: "border-white/10 bg-white/[.02] text-zinc-200",
+  }
+}
+
+function getPixelBandCopy(
+  band: ReturnType<typeof pixelEstimateBand>,
+  pick: (zh: string, en: string) => string,
+) {
+  if (band === "higher") return { label: pick("较高的 AI 类像素信号", "Higher AI-like pixel signals") }
+  if (band === "lower") return { label: pick("较低的 AI 类像素信号", "Lower AI-like pixel signals") }
+  return { label: pick("像素结果不确定", "Pixel result is uncertain") }
+}
+
+function c2paValidationLabel(
+  inspection: ImageInspection,
+  pick: (zh: string, en: string) => string,
+) {
+  if (!inspection.c2pa.present) return pick("不适用", "Not applicable")
+  if (inspection.c2pa.validated === true) return pick("检查通过", "Passed")
+  if (inspection.c2pa.validated === false) return pick("存在警告", "Warnings found")
+  return pick("未完整验证", "Not fully verified")
+}
+
+function c2paTrustLabel(
+  inspection: ImageInspection,
+  pick: (zh: string, en: string) => string,
+) {
+  if (!inspection.c2pa.present) return pick("不适用", "Not applicable")
+  if (inspection.c2pa.trust === "trusted") return pick("当前信任列表认可", "Trusted by current list")
+  if (inspection.c2pa.trust === "untrusted") return pick("未受当前信任列表认可", "Not trusted by current list")
+  return pick("未建立信任结论", "No trust conclusion")
+}
+
+function c2paSummaryLabel(
+  inspection: ImageInspection,
+  pick: (zh: string, en: string) => string,
+) {
+  if (inspection.c2pa.validationState === "trusted") {
+    return pick(
+      "C2PA 清单有效，签名来源受当前信任列表认可。",
+      "The C2PA manifest is valid and its signer is recognized by the current trust list.",
+    )
+  }
+  if (inspection.c2pa.validationState === "valid") {
+    return pick(
+      "C2PA 清单通过结构与签名检查，但未建立来源信任结论。",
+      "The C2PA manifest passed structural and signature checks, but no signer-trust conclusion was established.",
+    )
+  }
+  if (inspection.c2pa.validationState === "invalid") {
+    return pick(
+      "读取到 C2PA，但存在验证失败或警告。",
+      "A C2PA manifest was read, but validation failures or warnings were reported.",
+    )
+  }
+  return pick(
+    "C2PA 清单可读取，但当前 SDK 未提供完整验证状态。",
+    "The C2PA manifest is readable, but the current SDK did not provide a complete validation state.",
+  )
 }
 
 function summaryClass(kind: EvidenceSummaryKind) {

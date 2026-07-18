@@ -2,6 +2,7 @@
 
 import {
   aggregateImageViews,
+  buildImageViewPlan,
   IMAGE_PIXEL_DETECTOR_VERSION,
   IMAGE_PIXEL_MODEL_ID,
   IMAGE_PIXEL_MODEL_REVISION,
@@ -71,28 +72,12 @@ async function loadClassifier(preferWebGpu: boolean) {
 }
 
 async function createViews(image: RawImageLike) {
-  const views: RawImageLike[] = [image]
-  const names = ["full"]
-  const side = Math.min(image.width, image.height)
-  if (side < 320) return { views, names }
-
-  const maxX = image.width - side
-  const maxY = image.height - side
-  const positions: Array<[string, number, number]> = [
-    ["center", Math.round(maxX / 2), Math.round(maxY / 2)],
-    ["top-left", 0, 0],
-    ["top-right", maxX, 0],
-    ["bottom-left", 0, maxY],
-    ["bottom-right", maxX, maxY],
-  ]
-
-  const seen = new Set<string>()
-  for (const [name, x, y] of positions) {
-    const key = `${x}:${y}:${side}`
-    if (seen.has(key)) continue
-    seen.add(key)
-    views.push(await image.crop([x, y, x + side - 1, y + side - 1]))
-    names.push(name)
+  const plan = buildImageViewPlan(image.width, image.height)
+  const views: RawImageLike[] = []
+  const names: string[] = []
+  for (const item of plan) {
+    views.push(item.bounds ? await image.crop(item.bounds) : image)
+    names.push(item.name)
   }
   return { views, names }
 }

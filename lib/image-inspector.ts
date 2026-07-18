@@ -128,12 +128,14 @@ async function inspectC2pa(file: File, likelyPresent: boolean, signal?: AbortSig
       throwIfAborted(signal)
       const manifest = await reader.manifestStore()
       throwIfAborted(signal)
-      const serialized = JSON.stringify(manifest)
-      const failed = /invalid|failure|mismatch|untrusted/i.test(serialized)
+      const validation = summarizeC2paValidation(manifest)
       return {
         present: true,
-        validated: !failed,
-        summary: failed ? "读取到 C2PA，但存在验证警告" : "C2PA 清单可读取",
+        validated: validation.validated,
+        validationState: validation.state,
+        trust: validation.trust,
+        statusCodes: validation.statusCodes,
+        summary: validation.summary,
         manifest,
       }
     } finally {
@@ -147,6 +149,71 @@ async function inspectC2pa(file: File, likelyPresent: boolean, signal?: AbortSig
       summary: `检测到 C2PA 字节，但清单无法完整验证：${error instanceof Error ? error.message : "未知错误"}`,
     }
   }
+}
+
+type C2paManifestStoreLike = {
+  validation_state?: "Invalid" | "Valid" | "Trusted" | null
+  validation_status?: Array<{ code?: string; success?: boolean | null }> | null
+  validation_results?: {
+    activeManifest?: {
+      success?: Array<{ code?: string }> | null
+      informational?: Array<{ code?: string }> | null
+      failure?: Array<{ code?: string }> | null
+    } | null
+  } | null
+}
+
+export function summarizeC2paValidation(manifest: unknown) {
+  const store = (manifest && typeof manifest === "object"
+    ? manifest
+    : {}) as C2paManifestStoreLike
+  const active = store.validation_results?.activeManifest
+  const legacy = store.validation_status ?? []
+  const failures = [
+    ...(active?.failure ?? []),
+    ...legacy.filter((item) => item.success === false),
+  ]
+  const successes = [
+    ...(active?.success ?? []),
+    ...legacy.filter((item) => item.success === true),
+  ]
+  const informational = active?.informational ?? []
+  const statusCodes = [...successes, ...informational, ...failures]
+    .map((item) => item.code)
+    .filter((code): code is string => Boolean(code))
+  const state = store.validation_state?.toLowerCase() as
+    | "invalid"
+    | "valid"
+    | "trusted"
+    | undefined
+  const normalizedState = failures.length ? "invalid" : state ?? "unknown"
+  const validated = normalizedState === "valid" || normalizedState === "trusted"
+    ? true
+    : normalizedState === "invalid"
+      ? false
+      : null
+  const explicitlyUntrusted = statusCodes.some((code) =>
+    /signingCredential\.(untrusted|revoked|expired)/i.test(code),
+  )
+  const trust = normalizedState === "trusted"
+    ? "trusted"
+    : explicitlyUntrusted
+      ? "untrusted"
+      : "unknown"
+  const summary = normalizedState === "trusted"
+    ? "C2PA 清单有效，签名来源受当前信任列表认可"
+    : normalizedState === "valid"
+      ? "C2PA 清单通过结构与签名检查，未建立来源信任结论"
+      : normalizedState === "invalid"
+        ? "读取到 C2PA，但存在验证失败或警告"
+        : "C2PA 清单可读取，但 SDK 未提供完整验证状态"
+  return {
+    validated,
+    state: normalizedState,
+    trust,
+    statusCodes,
+    summary,
+  } as const
 }
 
 export async function inspectImage(file: File, options: { signal?: AbortSignal } = {}): Promise<ImageInspection> {

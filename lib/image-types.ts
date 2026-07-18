@@ -17,6 +17,9 @@ export type C2paInspection = {
   present: boolean
   validated: boolean | null
   summary: string
+  validationState?: "invalid" | "valid" | "trusted" | "unknown"
+  trust?: "trusted" | "untrusted" | "unknown"
+  statusCodes?: string[]
   manifest?: unknown
 }
 
