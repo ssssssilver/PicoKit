@@ -9,7 +9,7 @@ import { SiteHeader } from "@/components/site-header"
 import { siteConfig } from "@/lib/site"
 
 export const metadata: Metadata = {
-  title: "TabNative — 本地图片处理、AI 来源检查与 PDF 工具",
+  title: "TabNative — 图片交付流水线与 PDF 页面装配台",
   description: siteConfig.description,
 }
 
@@ -42,9 +42,9 @@ export default function Home() {
         <section className="border-t border-white/10 bg-[#0d0d0d]">
           <div className="mx-auto grid max-w-[1280px] gap-10 px-5 py-16 sm:px-8 lg:grid-cols-[.85fr_1.15fr] lg:py-20">
             <div>
-              <p className="font-mono text-[11px] uppercase tracking-[.2em] text-cyan-300"><Localized zh="本地图片工作流" en="Local image workflow" /></p>
+              <p className="font-mono text-[11px] uppercase tracking-[.2em] text-cyan-300"><Localized zh="图片交付流水线" en="Image Delivery Pipeline" /></p>
               <h2 className="mt-4 max-w-lg text-3xl font-bold tracking-[-.04em] text-white sm:text-4xl"><Localized zh="上传一次，在本地完成整条交付流程" en="One input, one local path to a finished asset" /></h2>
-              <p className="mt-5 max-w-xl text-sm leading-7 text-zinc-400"><Localized zh="从移除图片背景、快速修图到批量压缩、格式转换和目标大小，结果可通过浏览器临时存储直接接力。AI 来源检查与 PDF 整理同样在当前设备运行。" en="Move from background removal and quick edits to batch compression, conversion, and target sizing through temporary storage in this browser. AI provenance checks and PDF organization also stay on this device." /></p>
+              <p className="mt-5 max-w-xl text-sm leading-7 text-zinc-400"><Localized zh="图片交付流水线让同一批文件连续完成去背景、修边、快速修图与最终优化；PDF 页面装配台则把多个文档拆成可查看、可重组的页面后统一交付。两条流程都在当前设备运行。" en="The Image Delivery Pipeline carries one batch through background removal, edge refinement, quick editing, and final optimization. PDF Page Assembly turns multiple documents into inspectable, rebuildable pages for consistent delivery. Both run on this device." /></p>
             </div>
             <div className="divide-y divide-white/10 border-y border-white/10">
               <ProofRow title="无需账号" titleEn="No account" body="打开即可使用，不设置登录墙或按次付费。" bodyEn="Open a tool and use it. No login wall or pay-per-use gate." />

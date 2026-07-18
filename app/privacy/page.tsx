@@ -17,7 +17,7 @@ export default function Page() {
     </section>
     <section>
       <h2><Localized zh="浏览器本地保存" en="Local browser storage" /></h2>
-      <p className="mt-3"><Localized zh="模型和 WASM 文件可能存入浏览器 Cache Storage，以便后续更快启动或离线使用。工具设置可以存入 localStorage。用户图片、3D 文件与处理结果只存在当前页面内存和临时 Blob URL，页面释放后不再保留。" en="Models and WASM files may be cached in browser Cache Storage for faster startup or offline use. Tool settings may be stored in localStorage. User images, 3D files, and results exist only in page memory and temporary Blob URLs, and are released with the page." /></p>
+      <p className="mt-3"><Localized zh="模型和 WASM 文件可能存入浏览器 Cache Storage，以便后续更快启动或离线使用。工具设置可以存入 localStorage。用户图片、3D 文件与处理结果通常只存在当前页面内存和临时 Blob URL，页面释放后不再保留。PDF 工作台只有在你主动点击“保存本地草稿”后，才会把 PDF 与设置写入此浏览器的 IndexedDB；草稿可手动清除并会在 7 天后失效。" en="Models and WASM files may be cached in browser Cache Storage for faster startup or offline use. Tool settings may be stored in localStorage. Images, 3D files, and results normally exist only in page memory and temporary Blob URLs and are released with the page. The PDF workspace writes PDFs and settings to this browser's IndexedDB only after you explicitly choose Save local draft; drafts can be cleared manually and expire after 7 days." /></p>
     </section>
     <section>
       <h2><Localized zh="匿名分析" en="Anonymous analytics" /></h2>

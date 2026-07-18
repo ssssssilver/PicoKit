@@ -173,7 +173,9 @@ describe("multi-source PDF workspace", () => {
       readFile("workers/pdf-export.worker.ts", "utf8"),
     ])
 
-    expect(tool).toContain('<div className={mode === "workspace" ? "" : "hidden"}><PdfWorkspace /></div>')
+    expect(tool).toContain('role="tabpanel"')
+    expect(tool).toContain('hidden={mode !== "workspace"}')
+    expect(tool).toContain("workspaceHandoff")
     expect(workspace).toContain("IntersectionObserver")
     expect(workspace).toContain("draggable={!running}")
     expect(workspace).toContain("event.shiftKey")

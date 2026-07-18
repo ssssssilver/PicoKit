@@ -42,4 +42,7 @@ next-env.d.ts
 /outputs/
 /work/
 /public/c2pa.wasm
+/public/pdfjs/
 .gstack/
+/.clone-source/
+/.design-qa/

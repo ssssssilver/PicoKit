@@ -6,7 +6,7 @@ import { getToolGuide, toolGuides } from "@/lib/tool-guides"
 describe("tool guide catalog", () => {
   it("covers every first-party tool exactly once", () => {
     expect(toolGuides).toHaveLength(allTools.length)
-    expect(toolGuides).toHaveLength(32)
+    expect(toolGuides).toHaveLength(33)
     expect(new Set(toolGuides.map((guide) => guide.slug)).size).toBe(toolGuides.length)
     expect(new Set(toolGuides.map((guide) => guide.href))).toEqual(new Set(allTools.map((tool) => tool.href)))
   })

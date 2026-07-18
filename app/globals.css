@@ -202,6 +202,16 @@
     linear-gradient(90deg, rgba(15, 23, 42, .05) 1px, transparent 1px);
 }
 
+.hero-banner-illustration {
+  filter: brightness(.62) contrast(1.12) saturate(1.35);
+  -webkit-mask-image: radial-gradient(ellipse at center, #000 50%, rgba(0, 0, 0, .9) 66%, transparent 91%);
+  mask-image: radial-gradient(ellipse at center, #000 50%, rgba(0, 0, 0, .9) 66%, transparent 91%);
+}
+
+.light .hero-banner-illustration {
+  filter: none;
+}
+
 .hero-banner-arrow {
   background-color: rgba(8, 8, 8, .78);
   color: #fff;

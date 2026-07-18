@@ -1,4 +1,5 @@
 import { detectImageType } from "@/lib/file-validation"
+import { resolvePdfTargetSize, type PdfTargetOrientation, type PdfTargetPageSize } from "@/lib/pdf-conversion"
 import type { PDFFont, PDFImage, PDFPage } from "pdf-lib"
 
 export type PdfPagePlanItem = {
@@ -35,6 +36,14 @@ export type PdfOrganizerExportOptions = {
   watermark?: PdfWatermarkOptions | null
   clearMetadata?: boolean
   metadata?: PdfDocumentMetadata | null
+  pageNormalization?: PdfPageNormalizationOptions | null
+}
+
+export type PdfPageNormalizationOptions = {
+  cropMargin?: number
+  pageSize: PdfTargetPageSize
+  orientation: PdfTargetOrientation
+  margin?: number
 }
 
 export type PdfDocumentMetadata = {
@@ -259,18 +268,76 @@ export async function organizePdfWorkspaceBytes(
   const watermarkOpacity = clamp(options.watermark?.opacity ?? 0.18, 0.05, 0.8)
   const pageNumberStart = Number.isFinite(options.pageNumberStart) ? Math.max(1, Math.round(options.pageNumberStart!)) : 1
 
-  plan.forEach((planned, index) => {
+  for (let index = 0; index < plan.length; index++) {
+    const planned = plan[index]
     const page = copiedByPage.get(`${planned.sourceId}:${planned.sourcePageIndex}`)
     if (!page) throw new Error("A copied PDF page is missing")
-    if (planned.rotation) page.setRotation(degrees(normalizePdfRotation(page.getRotation().angle + planned.rotation)))
-    output.addPage(page)
-    applyPdfPageDecoration(page, index, plan.length, pageNumberStart, pageNumberFont, watermark, watermarkOpacity, rgb)
+    let outputPage = page
+    if (options.pageNormalization) {
+      outputPage = await addNormalizedPdfPage(output, page, planned.rotation, options.pageNormalization, degrees)
+    } else {
+      if (planned.rotation) page.setRotation(degrees(normalizePdfRotation(page.getRotation().angle + planned.rotation)))
+      output.addPage(page)
+    }
+    applyPdfPageDecoration(outputPage, index, plan.length, pageNumberStart, pageNumberFont, watermark, watermarkOpacity, rgb)
     onProgress?.(completed + index + 1, plan.length * 2)
-  })
+  }
 
   applyPdfOutputMetadata(output, options)
 
   return output.save()
+}
+
+async function addNormalizedPdfPage(
+  document: import("pdf-lib").PDFDocument,
+  sourcePage: PDFPage,
+  plannedRotation: number,
+  options: PdfPageNormalizationOptions,
+  degrees: typeof import("pdf-lib").degrees,
+) {
+  const crop = sourcePage.getCropBox()
+  const requestedCrop = Number.isFinite(options.cropMargin) ? Math.max(0, options.cropMargin ?? 0) : 0
+  const cropMargin = Math.min(requestedCrop, Math.max(0, Math.min(crop.width, crop.height) / 2 - 1))
+  const bounds = {
+    left: crop.x + cropMargin,
+    bottom: crop.y + cropMargin,
+    right: crop.x + crop.width - cropMargin,
+    top: crop.y + crop.height - cropMargin,
+  }
+  const embedded = await document.embedPage(sourcePage, bounds)
+  const rotation = normalizePdfRotation(sourcePage.getRotation().angle + plannedRotation)
+  const rotated = rotation === 90 || rotation === 270
+  const contentWidth = rotated ? embedded.height : embedded.width
+  const contentHeight = rotated ? embedded.width : embedded.height
+  const margin = Math.max(0, Number.isFinite(options.margin) ? options.margin ?? 0 : 0)
+  const target = resolvePdfTargetSize(contentWidth, contentHeight, options.pageSize, options.orientation, margin)
+  const availableWidth = Math.max(1, target.width - margin * 2)
+  const availableHeight = Math.max(1, target.height - margin * 2)
+  const scale = Math.min(availableWidth / contentWidth, availableHeight / contentHeight)
+  const rawWidth = embedded.width * scale
+  const rawHeight = embedded.height * scale
+  const displayWidth = rotated ? rawHeight : rawWidth
+  const displayHeight = rotated ? rawWidth : rawHeight
+  const left = (target.width - displayWidth) / 2
+  const bottom = (target.height - displayHeight) / 2
+  const position = normalizedDrawPosition(rotation, left, bottom, displayWidth, displayHeight)
+
+  const outputPage = document.addPage([target.width, target.height])
+  outputPage.drawPage(embedded, {
+    x: position.x,
+    y: position.y,
+    width: rawWidth,
+    height: rawHeight,
+    rotate: degrees(rotation),
+  })
+  return outputPage
+}
+
+function normalizedDrawPosition(rotation: number, left: number, bottom: number, displayWidth: number, displayHeight: number) {
+  if (rotation === 90) return { x: left + displayWidth, y: bottom }
+  if (rotation === 180) return { x: left + displayWidth, y: bottom + displayHeight }
+  if (rotation === 270) return { x: left, y: bottom + displayHeight }
+  return { x: left, y: bottom }
 }
 
 function applyPdfOutputMetadata(document: import("pdf-lib").PDFDocument, options: PdfOrganizerExportOptions) {

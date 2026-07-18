@@ -29,14 +29,15 @@ import {
   Smile,
   Sparkles,
   Timer,
+  Waves,
 } from "lucide-react"
 
 export const siteConfig = {
   name: "TabNative",
   tagline: "工具在标签页运行，文件留在你的设备上。",
   taglineEn: "Private tools, native to your browser.",
-  description: "从原图到可发布成品，全程在浏览器本地处理；批量优化图片、检查 AI 来源证据、整理 PDF，无需登录或上传文件。",
-  descriptionEn: "Take files from source to ready-to-publish entirely in your browser: optimize images in batches, inspect AI provenance evidence, and organize PDFs without an account or uploads.",
+  description: "通过图片交付流水线与 PDF 页面装配台，在浏览器本地完成批量处理、逐页重组和成品交付；无需登录或上传文件。",
+  descriptionEn: "Use the Image Delivery Pipeline and PDF Page Assembly to process batches, rebuild pages, and deliver finished files locally in your browser without accounts or uploads.",
   url: process.env.NEXT_PUBLIC_SITE_URL || "https://tabnative.modone0622.workers.dev",
 }
 
@@ -102,17 +103,18 @@ export const primaryTools: SiteTool[] = [
 
 export const utilityTools: SiteTool[] = [
   { href: "/3d-model-converter", title: "3D 模型转换与预览", titleEn: "3D Model Converter & Viewer", description: "本地预览 GLB、glTF、OBJ、FBX、STL、PLY，并导出常用交换格式。", descriptionEn: "Preview GLB, glTF, OBJ, FBX, STL, and PLY locally, then export common exchange formats.", icon: Box, category: "model", runtime: "WEBGL / BROWSER", featured: true },
-  { href: "/remove-background", title: "批量移除图片背景", titleEn: "Batch Background Removal", description: "多图顺序去背景、逐项修边，并整批接力到快速修图。", descriptionEn: "Remove backgrounds sequentially, refine individual results, and pass the full batch to quick editing.", icon: Scissors, category: "image", runtime: "ONNX / GPU + CPU", featured: true },
+  { href: "/remove-background", title: "图片交付流水线", titleEn: "Image Delivery Pipeline", description: "一次导入，连续完成批量去背景与修边、逐张快速修图、格式尺寸优化和打包交付。", descriptionEn: "Import once, then move the same batch through background removal, edge refinement, quick editing, optimization, and packaged delivery.", icon: Scissors, category: "image", runtime: "ONNX / CANVAS / WORKER", featured: true },
   { href: "/remove-ai-metadata-from-image", title: "清理 AI 元数据", titleEn: "Remove AI Metadata", description: "移除命中的生成器、工作流、提示词与 AI 来源字段。", descriptionEn: "Remove matched generator, workflow, prompt, and AI provenance fields.", icon: ShieldCheck, category: "privacy" },
   { href: "/remove-c2pa-content-credentials", title: "清理 C2PA", titleEn: "Remove C2PA", description: "删除 C2PA/JUMBF 容器并验证像素载荷保持一致。", descriptionEn: "Remove C2PA/JUMBF containers and verify the pixel payload stays unchanged.", icon: FileSearch, category: "privacy" },
   { href: "/remove-made-with-ai-label", title: "清理 AI 标签信号", titleEn: "Remove AI Label Signals", description: "选择性清理 DigitalSourceType 与 Made with AI 触发字段。", descriptionEn: "Selectively remove DigitalSourceType and Made with AI metadata triggers.", icon: FileImage, category: "privacy" },
   { href: "/image-compressor", title: "批量图片优化与交付", titleEn: "Batch Image Optimizer", description: "批量调整格式、尺寸、质量与目标大小，并统一命名或打包下载。", descriptionEn: "Batch-adjust format, dimensions, quality, and target size, then rename or download results together.", icon: ImageDown, category: "image", runtime: "CANVAS / WORKER", featured: true },
   { href: "/image-editor", title: "批量快速修图与标注", titleEn: "Batch Quick Image Editor", description: "多图逐张修图并保存最新版本，再整批接力到图片优化。", descriptionEn: "Edit images one by one, save their latest versions, then pass the full batch to image optimization.", icon: ImageIcon, category: "image", runtime: "FABRIC.JS / CANVAS", featured: true },
+  { href: "/image-wobble-maker", title: "图片晃动动画", titleEn: "Image Wobble Animator", description: "涂抹需要运动的区域，实时预览弹性晃动并在本地导出 GIF 或视频。", descriptionEn: "Paint the areas that should move, preview elastic wobble, and export a GIF or video locally.", icon: Waves, category: "image", runtime: "CANVAS / MEDIARECORDER", featured: true },
   { href: "/resize-image-to-kb", title: "压缩到目标大小", titleEn: "Target-size Image Compressor", description: "搜索合适的尺寸与编码质量，尽量不超过目标文件大小。", descriptionEn: "Find a combination of dimensions and encoding quality that stays under a target file size.", icon: Gauge, category: "image" },
   { href: "/color-tools", title: "颜色与调色板", titleEn: "Color & Palette Tools", description: "转换颜色格式、检查对比度，并从图片提取主要颜色。", descriptionEn: "Convert color formats, check contrast, and extract dominant image colors.", icon: Palette, category: "image" },
   { href: "/svg-tools", title: "SVG 编辑与导出", titleEn: "SVG Toolkit", description: "格式化、压缩并安全预览 SVG，导出 SVG 或 PNG。", descriptionEn: "Format, minify, and safely preview SVGs, then export SVG or PNG.", icon: FileCode2, category: "image" },
   { href: "/avatar-emoji-generator", title: "头像与表情生成", titleEn: "Avatar & Emoji Generator", description: "用短文字或本地图片生成常用尺寸的静态头像和团队表情。", descriptionEn: "Create static avatars and team emoji from short text or a local image.", icon: Smile, category: "image" },
-  { href: "/pdf-tools", title: "私密 PDF 整理", titleEn: "Private PDF Organizer", description: "重排、旋转或删除页面，添加页码与水印，并完成合并、提取和图片互转。", descriptionEn: "Reorder, rotate, or remove pages, add page numbers and watermarks, then merge, extract, or convert images.", icon: FileText, category: "file", runtime: "PDF.JS / BROWSER", featured: true },
+  { href: "/pdf-tools", title: "PDF 页面装配台", titleEn: "PDF Page Assembly", description: "汇入多个 PDF，逐页预览和重组，统一纸张、页码、水印与压缩，再合并、拆分或转换交付。", descriptionEn: "Bring multiple PDFs into one page assembly, preview and rebuild them, standardize output, then merge, split, or convert for delivery.", icon: FileText, category: "file", runtime: "PDF.JS / WORKER", featured: true },
   { href: "/favicon-generator", title: "Favicon 图标生成", titleEn: "Favicon Generator", description: "生成 ICO、PWA 图标、Apple Touch Icon 与 Manifest。", descriptionEn: "Create ICO, PWA icons, Apple Touch Icons, and a manifest.", icon: ImageIcon, category: "file" },
   { href: "/spreadsheet-converter", title: "表格转换", titleEn: "Spreadsheet Converter", description: "预览 XLSX、CSV、TSV 并导出 CSV、JSON 或 XLSX。", descriptionEn: "Preview XLSX, CSV, and TSV files and export CSV, JSON, or XLSX.", icon: FileSpreadsheet, category: "file", runtime: "SHEETJS / BROWSER" },
   { href: "/file-hash-base64", title: "文件校验与 Base64", titleEn: "File Checksums & Base64", description: "计算 SHA-256、SHA-1、MD5，或转换 Base64/Data URL。", descriptionEn: "Calculate SHA-256, SHA-1, and MD5, or convert Base64/Data URLs.", icon: FileKey2, category: "privacy" },
@@ -139,6 +141,7 @@ export const commonToolHrefs = [
   "/ai-image-detector",
   "/image-compressor",
   "/image-editor",
+  "/image-wobble-maker",
   "/resize-image-to-kb",
   "/pdf-tools",
   "/ai-text-detector",

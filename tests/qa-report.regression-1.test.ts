@@ -35,12 +35,14 @@ describe("QA report regressions", () => {
     })
   })
 
-  // Regression: ISSUE-005 — the homepage hero changed while users were reading it.
-  // Found by /qa on 2026-07-15
-  // Report: .gstack/qa-reports/qa-report-picokit-modone0622-workers-dev-2026-07-15.md
-  it("does not schedule automatic hero rotation", async () => {
+  // Product update: autoplay is enabled again, but stops when animation is reduced,
+  // the page is hidden, or a drag gesture is active.
+  it("rotates the hero automatically with motion and visibility safeguards", async () => {
     const source = await readFile("components/home-hero-banner.tsx", "utf8")
-    expect(source).not.toContain("setInterval")
-    expect(source).not.toContain("rotationMs")
+    expect(source).toContain("heroRotationMs")
+    expect(source).toContain("window.setTimeout")
+    expect(source).toContain("prefers-reduced-motion: reduce")
+    expect(source).toContain('document.visibilityState === "visible"')
+    expect(source).toContain("if (isDragging || reducedMotion || !pageVisible")
   })
 })

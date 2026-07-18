@@ -47,9 +47,10 @@ test("server-renders the TabNative homepage and security headers", async () => {
   assert.match(html, /AI 工具导航/)
   const featuredRemovalStart = html.indexOf('<a href="/remove-background"')
   const firstDetectorLink = html.indexOf('<a href="/ai-image-detector"')
-  assert.ok(featuredRemovalStart >= 0 && featuredRemovalStart < firstDetectorLink, "remove background should be the first primary tool link")
+  assert.ok(featuredRemovalStart >= 0 && featuredRemovalStart < firstDetectorLink, "the image delivery pipeline should be the first primary tool link")
   assert.match(html.slice(featuredRemovalStart, html.indexOf("</a>", featuredRemovalStart)), /lucide-star/)
-  assert.match(html, /私密 PDF 整理/)
+  assert.match(html, /图片交付流水线/)
+  assert.match(html, /PDF 页面装配台/)
   assert.doesNotMatch(html, /TabNative 工具首页/)
   assert.doesNotMatch(html, /方法与限制/)
   assert.doesNotMatch(html, /查看方法说明/)
@@ -66,10 +67,11 @@ for (const [pathname, marker] of [
   ["/gemini-watermark-remover", "AI"],
   ["/image-compressor", "批量图片优化与交付"],
   ["/image-editor", "快速修图、标注与打码"],
+  ["/image-wobble-maker", "图片晃动动画"],
   ["/resize-image-to-kb", "把图片压缩到目标大小"],
-  ["/remove-background", "移除图片背景"],
+  ["/remove-background", "图片交付流水线：批量去背景"],
   ["/3d-model-converter", "3D 模型格式转换与预览"],
-  ["/pdf-tools", "PDF 页面整理、合并与转换"],
+  ["/pdf-tools", "PDF 页面装配台"],
   ["/qr-code-tool", "二维码生成与识别"],
   ["/text-tools", "文本统计、清理与编解码"],
   ["/json-tools", "JSON 格式化、校验与转换"],
@@ -102,11 +104,12 @@ for (const [pathname, marker] of [
   })
 }
 
-test("background-removal page exposes one mode-free removal flow", async () => {
+test("image delivery pipeline exposes one mode-free removal flow", async () => {
   const response = await render("/remove-background")
   assert.equal(response.status, 200)
   const html = await response.text()
-  assert.match(html, /整个成功队列/)
+  assert.match(html, /图片交付流水线：批量去背景/)
+  assert.match(html, /整批接力到快速修图/)
   assert.match(html, /自动识别主要主体/)
   assert.match(html, /4\.6 MB/)
   assert.doesNotMatch(html, /人物与物体一键去背景|人像背景移除|通用物体去背景|BEN2|RMBG-2\.0/)

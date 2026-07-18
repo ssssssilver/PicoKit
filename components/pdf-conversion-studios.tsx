@@ -5,8 +5,10 @@
 import {
   AlertTriangle,
   ArrowDown,
+  ArrowRight,
   ArrowUp,
   Download,
+  FileCheck2,
   FileImage,
   FilePlus2,
   GripVertical,
@@ -52,7 +54,9 @@ type ImageQueueItem = {
 
 type PdfPreview = { page: number; url: string }
 
-export function ImagesToPdfStudio() {
+export type PdfFileHandoff = { id: string; file: File }
+
+export function ImagesToPdfStudio({ onContinueToWorkspace }: { onContinueToWorkspace?: (file: File) => void }) {
   const { pick, format } = useLanguage()
   const inputRef = useRef<HTMLInputElement>(null)
   const urlsRef = useRef(new Set<string>())
@@ -68,6 +72,7 @@ export function ImagesToPdfStudio() {
   const [fit, setFit] = useState<PdfImageFit>("contain")
   const [margin, setMargin] = useState(18)
   const [outputName, setOutputName] = useState("tabnative-images.pdf")
+  const [generatedPdf, setGeneratedPdf] = useState<File | null>(null)
 
   useEffect(() => () => {
     for (const url of urlsRef.current) URL.revokeObjectURL(url)
@@ -78,6 +83,7 @@ export function ImagesToPdfStudio() {
     if (!files.length || adding || running) return
     setAdding(true)
     setError("")
+    setGeneratedPdf(null)
     const accepted: ImageQueueItem[] = []
     const rejected: string[] = []
     let totalBytes = items.reduce((sum, item) => sum + item.file.size, 0)
@@ -178,7 +184,11 @@ export function ImagesToPdfStudio() {
       if (cancelledRef.current) throw new Error("cancelled")
       const bytes = await pdf.save()
       setProgress(96)
-      downloadBlob(new Blob([bytes as BlobPart], { type: "application/pdf" }), sanitizePdfFileName(outputName, "tabnative-images"))
+      const filename = sanitizePdfFileName(outputName, "tabnative-images")
+      const blob = new Blob([bytes as BlobPart], { type: "application/pdf" })
+      const file = new File([blob], filename, { type: "application/pdf", lastModified: Date.now() })
+      setGeneratedPdf(file)
+      downloadBlob(blob, filename)
       setProgress(100)
     } catch (reason) {
       if (!(reason instanceof Error && reason.message === "cancelled")) {
@@ -243,13 +253,14 @@ export function ImagesToPdfStudio() {
         </div>
         <label className="block max-w-xl space-y-2 text-sm"><span>{pick("输出文件名", "Output filename")}</span><Input value={outputName} maxLength={120} onChange={(event) => setOutputName(event.target.value)} /></label>
         {running || progress ? <div className="space-y-2 rounded-xl border border-cyan-500/25 bg-cyan-500/[.06] p-4"><div className="flex justify-between text-sm"><span>{running ? pick("正在本地生成 PDF", "Creating the PDF locally") : pick("PDF 已生成", "PDF created")}</span><span>{progress}%</span></div><Progress value={progress} /></div> : null}
+        {generatedPdf && onContinueToWorkspace ? <Alert className="border-emerald-500/30 bg-emerald-500/[.07] text-emerald-950 dark:text-emerald-100"><FileCheck2 /><AlertTitle>{pick("PDF 已准备好", "PDF is ready")}</AlertTitle><AlertDescription><p>{pick("可直接送入页面工作台继续合并、排序、拆分或压缩，无需重新上传。", "Send it directly to the page workspace to merge, reorder, split, or compress without uploading again.")}</p><Button size="sm" variant="outline" className="mt-3" onClick={() => onContinueToWorkspace(generatedPdf)}>{pick("继续到页面工作台", "Continue to page workspace")}<ArrowRight /></Button></AlertDescription></Alert> : null}
         <div className="flex flex-wrap gap-2"><Button disabled={running} onClick={() => void exportPdf()}>{running ? <LoaderCircle className="animate-spin" /> : <Download />}{pick("生成并下载 PDF", "Create and download PDF")}</Button>{running ? <Button variant="outline" onClick={() => { cancelledRef.current = true }}><X />{pick("取消", "Cancel")}</Button> : null}</div>
       </CardContent>
     </Card> : null}
   </div>
 }
 
-export function PdfToImagesStudio() {
+export function PdfToImagesStudio({ incomingPdf }: { incomingPdf?: PdfFileHandoff | null }) {
   const { pick, format } = useLanguage()
   const inputRef = useRef<HTMLInputElement>(null)
   const pdfRef = useRef<PDFDocumentProxy | null>(null)
@@ -257,6 +268,8 @@ export function PdfToImagesStudio() {
   const urlsRef = useRef(new Set<string>())
   const requestRef = useRef(0)
   const cancelledRef = useRef(false)
+  const incomingRef = useRef("")
+  const choosePdfRef = useRef<(file: File | undefined) => Promise<void>>(async () => undefined)
   const [file, setFile] = useState<File | null>(null)
   const [pageCount, setPageCount] = useState(0)
   const [pageSpec, setPageSpec] = useState("")
@@ -293,7 +306,11 @@ export function PdfToImagesStudio() {
       await disposePdfPreview(pdfRef, renderRef, urlsRef)
       const pdfjs = await import("pdfjs-dist")
       pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs"
-      const loadingTask = pdfjs.getDocument({ data: await nextFile.arrayBuffer() })
+      const loadingTask = pdfjs.getDocument({
+        data: await nextFile.arrayBuffer(),
+        useWorkerFetch: true,
+        wasmUrl: "/pdfjs/wasm/",
+      })
       const pdf = await loadingTask.promise
       if (request !== requestRef.current) {
         await pdf.loadingTask.destroy()
@@ -339,6 +356,15 @@ export function PdfToImagesStudio() {
       if (request === requestRef.current) setLoading(false)
     }
   }
+  useEffect(() => {
+    choosePdfRef.current = choosePdf
+  })
+
+  useEffect(() => {
+    if (!incomingPdf || incomingRef.current === incomingPdf.id) return
+    incomingRef.current = incomingPdf.id
+    void choosePdfRef.current(incomingPdf.file)
+  }, [incomingPdf])
 
   async function exportImages() {
     const pdf = pdfRef.current

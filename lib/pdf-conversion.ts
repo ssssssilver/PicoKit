@@ -2,6 +2,11 @@ export type PdfTargetPageSize = "original" | "a4" | "letter"
 export type PdfTargetOrientation = "auto" | "portrait" | "landscape"
 export type PdfImageFit = "contain" | "cover"
 
+export type PdfSplitGroup = {
+  label: string
+  pageIndexes: number[]
+}
+
 export const PDF_IMAGE_MAX_FILES = 60
 export const PDF_IMAGE_MAX_TOTAL_BYTES = 250 * 1024 * 1024
 export const PDF_IMAGE_MAX_PIXELS = 40_000_000
@@ -27,6 +32,42 @@ export function parsePdfPageSpec(spec: string, total: number) {
     }
   }
   return [...values]
+}
+
+export function parsePdfSplitSpec(spec: string, total: number): PdfSplitGroup[] {
+  if (!Number.isInteger(total) || total < 1) return []
+  return spec
+    .split(/[;；\n]+/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((label) => ({ label, pageIndexes: parsePdfPageSpec(label, total) }))
+    .filter((group) => group.pageIndexes.length > 0)
+}
+
+export function resolvePdfTargetSize(
+  contentWidth: number,
+  contentHeight: number,
+  target: PdfTargetPageSize,
+  orientation: PdfTargetOrientation,
+  margin = 0,
+) {
+  const safeMargin = Math.max(0, margin)
+  if (target === "original") {
+    return {
+      width: Math.max(1, contentWidth + safeMargin * 2),
+      height: Math.max(1, contentHeight + safeMargin * 2),
+    }
+  }
+
+  let width: number
+  let height: number
+  ;[width, height] = targetSizes[target]
+  const useLandscape = orientation === "landscape"
+    || (orientation === "auto" && contentWidth > contentHeight)
+  if ((useLandscape && width < height) || (!useLandscape && width > height)) {
+    ;[width, height] = [height, width]
+  }
+  return { width, height }
 }
 
 export function resolvePdfPageSize(

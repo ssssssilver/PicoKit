@@ -104,6 +104,29 @@ const guideByHref: Record<string, ToolGuideDetails> = {
     [text("大图编辑卡顿时先使用图片压缩工具缩小尺寸，或关闭其他占用内存的标签页。", "If a large image is slow, resize it with the image compressor first or close memory-heavy tabs."), text("阿拉伯语文字方向不正确时重新选择文字对象，并确认页面语言和文字对齐方向一致。", "If Arabic text direction looks wrong, reselect the text object and confirm the page language and alignment direction match."), text("重新编码通常会删除 EXIF、GPS 和 C2PA 元数据，需要来源信息时请保留原文件。", "Re-encoding usually removes EXIF, GPS, and C2PA metadata, so retain the source when provenance matters.")],
     6,
   ),
+  "/image-wobble-maker": guide(
+    [
+      text("准备一张主体清晰的 PNG、JPG 或 WebP；透明背景的头像、贴纸与插画通常更容易做出自然效果。", "Prepare a PNG, JPG, or WebP with a clear subject. Avatars, stickers, and illustrations with transparent backgrounds are often easiest to animate naturally."),
+      text("先判断哪些区域应保持固定，再只为头发、衣摆、耳朵或装饰等柔软部分添加晃动遮罩。", "Decide which areas should stay fixed, then mask only flexible parts such as hair, fabric, ears, or decorations."),
+    ],
+    [
+      step("选择图片", "Choose an image", "从设备选择图片，或使用页面示例快速了解完整流程。", "Choose an image from your device, or load the sample to explore the complete workflow."),
+      step("涂出晃动区域", "Paint the wobble area", "调整画笔大小与柔和度，在需要运动的位置涂抹；误涂时切换橡皮擦或使用撤销。", "Adjust brush size and softness, then paint the areas that should move. Switch to Erase or use Undo to fix mistakes."),
+      step("预览并选择手感", "Preview and tune the motion", "切换到预览，选择柔和、弹性、伸展等预设，再调整强度、速度、伸展与回弹。", "Open Preview, choose a soft, bouncy, or stretchy preset, then tune strength, speed, stretch, and bounce."),
+      step("选择运动方式", "Choose a motion style", "使用摇摆、弹跳或绕圈自动播放；支持的移动设备还可用动作传感器控制。", "Use automatic Sway, Hop, or Orbit motion. Supported mobile devices can also control motion with the device sensor."),
+      step("生成并下载", "Create and download", "选择 GIF、WebM 或可用的 MP4，设置时长和尺寸，在本地生成后检查预览并下载。", "Choose GIF, WebM, or an available MP4 option, set duration and size, then create locally, review, and download."),
+    ],
+    [
+      text("预览中未涂抹区域保持稳定，遮罩边缘没有明显断层或拉裂。", "Unpainted areas stay stable in preview, with no obvious seams or tearing around mask edges."),
+      text("导出的动画尺寸、时长和运动方向与预览基本一致，并能在常用查看器中正常循环播放。", "The exported animation broadly matches the preview's dimensions, duration, and motion and loops correctly in common viewers."),
+    ],
+    [
+      text("主体被整体拉动时撤销遮罩，只保留柔软部位，并降低画笔强度或晃动强度。", "If the whole subject shifts, undo part of the mask, keep only flexible areas, and reduce brush or motion strength."),
+      text("GIF 生成缓慢时缩短时长或选择 640 px；更高分辨率优先使用 WebM。", "If GIF creation is slow, shorten the duration or use 640 px. Prefer WebM for higher resolutions."),
+      text("MP4 不可选表示浏览器没有相应编码器，请改用 WebM 或 GIF。", "A disabled MP4 option means the browser lacks that encoder; use WebM or GIF instead."),
+    ],
+    6,
+  ),
   "/resize-image-to-kb": guide(
     [text("使用 JPG 或 WebP；PNG 无法稳定按质量搜索目标大小。", "Use JPG or WebP; PNG cannot reliably target a byte size through quality search."), text("目标范围为 10–10,000 KB。", "Target size can be set from 10 to 10,000 KB.")],
     [step("选择图片", "Choose an image", "加载图片并选择 JPG 或 WebP 输出。", "Load the image and choose JPG or WebP output."), step("输入目标 KB", "Enter the target KB", "填写文件大小上限；工具会优先确保结果不超过目标。", "Enter the file-size ceiling; staying under it takes priority."), step("设置最长边和可选调整", "Set dimensions and optional edits", "如有需要设置最长边、裁切、旋转或调色。", "Optionally set longest edge, crop, rotation, or color adjustments."), step("运行目标压缩", "Run target compression", "工具先搜索编码质量，必要时安全缩小尺寸。", "The tool searches encoding quality first, then safely reduces dimensions if needed."), step("检查是否命中", "Check target status", "比较结果大小与目标；若无法精确命中，会给出安全范围内最接近的结果。", "Compare output size with the target; if exact targeting is impossible, the closest safe result is returned.")],

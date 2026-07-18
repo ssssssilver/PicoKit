@@ -1,8 +1,9 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react"
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 
 import { useLanguage } from "@/components/language-provider"
 import { allTools, toolCategories } from "@/lib/site"
@@ -14,32 +15,27 @@ type HeroSlide = {
   description: { zh: string; en: string }
   action: { zh: string; en: string }
   href: string
+  imageSrc: string
 }
 
 export const homeHeroSlides: HeroSlide[] = [
   {
-    id: "toolbox",
-    eyebrow: { zh: "三步本地图片交付流水线", en: "Three-step local image workflow" },
+    id: "image-delivery",
+    eyebrow: { zh: "特色功能 · 图片交付流水线", en: "Image Delivery Pipeline" },
     title: { zh: "一批图片，三步完成交付。", en: "One image batch. Three browser steps." },
     description: { zh: "批量去背景并逐项修边，整批接力到快速修图，再统一优化格式、尺寸与文件大小。队列在步骤间保留，文件始终留在你的设备上。", en: "Remove backgrounds and refine edges, pass the full batch to quick editing, then optimize format, dimensions, and file size together. The queue stays available between steps and files remain on your device." },
-    action: { zh: "开启图片流水线", en: "Start with background removal" },
+    action: { zh: "进入图片交付流水线", en: "Open Image Delivery Pipeline" },
     href: "/remove-background",
-  },
-  {
-    id: "images",
-    eyebrow: { zh: "批量图片优化", en: "Batch image optimization" },
-    title: { zh: "一组设置，处理整批图片。", en: "One set of controls for a whole image batch." },
-    description: { zh: "统一转换 JPG、PNG 或 WebP，限制最长边、质量与目标 KB，按规则命名并打包下载。", en: "Convert to JPG, PNG, or WebP, cap the longest edge, quality, or target KB, apply a naming rule, and download one package." },
-    action: { zh: "打开批量图片优化", en: "Open batch image optimizer" },
-    href: "/image-compressor",
+    imageSrc: "/illustrations/hero-image-workspace.webp",
   },
   {
     id: "documents",
-    eyebrow: { zh: "私密 PDF 工作台", en: "Private PDF workspace" },
+    eyebrow: { zh: "特色功能 · PDF 页面装配台", en: "PDF Page Assembly" },
     title: { zh: "整理 PDF 页面，不把文档交给云端。", en: "Organize PDF pages without handing the document to a cloud service." },
-    description: { zh: "合并、提取、删除、排序或旋转页面，添加页码与文字水印，并在浏览器中导出。", en: "Merge, extract, delete, reorder, or rotate pages, add page numbers and text watermarks, then export in the browser." },
-    action: { zh: "整理 PDF", en: "Organize a PDF" },
+    description: { zh: "把多个 PDF 加入同一页面装配台，查看每页大图，拖拽重排、批量旋转、删除或提取页面，并在后台完成规范化与导出。图片互转仍可独立使用。", en: "Add multiple PDFs to one page workspace, drag to reorder, batch-rotate, remove, or extract pages, and export in a background Worker. Image conversion remains available separately." },
+    action: { zh: "进入 PDF 页面装配台", en: "Open PDF Page Assembly" },
     href: "/pdf-tools",
+    imageSrc: "/illustrations/hero-pdf-workspace.webp",
   },
   {
     id: "inspection",
@@ -48,19 +44,50 @@ export const homeHeroSlides: HeroSlide[] = [
     description: { zh: "分别检查可验证的文件来源、可见平台标记与像素模型估计，并明确展示冲突、缺失通道和限制。", en: "Inspect verifiable file provenance, visible platform marks, and pixel-model estimates separately, with conflicts, unavailable channels, and limits made explicit." },
     action: { zh: "检查图片来源证据", en: "Inspect image provenance" },
     href: "/ai-image-detector",
+    imageSrc: "/illustrations/hero-ai-image-detection.webp",
   },
 ]
 
 const dragThreshold = 56
+export const heroRotationMs = 6_500
+
+export function nextHeroSlideIndex(current: number, direction: -1 | 1, total = homeHeroSlides.length) {
+  if (total <= 0) return 0
+  return (current + direction + total) % total
+}
 
 export function HomeHeroBanner() {
   const { pick, format } = useLanguage()
   const [active, setActive] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState(0)
+  const [pageVisible, setPageVisible] = useState(true)
+  const [reducedMotion, setReducedMotion] = useState(false)
   const dragStart = useRef({ x: 0, y: 0, pointerId: -1 })
   const dragIntent = useRef<"horizontal" | "vertical" | null>(null)
   const slide = homeHeroSlides[active]
+
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)")
+    const updateMotionPreference = () => setReducedMotion(media.matches)
+    const updateVisibility = () => setPageVisible(document.visibilityState === "visible")
+    updateMotionPreference()
+    updateVisibility()
+    media.addEventListener("change", updateMotionPreference)
+    document.addEventListener("visibilitychange", updateVisibility)
+    return () => {
+      media.removeEventListener("change", updateMotionPreference)
+      document.removeEventListener("visibilitychange", updateVisibility)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (isDragging || reducedMotion || !pageVisible || homeHeroSlides.length < 2) return
+    const timer = window.setTimeout(() => {
+      setActive((value) => nextHeroSlideIndex(value, 1))
+    }, heroRotationMs)
+    return () => window.clearTimeout(timer)
+  }, [active, isDragging, pageVisible, reducedMotion])
 
   function localized(value: { zh: string; en: string }) {
     return value.en.includes("{tools}")
@@ -69,11 +96,11 @@ export function HomeHeroBanner() {
   }
 
   function showPrevious() {
-    setActive((value) => (value - 1 + homeHeroSlides.length) % homeHeroSlides.length)
+    setActive((value) => nextHeroSlideIndex(value, -1))
   }
 
   function showNext() {
-    setActive((value) => (value + 1) % homeHeroSlides.length)
+    setActive((value) => nextHeroSlideIndex(value, 1))
   }
 
   function handlePointerDown(event: ReactPointerEvent<HTMLElement>) {
@@ -125,21 +152,34 @@ export function HomeHeroBanner() {
       >
       <div aria-hidden="true" className="hero-banner-grid pointer-events-none absolute inset-0 opacity-40 [background-size:32px_32px]" />
 
-      <div className="relative mx-auto flex min-h-[500px] items-center px-0 py-16 sm:min-h-[520px] sm:px-20 lg:px-24">
+      <div className="relative mx-auto min-h-[560px] px-0 py-12 sm:px-20 sm:py-14 lg:min-h-[520px] lg:px-24">
         <div
           key={slide.id}
-          className={`w-full max-w-[980px] animate-in fade-in slide-in-from-bottom-2 duration-500 ${isDragging ? "transition-none" : "transition-transform duration-200 ease-out"}`}
+          className={`grid min-h-[460px] w-full animate-in items-center gap-7 fade-in slide-in-from-bottom-2 duration-500 md:grid-cols-[minmax(0,1.05fr)_minmax(300px,.95fr)] md:gap-8 ${isDragging ? "transition-none" : "transition-transform duration-200 ease-out"}`}
           style={{ transform: `translate3d(${dragOffset}px, 0, 0)`, opacity: isDragging ? Math.max(.72, 1 - Math.abs(dragOffset) / 420) : 1 }}
         >
-          <p className="font-mono text-[11px] font-semibold uppercase tracking-[.2em] text-cyan-300">{localized(slide.eyebrow)}</p>
-          <h1 className="mt-6 max-w-[960px] text-[clamp(3rem,6vw,5.6rem)] font-black leading-[1.01] tracking-[-0.065em] text-white">
-            {localized(slide.title)}
-          </h1>
-          <p className="mt-7 max-w-3xl text-base leading-8 text-zinc-400 sm:text-lg">{localized(slide.description)}</p>
-          <div className="mt-8">
-            <Link href={slide.href} draggable={false} className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-cyan-300 px-6 text-sm font-bold text-[#07111f] transition hover:bg-cyan-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-cyan-300/25">
-              {localized(slide.action)} <ArrowRight className="size-4" />
-            </Link>
+          <div className="relative z-10 max-w-[650px]">
+            <p className="font-mono text-[11px] font-semibold uppercase tracking-[.2em] text-cyan-300">{localized(slide.eyebrow)}</p>
+            <h1 className="mt-6 text-balance text-[clamp(2.65rem,4.4vw,4.35rem)] font-black leading-[1.02] tracking-[-0.06em] text-white">
+              {localized(slide.title)}
+            </h1>
+            <p className="mt-6 max-w-2xl text-base leading-8 text-zinc-400 sm:text-lg">{localized(slide.description)}</p>
+            <div className="mt-8">
+              <Link href={slide.href} draggable={false} className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-cyan-300 px-6 text-sm font-bold text-[#07111f] transition hover:bg-cyan-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-cyan-300/25">
+                {localized(slide.action)} <ArrowRight className="size-4" />
+              </Link>
+            </div>
+          </div>
+          <div className="relative isolate aspect-[2/1] min-h-44 w-full overflow-hidden md:aspect-auto md:min-h-[340px]" aria-hidden="true">
+            <Image
+              src={slide.imageSrc}
+              alt=""
+              fill
+              priority={active === 0}
+              draggable={false}
+              sizes="(max-width: 767px) calc(100vw - 40px), (max-width: 1279px) 42vw, 470px"
+              className="hero-banner-illustration pointer-events-none object-contain"
+            />
           </div>
         </div>
       </div>

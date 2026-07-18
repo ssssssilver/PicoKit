@@ -17,6 +17,7 @@ const routes = [
   "/remove-background",
   "/image-compressor",
   "/image-editor",
+  "/image-wobble-maker",
   "/resize-image-to-kb",
   "/3d-model-converter",
   "/pdf-tools",
