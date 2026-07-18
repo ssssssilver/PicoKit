@@ -12,7 +12,11 @@ function collectBrowserAssets(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const path = join(directory, entry.name)
     if (entry.isDirectory()) return collectBrowserAssets(path)
-    return entry.name.endsWith(".wasm") || /\.worker-[A-Za-z0-9_-]+\.js$/.test(entry.name) ? [path] : []
+    return entry.name.endsWith(".wasm") ||
+      /\.worker-[A-Za-z0-9_-]+\.js$/.test(entry.name) ||
+      /^pdf\.worker\.min-[A-Za-z0-9_-]+\.mjs$/.test(entry.name)
+      ? [path]
+      : []
   })
 }
 

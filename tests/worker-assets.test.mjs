@@ -30,6 +30,21 @@ test("browser WASM stays out of the size-limited Cloudflare Worker bundle", () =
   )
 })
 
+test("browser-only document and 3D engines stay out of the Cloudflare Worker bundle", () => {
+  const serverFiles = readdirSync(join(serverDirectory, "ssr", "assets"))
+  for (const pattern of [
+    /^pdf\.worker\.min-.*\.mjs$/,
+    /^three\.module-.*\.js$/,
+    /^xlsx-.*\.js$/,
+  ]) {
+    assert.equal(
+      serverFiles.some((file) => pattern.test(file)),
+      false,
+      `browser-only server asset matched ${pattern}`,
+    )
+  }
+})
+
 test("Draco decoders needed by compressed glTF are deployed as client assets", () => {
   const dracoDirectory = join(clientDirectory, "draco")
   for (const file of ["draco_decoder.js", "draco_decoder.wasm", "draco_wasm_wrapper.js"]) {

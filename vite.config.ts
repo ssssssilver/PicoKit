@@ -59,6 +59,10 @@ export default defineConfig(async () => {
         "@contentauth/c2pa-web",
         "@huggingface/transformers",
         "@pilio/gemini-watermark-remover/browser",
+        "pdf-lib",
+        "pdfjs-dist",
+        "three",
+        "xlsx",
       ],
     },
     server: isCodexSeatbeltSandbox
