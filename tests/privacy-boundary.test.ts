@@ -18,13 +18,20 @@ describe("local-processing privacy boundary", () => {
     const files = (await Promise.all(["app", "components", "lib", "workers"].map(sourceFiles))).flat()
     const sources = await Promise.all(files.map(async (file) => ({ file, source: await readFile(path.join(root, file), "utf8") })))
     const forbidden = /\b(FormData|XMLHttpRequest|sendBeacon|axios)\b|fetch\s*\(/i
+    const safeBundledSampleFetch = /fetch\(\s*["']\/illustrations\/hero-ai-image-detection\.webp["']\s*,\s*\{\s*cache:\s*["']force-cache["']\s*,?\s*\}\s*\)/g
     const modelDownloadOnly = new Set([
       path.join("workers", "text-detector.worker.ts"),
       path.join("workers", "image-detector.worker.ts"),
       path.join("workers", "background-removal.worker.ts"),
     ])
-    const violations = sources.filter(({ file, source }) => forbidden.test(source) && !modelDownloadOnly.has(file)).map(({ file }) => file)
+    const violations = sources
+      .filter(({ file, source }) => forbidden.test(source.replace(safeBundledSampleFetch, "")) && !modelDownloadOnly.has(file))
+      .map(({ file }) => file)
     expect(violations).toEqual([])
+
+    const inspectorSource = sources.find(({ file }) => file === path.join("components", "image-inspector-tool.tsx"))?.source ?? ""
+    expect(inspectorSource.match(safeBundledSampleFetch)).toHaveLength(1)
+    expect(inspectorSource).not.toMatch(/fetch\([^)]*\b(method|body|credentials)\s*:/i)
 
     for (const { file, source } of sources.filter(({ file }) => modelDownloadOnly.has(file))) {
       expect(source, file).toContain('request.method !== "GET" && request.method !== "HEAD"')

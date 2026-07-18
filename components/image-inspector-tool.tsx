@@ -8,8 +8,10 @@ import {
   Download,
   Eye,
   FileCheck2,
+  FileText,
   FileSearch,
   Fingerprint,
+  ImagePlus,
   LoaderCircle,
   Play,
   RotateCcw,
@@ -28,6 +30,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import {
   attachVisibleAiMarkEvidence,
+  buildImageViewPlan,
   fuseImageDetection,
   IMAGE_PIXEL_DETECTOR_VERSION,
   IMAGE_PIXEL_MODEL_ID,
@@ -210,6 +213,83 @@ export function buildImageEvidenceReport({
   }
 }
 
+export function buildReadableImageEvidenceReport({
+  language,
+  file,
+  inspection,
+  pixel,
+  visibleMark,
+  channels,
+}: {
+  language: string
+  file: File | null
+  inspection: ImageInspection | null
+  pixel: PixelDetectionResult | null
+  visibleMark: VisibleAiMarkDetection | null
+  channels: DetectionChannelAvailability
+}) {
+  const zh = language.startsWith("zh")
+  const summary = summarizeImageEvidence({ inspection, pixel, visibleMark })
+  const relationship = inspection
+    ? fuseImageDetection(pixel, inspection).evidenceAgreement
+    : "insufficient"
+  const fileSignals = explicitAiFileSignals(inspection)
+  const lines = [
+    zh ? "# TabNative 图片来源证据摘要" : "# TabNative Image Source-Evidence Summary",
+    "",
+    `${zh ? "生成时间" : "Created"}: ${new Date().toISOString()}`,
+    `${zh ? "文件" : "File"}: ${file?.name ?? (zh ? "未知" : "Unknown")}`,
+    `${zh ? "图像尺寸" : "Image dimensions"}: ${inspection?.width && inspection?.height ? `${inspection.width} × ${inspection.height} px` : (zh ? "未读取" : "Unavailable")}`,
+    `SHA-256: ${inspection?.sha256 ?? (zh ? "未读取" : "Unavailable")}`,
+    `${zh ? "报告版本" : "Report version"}: ${IMAGE_EVIDENCE_REPORT_VERSION}`,
+    "",
+    `## ${zh ? "结论概览" : "Evidence overview"}`,
+    "",
+    `${zh ? "主要证据级别" : "Primary evidence level"}: ${readableSummaryKind(summary.kind, zh)}`,
+    `${zh ? "证据关系" : "Evidence relationship"}: ${readableRelationship(relationship, zh)}`,
+    "",
+    `## ${zh ? "三个检测通道" : "Three detection channels"}`,
+    "",
+    `- ${zh ? "文件来源" : "File provenance"}: ${readableChannelStatus(channels.provenance, zh)}${fileSignals.length ? ` · ${zh ? "明确记录" : "explicit records"} ${fileSignals.length}` : ""}`,
+    `- ${zh ? "可见平台标记" : "Visible platform marks"}: ${readableChannelStatus(channels.visibleMark, zh)}${visibleMark ? ` · ${providerLabel(visibleMark.provider)} ${Math.round(visibleMark.confidence * 100)}%` : ""}`,
+    `- ${zh ? "像素统计" : "Pixel statistics"}: ${readableChannelStatus(channels.pixel, zh)}${pixel ? ` · ${readablePixelBand(pixelEstimateBand(pixel), zh)} · ${zh ? "原始输出" : "raw output"} ${Math.round(pixel.score * 100)}%` : ""}`,
+  ]
+  if (inspection?.c2pa.present) {
+    lines.push(
+      "",
+      `## C2PA`,
+      "",
+      `- ${zh ? "验证状态" : "Validation state"}: ${inspection.c2pa.validationState ?? "unknown"}`,
+      `- ${zh ? "来源信任" : "Signer trust"}: ${inspection.c2pa.trust ?? "unknown"}`,
+    )
+  }
+  if (fileSignals.length) {
+    lines.push("", `## ${zh ? "文件中的明确记录" : "Explicit file records"}`, "")
+    for (const signal of fileSignals) lines.push(`- ${signal.label}: ${signal.value}`)
+  }
+  if (pixel) {
+    lines.push(
+      "",
+      `## ${zh ? "像素通道详情" : "Pixel-channel details"}`,
+      "",
+      `- ${zh ? "区域一致性" : "Region consistency"}: ${Math.round(pixel.consistency * 100)}%`,
+      `- ${zh ? "区域差异" : "Regional spread"}: ${Math.round(pixel.spread * 100)} ${zh ? "个百分点" : "points"}`,
+      `- ${zh ? "推理后端" : "Inference backend"}: ${pixel.backend}`,
+      `- ${zh ? "模型" : "Model"}: ${pixel.model}`,
+    )
+  }
+  lines.push(
+    "",
+    `## ${zh ? "使用限制" : "Limitations"}`,
+    "",
+    zh
+      ? "本报告不是 AI 创作概率，也不能单独用于处罚、版权归属、作者身份或事实真实性判断。没有检测到来源证据，不等于图片一定由真人创作。"
+      : "This report is not a probability of AI authorship and must not be the sole basis for penalties, copyright, authorship, or factual-authenticity decisions. No detected provenance does not prove human authorship.",
+    "",
+  )
+  return lines.join("\n")
+}
+
 async function settleChannel<T>(operation: Promise<T>): Promise<PromiseSettledResult<T>> {
   try {
     return { status: "fulfilled", value: await operation }
@@ -219,7 +299,7 @@ async function settleChannel<T>(operation: Promise<T>): Promise<PromiseSettledRe
 }
 
 export function ImageInspectorTool() {
-  const { pick, format } = useLanguage()
+  const { language, pick, format } = useLanguage()
   const [file, setFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState("")
   const [inspection, setInspection] = useState<ImageInspection | null>(null)
@@ -234,6 +314,7 @@ export function ImageInspectorTool() {
   const [notice, setNotice] = useState("")
   const [inspectedAt, setInspectedAt] = useState<string | null>(null)
   const [handoffLoading, setHandoffLoading] = useState(false)
+  const [sampleLoading, setSampleLoading] = useState(false)
   const workerRef = useRef<Worker | null>(null)
   const pixelCancelRef = useRef<(() => void) | null>(null)
   const analysisAbortRef = useRef<AbortController | null>(null)
@@ -344,6 +425,39 @@ export function ImageInspectorTool() {
     setStatus("")
     setNotice("")
     setInspectedAt(null)
+  }
+
+  async function loadSample() {
+    if (running || handoffLoading) return
+    setSampleLoading(true)
+    setNotice("")
+    try {
+      const response = await fetch("/illustrations/hero-ai-image-detection.webp", {
+        cache: "force-cache",
+      })
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      const blob = await response.blob()
+      const sample = new File([blob], "tabnative-ai-image-sample.webp", {
+        type: blob.type || "image/webp",
+      })
+      const validated = await validateImageFile(sample, IMAGE_INSPECTOR_MAX_PIXELS)
+      handleFile(validated.file)
+      setNotice(
+        pick(
+          "示例图片已准备好。点击“生成来源证据报告”即可体验完整检测。",
+          "The sample image is ready. Select “Create source-evidence report” to try the full check.",
+        ),
+      )
+    } catch {
+      setNotice(
+        pick(
+          "暂时无法载入示例图片，你仍可以选择自己的 JPG、PNG 或 WebP。",
+          "The sample image could not be loaded. You can still choose your own JPG, PNG, or WebP file.",
+        ),
+      )
+    } finally {
+      setSampleLoading(false)
+    }
   }
 
   async function analyze() {
@@ -568,6 +682,25 @@ export function ImageInspectorTool() {
     window.setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
 
+  function exportReadableReport() {
+    if (!hasReport) return
+    const content = buildReadableImageEvidenceReport({
+      language,
+      file,
+      inspection,
+      pixel,
+      visibleMark,
+      channels,
+    })
+    const blob = new Blob([content], { type: "text/markdown;charset=utf-8" })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement("a")
+    anchor.href = url
+    anchor.download = `tabnative-image-evidence-${Date.now()}.md`
+    anchor.click()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+
   return (
     <div className="space-y-6" aria-busy={running}>
       <Card className="border-white/10 bg-[#0d0d0d] shadow-sm">
@@ -590,6 +723,25 @@ export function ImageInspectorTool() {
                 "正在读取上一步的本地图片并校验文件内容",
                 "Loading the local image from the previous tool and validating its contents",
               )}
+            </div>
+          ) : null}
+          {!file ? (
+            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-cyan-300/15 bg-cyan-300/[.025] p-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={loadSample}
+                disabled={sampleLoading || running || handoffLoading}
+              >
+                {sampleLoading ? <LoaderCircle className="animate-spin" /> : <ImagePlus />}
+                {pick("试用示例图片", "Try a sample image")}
+              </Button>
+              <p className="text-xs leading-5 text-zinc-500">
+                {pick(
+                  "无需先准备文件，示例只用于体验本地检测流程。",
+                  "No file needed. The bundled sample only demonstrates the local detection flow.",
+                )}
+              </p>
             </div>
           ) : null}
           <FileDropzone
@@ -665,7 +817,9 @@ export function ImageInspectorTool() {
           visibleMark={visibleMark}
           channels={channels}
           onExport={exportReport}
+          onExportReadable={exportReadableReport}
           headingRef={reportHeadingRef}
+          previewUrl={previewUrl}
         />
       ) : null}
     </div>
@@ -678,16 +832,21 @@ function SourceEvidenceReport({
   visibleMark,
   channels,
   onExport,
+  onExportReadable,
   headingRef,
+  previewUrl,
 }: {
   inspection: ImageInspection | null
   pixel: PixelDetectionResult | null
   visibleMark: VisibleAiMarkDetection | null
   channels: DetectionChannelAvailability
   onExport: () => void
+  onExportReadable: () => void
   headingRef: RefObject<HTMLHeadingElement | null>
+  previewUrl: string
 }) {
   const { pick, format } = useLanguage()
+  const [selectedView, setSelectedView] = useState("full")
   const summary = summarizeImageEvidence({ inspection, pixel, visibleMark })
   const summaryCopy = getSummaryCopy(summary.kind, pick)
   const fileAiSignals = explicitAiFileSignals(inspection)
@@ -718,7 +877,7 @@ function SourceEvidenceReport({
               <h2
                 ref={headingRef}
                 tabIndex={-1}
-                className="mt-4 text-2xl font-semibold tracking-tight text-white outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+                className="mt-4 scroll-mt-24 text-2xl font-semibold tracking-tight text-white outline-none"
               >
                 {pick("图片来源证据报告", "Image source-evidence report")}
               </h2>
@@ -732,10 +891,16 @@ function SourceEvidenceReport({
                 </p>
               </div>
             </div>
-            <Button variant="secondary" onClick={onExport}>
-              <Download />
-              {pick("导出 JSON 报告", "Export JSON report")}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="secondary" onClick={onExportReadable}>
+                <FileText />
+                {pick("导出可读摘要", "Export readable summary")}
+              </Button>
+              <Button variant="outline" onClick={onExport}>
+                <Download />
+                {pick("导出 JSON", "Export JSON")}
+              </Button>
+            </div>
           </div>
         </div>
         <CardContent className="p-6 md:p-8">
@@ -897,6 +1062,16 @@ function SourceEvidenceReport({
                   label={pick("当前支持", "Currently supported")}
                   value="Gemini · Doubao · Jimeng"
                 />
+                {previewUrl && inspection?.width && inspection?.height ? (
+                  <ImageRegionPreview
+                    src={previewUrl}
+                    width={inspection.width}
+                    height={inspection.height}
+                    region={visibleMark.region}
+                    label={pick("匹配位置", "Matched location")}
+                    emptyLabel={pick("平台标记位置由检测器内部确认", "The platform-mark location was confirmed internally")}
+                  />
+                ) : null}
               </div>
             ) : (
               <EmptyEvidence
@@ -953,6 +1128,15 @@ function SourceEvidenceReport({
                 />
               </div>
               <Info label={pick("推理后端", "Backend")} value={pixel.backend} />
+              {previewUrl && inspection?.width && inspection.height ? (
+                <PixelRegionPreview
+                  src={previewUrl}
+                  width={inspection.width}
+                  height={inspection.height}
+                  selectedView={selectedView}
+                  label={viewLabel(selectedView, pick)}
+                />
+              ) : null}
               <details className="rounded-xl border border-white/10">
                 <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-zinc-300">
                   {format("查看 {count} 个区域的原始输出", "View raw output for {count} region(s)", { count: pixel.views.length })}
@@ -963,6 +1147,8 @@ function SourceEvidenceReport({
                       key={view.view}
                       name={viewLabel(view.view, pick)}
                       score={view.score}
+                      selected={selectedView === view.view}
+                      onSelect={() => setSelectedView(view.view)}
                     />
                   ))}
                 </div>
@@ -1136,9 +1322,24 @@ function RawMetadata({ inspection }: { inspection: ImageInspection }) {
   )
 }
 
-function ViewBar({ name, score }: { name: string; score: number }) {
+function ViewBar({
+  name,
+  score,
+  selected,
+  onSelect,
+}: {
+  name: string
+  score: number
+  selected: boolean
+  onSelect: () => void
+}) {
   return (
-    <div>
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onSelect}
+      className={`block w-full rounded-lg p-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 ${selected ? "bg-cyan-300/[.07]" : "hover:bg-white/[.03]"}`}
+    >
       <div className="mb-1.5 flex items-center justify-between text-xs">
         <span className="text-zinc-400">{name}</span>
         <span className="font-mono text-zinc-300">
@@ -1151,7 +1352,88 @@ function ViewBar({ name, score }: { name: string; score: number }) {
           style={{ width: `${Math.round(score * 100)}%` }}
         />
       </div>
-    </div>
+    </button>
+  )
+}
+
+function PixelRegionPreview({
+  src,
+  width,
+  height,
+  selectedView,
+  label,
+}: {
+  src: string
+  width: number
+  height: number
+  selectedView: string
+  label: string
+}) {
+  const plan = buildImageViewPlan(width, height)
+  const selected = plan.find((item) => item.name === selectedView) ?? plan[0]
+  const bounds = selected?.bounds
+  const region = bounds
+    ? {
+        x: bounds[0],
+        y: bounds[1],
+        width: bounds[2] - bounds[0] + 1,
+        height: bounds[3] - bounds[1] + 1,
+      }
+    : null
+  return (
+    <ImageRegionPreview
+      src={src}
+      width={width}
+      height={height}
+      region={region}
+      label={label}
+      emptyLabel={label}
+    />
+  )
+}
+
+function ImageRegionPreview({
+  src,
+  width,
+  height,
+  region,
+  label,
+  emptyLabel,
+}: {
+  src: string
+  width: number
+  height: number
+  region: { x: number; y: number; width: number; height: number } | null
+  label: string
+  emptyLabel: string
+}) {
+  const overlay = region
+    ? {
+        left: `${Math.max(0, Math.min(100, region.x / width * 100))}%`,
+        top: `${Math.max(0, Math.min(100, region.y / height * 100))}%`,
+        width: `${Math.max(0, Math.min(100, region.width / width * 100))}%`,
+        height: `${Math.max(0, Math.min(100, region.height / height * 100))}%`,
+      }
+    : null
+  return (
+    <figure className="rounded-xl border border-white/10 bg-black/30 p-3">
+      <div
+        className="relative mx-auto max-h-56 w-full overflow-hidden rounded-lg bg-black"
+        style={{ aspectRatio: `${width} / ${height}` }}
+      >
+        <Image src={src} alt="" fill unoptimized className="object-cover" />
+        {overlay ? (
+          <span
+            aria-hidden="true"
+            className="absolute rounded border-2 border-cyan-300 bg-cyan-300/10 shadow-[0_0_0_1px_rgba(0,0,0,.55)]"
+            style={overlay}
+          />
+        ) : null}
+      </div>
+      <figcaption className="mt-2 text-center text-xs text-zinc-500">
+        {overlay ? label : emptyLabel}
+      </figcaption>
+    </figure>
   )
 }
 
@@ -1348,6 +1630,51 @@ function summaryClass(kind: EvidenceSummaryKind) {
   if (kind === "visual-clue") return "bg-cyan-500/15 text-cyan-300"
   if (kind === "statistical-estimate") return "bg-amber-500/15 text-amber-300"
   return "bg-white/10 text-zinc-300"
+}
+
+function readableSummaryKind(kind: EvidenceSummaryKind, zh: boolean) {
+  const labels: Record<EvidenceSummaryKind, [string, string]> = {
+    "file-evidence": ["发现文件来源记录", "File provenance found"],
+    "visual-clue": ["发现可见平台线索", "Visible platform clue found"],
+    "statistical-estimate": ["仅有像素统计估计", "Pixel estimate only"],
+    insufficient: ["证据不足", "Insufficient evidence"],
+  }
+  return labels[kind][zh ? 0 : 1]
+}
+
+function readableRelationship(
+  relationship: FusedImageDetection["evidenceAgreement"],
+  zh: boolean,
+) {
+  const labels: Record<FusedImageDetection["evidenceAgreement"], [string, string]> = {
+    agree: ["多类证据方向一致", "Evidence channels agree"],
+    conflict: ["检测证据存在冲突", "Detection evidence conflicts"],
+    "pixel-only": ["只有像素模型形成明显方向", "Only the pixel model has a clear direction"],
+    "provenance-only": ["来源或平台证据独立成立", "Provenance or platform evidence stands alone"],
+    insufficient: ["当前证据不足", "Current evidence is insufficient"],
+  }
+  return labels[relationship][zh ? 0 : 1]
+}
+
+function readableChannelStatus(status: DetectionChannelStatus, zh: boolean) {
+  const labels: Record<DetectionChannelStatus, [string, string]> = {
+    available: ["可用", "Available"],
+    unavailable: ["本次不可用", "Unavailable this run"],
+    "not-run": ["未运行", "Not run"],
+  }
+  return labels[status][zh ? 0 : 1]
+}
+
+function readablePixelBand(
+  band: ReturnType<typeof pixelEstimateBand>,
+  zh: boolean,
+) {
+  const labels = {
+    higher: ["较高的 AI 类像素信号", "Higher AI-like pixel signals"],
+    uncertain: ["像素结果不确定", "Pixel result is uncertain"],
+    lower: ["较低的 AI 类像素信号", "Lower AI-like pixel signals"],
+  } as const
+  return labels[band][zh ? 0 : 1]
 }
 
 function providerLabel(provider: VisibleAiMarkDetection["provider"]) {
