@@ -30,10 +30,10 @@ const sections = [
   },
   {
     title: { zh: "AI 图片检测与来源检查", en: "AI image detection and provenance" },
-    paragraphs: [{ zh: "检测组合三类独立证据。像素通道使用 MIT 许可的轻量 ViT ONNX 模型，在浏览器 Worker 中分析整图和多个方形区域；可见标记通道检查 Gemini、豆包和即梦等平台角标；来源通道检查文件容器、EXIF/XMP/IPTC 字段与 C2PA Content Credentials。最终结论会分别显示像素分数、区域一致性、可见标记和文件来源信号。", en: "Detection combines three independent evidence types. The pixel channel runs a lightweight MIT-licensed ViT ONNX model in a browser Worker over the full image and multiple square regions. A visible-mark channel checks platform marks from Gemini, Doubao, and Jimeng. The provenance channel checks the file container, EXIF/XMP/IPTC fields, and C2PA Content Credentials. The final readout keeps pixel score, region consistency, visible marks, and file-provenance signals separate." }],
+    paragraphs: [{ zh: "检测组合三类独立证据。像素通道先用轻量 ViT ONNX 模型分析整图和多个区域；结果偏低或不确定时，再用训练来源不同的 ViT 模型复核整图。两级明显冲突时保留为不确定，不用平均分掩盖分歧。可见标记通道检查 Gemini、豆包和即梦角标；来源通道检查 EXIF/XMP/IPTC 与 C2PA。", en: "Detection combines three independent evidence types. The pixel channel first runs a lightweight ViT ONNX model over the full image and multiple regions. If that result is low or uncertain, a differently trained ViT reviews the full image. Clear disagreement remains uncertain instead of being hidden by an average. Other channels inspect Gemini, Doubao, and Jimeng marks plus EXIF/XMP/IPTC and C2PA provenance." }],
     bullets: [
       { zh: "明确的平台可见标记或生成器元数据属于强来源证据，即使像素模型分数较低也会提高综合 AI 信号。", en: "An explicit platform mark or generator metadata is strong provenance evidence and can raise the combined AI signal even when the pixel-model score is low." },
-      { zh: "模型训练数据主要覆盖 Midjourney、Stable Diffusion 与真实图片，模型卡报告的真实场景准确率约为 72%，不能覆盖所有新生成器。", en: "Training mainly covers Midjourney, Stable Diffusion, and real images; the model card reports about 72% accuracy on its real-world set and cannot cover every new generator." },
+      { zh: "快速模型与增强模型使用不同训练来源，增强模型覆盖 Midjourney、Stable Diffusion、DALL·E 3、其他 AI 图片与真实图片；两者仍不能覆盖所有新生成器。", en: "The fast and enhanced models use different training sources. The enhanced model covers Midjourney, Stable Diffusion, DALL·E 3, other AI images, and real images, but neither can cover every new generator." },
       { zh: "插画、游戏画面、重压缩图片、局部 AI 编辑和特殊相机处理都可能误判；缺少元数据也不代表图片一定来自相机。", en: "Illustrations, game captures, heavy compression, local AI edits, and unusual camera processing can be misclassified. Missing metadata does not prove a camera origin." },
     ],
   },

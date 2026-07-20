@@ -1,4 +1,8 @@
 {
+  "Combine provenance, platform marks, and on-demand two-stage pixel checks with automatic review of weak results.": "يجمع بين معلومات المصدر وعلامات المنصة وفحص البكسلات على مرحلتين عند الحاجة، مع مراجعة تلقائية للنتائج غير الحاسمة.",
+  "Wait for file provenance, visible platform marks, and pixel checks to finish independently. An enhanced check automatically reviews uncertain or low fast-check results.": "انتظر حتى تكتمل فحوص مصدر الملف وعلامات المنصة المرئية والبكسلات بصورة مستقلة. يراجع الفحص المعزز تلقائيا نتائج الفحص السريع غير المؤكدة أو المنخفضة.",
+  "Review visible platform marks and the two-stage pixel result separately, note model disagreement, and do not treat a model percentage as a provenance fact.": "راجع علامات المنصة المرئية ونتيجة فحص البكسلات على مرحلتين كلّا على حدة، وانتبه إلى اختلاف النماذج، ولا تعتبر النسبة المئوية للنموذج حقيقة عن المصدر.",
+  "Export JSON to retain detector versions, channel availability, file evidence, per-stage model outputs, and limitations.": "صدّر ملف JSON للاحتفاظ بإصدارات أدوات الكشف وتوفّر القنوات وأدلة الملف ومخرجات كل مرحلة والقيود.",
   ", followed by nearby-pixel repair. Auto mode leaves the image unchanged below its confidence threshold; manual mode changes only the region selected by the user.": "، يليه إصلاح البكسل القريب. الوضع التلقائي يترك الصورة دون تغيير تحت عتبة الثقة الخاصة بها؛ الوضع اليدوي يغير فقط المنطقة التي يختارها المستخدم.",
   "; {count} more were not added": "; لم تضاف {count} المزيد",
   ". Doubao and Jimeng use browser-side glyph localization inspired by": ". Doubao وJimeng يستخدمون تعريب الرموز على جانب المتصفح مستوحى من",

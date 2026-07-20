@@ -7,13 +7,13 @@ import { ToolShell } from "@/components/tool-shell"
 
 export const metadata: Metadata = {
   title: "免费 AI 图片检测与来源证据报告",
-  description: "在浏览器本地分通道检查像素模型、可见平台标记、C2PA、EXIF、XMP 与生成器来源证据。图片不上传。",
+  description: "在浏览器本地用按需两级像素检测，并分通道检查可见平台标记、C2PA、EXIF、XMP 与生成器来源证据。图片不上传。",
 }
 
 export default function Page() {
   return <ToolShell
     title={{ zh: "AI 图片来源证据检查", en: "AI Image Provenance Check" }}
-    description={{ zh: "分别检查可验证的文件来源、可见平台标记与像素模型估计。检测在浏览器中完成，结果用于理解证据与限制，不是绝对真伪结论。", en: "Inspect verifiable file provenance, visible platform marks, and pixel-model estimates separately. Checks run in your browser and explain evidence and limits rather than issuing an absolute verdict." }}
+    description={{ zh: "分别检查可验证的文件来源、可见平台标记与按需两级像素估计。增强检测会自动复核不确定或偏低的快速结果；全部过程在浏览器中完成。", en: "Inspect verifiable file provenance, visible platform marks, and an on-demand two-stage pixel estimate. An enhanced check automatically reviews uncertain or low fast-check results, entirely in your browser." }}
     eyebrow="AI Image Provenance"
     icon={ScanSearch}
     compactHero

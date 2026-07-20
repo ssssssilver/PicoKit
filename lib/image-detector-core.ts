@@ -4,6 +4,10 @@ import type { VisibleAiMarkDetection } from "@/lib/visible-watermark"
 export const IMAGE_PIXEL_MODEL_ID = "onnx-community/ai-image-detect-distilled-ONNX"
 export const IMAGE_PIXEL_MODEL_REVISION = "7f067e23521eeb6d6525221af82c613fb746aaff"
 export const IMAGE_PIXEL_DETECTOR_VERSION = `${IMAGE_PIXEL_MODEL_ID}@${IMAGE_PIXEL_MODEL_REVISION}`
+export const IMAGE_PIXEL_SECONDARY_MODEL_ID = "onnx-community/ai-source-detector-ONNX"
+export const IMAGE_PIXEL_SECONDARY_MODEL_REVISION = "9a1c4127b96f6b76e7674c01af2642bf248e5950"
+export const IMAGE_PIXEL_SECONDARY_DETECTOR_VERSION = `${IMAGE_PIXEL_SECONDARY_MODEL_ID}@${IMAGE_PIXEL_SECONDARY_MODEL_REVISION}`
+export const IMAGE_PIXEL_CASCADE_VERSION = "tabnative/image-pixel-cascade@2"
 
 export type ImageClassifierLabel = { label: string; score: number }
 
@@ -12,7 +16,7 @@ export type ImageViewScore = {
   score: number
 }
 
-export type PixelDetectionResult = {
+export type PixelModelResult = {
   score: number
   consistency: number
   spread: number
@@ -20,7 +24,18 @@ export type PixelDetectionResult = {
   model: string
   views: ImageViewScore[]
   aggregation?: "robust-full-region-v2"
-  calibration?: "conservative-backend-v1"
+  calibration?: "conservative-backend-v1" | "conservative-cascade-v1"
+}
+
+export type PixelCascadeState = "not-needed" | "completed" | "unavailable" | "skipped"
+
+export type PixelDetectionResult = PixelModelResult & {
+  models?: PixelModelResult[]
+  modelAgreement?: number
+  cascade?: {
+    strategy: "challenge-negative-v1"
+    secondary: PixelCascadeState
+  }
 }
 
 export type ImageViewPlan = {
@@ -91,7 +106,7 @@ function median(values: number[]) {
     : (sorted[middle - 1] + sorted[middle]) / 2
 }
 
-export function aggregateImageViews(outputs: ImageClassifierLabel[][], viewNames: string[], backend: string, model: string): PixelDetectionResult {
+export function aggregateImageViews(outputs: ImageClassifierLabel[][], viewNames: string[], backend: string, model: string): PixelModelResult {
   const views = outputs.map((labels, index) => ({ view: viewNames[index] || `view-${index + 1}`, score: aiImageScore(labels) }))
   const full = views.find((item) => item.view === "full") ?? views[0]
   if (!full) {
@@ -129,7 +144,7 @@ export function aggregateImageViews(outputs: ImageClassifierLabel[][], viewNames
   }
 }
 
-export function pixelEstimateBand(pixel: PixelDetectionResult): PixelEstimateBand {
+function singlePixelEstimateBand(pixel: PixelModelResult): PixelEstimateBand {
   // Region disagreement is more informative than a precise-looking score.
   // Keep conflicting observations in the uncertain band on every backend.
   if (pixel.consistency < 0.55 || pixel.spread > 0.22) return "uncertain"
@@ -142,6 +157,78 @@ export function pixelEstimateBand(pixel: PixelDetectionResult): PixelEstimateBan
   if (pixel.score >= thresholds.higher) return "higher"
   if (pixel.score <= thresholds.lower) return "lower"
   return "uncertain"
+}
+
+export function pixelEstimateBand(pixel: PixelDetectionResult): PixelEstimateBand {
+  const models = pixel.models?.length ? pixel.models : [pixel]
+  const primaryBand = singlePixelEstimateBand(models[0])
+  const secondary = models[1]
+  if (!secondary) return primaryBand
+
+  const secondaryBand = singlePixelEstimateBand(secondary)
+  // The enhanced model exists to challenge a weak or negative first pass.
+  // It may promote an uncertain result, but direct higher/lower disagreement
+  // remains uncertain instead of being hidden behind an averaged score.
+  if (secondaryBand === "uncertain") return "uncertain"
+  if (primaryBand === "uncertain" || primaryBand === secondaryBand) {
+    return secondaryBand
+  }
+  return "uncertain"
+}
+
+export function shouldRunSecondaryPixelModel(primary: PixelModelResult) {
+  return singlePixelEstimateBand(primary) !== "higher"
+}
+
+export function combinePixelModelResults(
+  primary: PixelModelResult,
+  secondary: PixelModelResult | null,
+  secondaryState: PixelCascadeState,
+): PixelDetectionResult {
+  if (!secondary) {
+    return {
+      ...primary,
+      models: [primary],
+      modelAgreement: 1,
+      cascade: {
+        strategy: "challenge-negative-v1",
+        secondary: secondaryState,
+      },
+    }
+  }
+
+  const provisional: PixelDetectionResult = {
+    ...primary,
+    models: [primary, secondary],
+    modelAgreement: clamp(1 - Math.abs(primary.score - secondary.score)),
+    cascade: {
+      strategy: "challenge-negative-v1",
+      secondary: secondaryState,
+    },
+  }
+  const primaryBand = singlePixelEstimateBand(primary)
+  const secondaryBand = singlePixelEstimateBand(secondary)
+  const combinedBand = pixelEstimateBand(provisional)
+  let score = clamp(primary.score * 0.4 + secondary.score * 0.6)
+  if (primaryBand === "uncertain" && combinedBand !== "uncertain") {
+    score = secondary.score
+  } else if (
+    primaryBand !== "uncertain" &&
+    secondaryBand !== "uncertain" &&
+    primaryBand !== secondaryBand
+  ) {
+    score = 0.5
+  }
+
+  return {
+    ...provisional,
+    score,
+    consistency: Math.min(primary.consistency, secondary.consistency),
+    spread: Math.max(primary.spread, secondary.spread),
+    backend: Array.from(new Set([primary.backend, secondary.backend])).join(" + "),
+    model: IMAGE_PIXEL_CASCADE_VERSION,
+    calibration: "conservative-cascade-v1",
+  }
 }
 
 export function attachVisibleAiMarkEvidence(inspection: ImageInspection, mark: VisibleAiMarkDetection | null): ImageInspection {

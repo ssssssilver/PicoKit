@@ -11,8 +11,10 @@ import {
   aiImageScore,
   attachVisibleAiMarkEvidence,
   buildImageViewPlan,
+  combinePixelModelResults,
   fuseImageDetection,
   pixelEstimateBand,
+  shouldRunSecondaryPixelModel,
 } from "@/lib/image-detector-core"
 import type { ImageInspection } from "@/lib/image-types"
 import { isModelProxyRequest, resolveModelProxyTarget, toModelProxyUrl } from "@/lib/model-proxy"
@@ -115,6 +117,7 @@ describe("model download fallback", () => {
   const approvedModels = [
     "onnx-community/tmr-ai-text-detector-ONNX",
     "onnx-community/ai-image-detect-distilled-ONNX",
+    "onnx-community/ai-source-detector-ONNX",
     "Heliosoph/u2net-onnx",
   ]
 
@@ -169,6 +172,75 @@ describe("AI image detector core", () => {
   it("normalizes fake and real classifier labels", () => {
     expect(aiImageScore([{ label: "fake", score: 0.83 }, { label: "real", score: 0.17 }])).toBeCloseTo(0.83)
     expect(aiImageScore([{ label: "real", score: 0.9 }])).toBeCloseTo(0.1)
+    expect(aiImageScore([
+      { label: "midjourney", score: 0.28 },
+      { label: "other_ai", score: 0.24 },
+      { label: "stable_diffusion", score: 0.19 },
+      { label: "real", score: 0.16 },
+      { label: "dalle", score: 0.13 },
+    ])).toBeCloseTo(0.84)
+  })
+
+  it("runs an enhanced model for weak results and can recover a false negative", () => {
+    const primary = aggregateImageViews(
+      [[{ label: "fake", score: 0.26 }, { label: "real", score: 0.74 }]],
+      ["full"],
+      "webgpu",
+      "fast-model",
+    )
+    const secondary = aggregateImageViews(
+      [[
+        { label: "midjourney", score: 0.28 },
+        { label: "other_ai", score: 0.24 },
+        { label: "stable_diffusion", score: 0.19 },
+        { label: "real", score: 0.16 },
+        { label: "dalle", score: 0.13 },
+      ]],
+      ["full"],
+      "webgpu",
+      "enhanced-model",
+    )
+
+    expect(shouldRunSecondaryPixelModel(primary)).toBe(true)
+    const combined = combinePixelModelResults(primary, secondary, "completed")
+    expect(combined.score).toBeCloseTo(0.84)
+    expect(pixelEstimateBand(combined)).toBe("higher")
+    expect(combined.models).toHaveLength(2)
+    expect(combined.cascade?.secondary).toBe("completed")
+  })
+
+  it("keeps direct model disagreement uncertain instead of averaging it away", () => {
+    const primary = aggregateImageViews(
+      [[{ label: "fake", score: 0.1 }]],
+      ["full"],
+      "webgpu",
+      "fast-model",
+    )
+    const secondary = aggregateImageViews(
+      [[{ label: "real", score: 0.1 }]],
+      ["full"],
+      "webgpu",
+      "enhanced-model",
+    )
+    const combined = combinePixelModelResults(primary, secondary, "completed")
+
+    expect(combined.score).toBe(0.5)
+    expect(pixelEstimateBand(combined)).toBe("uncertain")
+  })
+
+  it("skips unnecessary enhanced work and degrades to the fast result", () => {
+    const high = aggregateImageViews(
+      [[{ label: "fake", score: 0.9 }]],
+      ["full"],
+      "webgpu",
+      "fast-model",
+    )
+    expect(shouldRunSecondaryPixelModel(high)).toBe(false)
+
+    const degraded = combinePixelModelResults(high, null, "unavailable")
+    expect(degraded.score).toBe(high.score)
+    expect(degraded.models).toEqual([high])
+    expect(degraded.cascade?.secondary).toBe("unavailable")
   })
 
   it("aggregates multiple image regions and measures their consistency", () => {

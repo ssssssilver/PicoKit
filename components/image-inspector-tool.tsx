@@ -11,7 +11,6 @@ import {
   FileText,
   FileSearch,
   Fingerprint,
-  ImagePlus,
   LoaderCircle,
   Play,
   RotateCcw,
@@ -35,6 +34,9 @@ import {
   IMAGE_PIXEL_DETECTOR_VERSION,
   IMAGE_PIXEL_MODEL_ID,
   IMAGE_PIXEL_MODEL_REVISION,
+  IMAGE_PIXEL_SECONDARY_DETECTOR_VERSION,
+  IMAGE_PIXEL_SECONDARY_MODEL_ID,
+  IMAGE_PIXEL_SECONDARY_MODEL_REVISION,
   pixelEstimateBand,
   type FusedImageDetection,
   type PixelDetectionResult,
@@ -51,6 +53,7 @@ import {
 
 type WorkerMessage = {
   type: "progress" | "status" | "result" | "error"
+  tier?: "primary" | "secondary"
   progress?: number
   file?: string
   stage?: string
@@ -73,7 +76,7 @@ export type EvidenceSummaryKind =
   | "statistical-estimate"
   | "insufficient"
 
-export const IMAGE_EVIDENCE_REPORT_VERSION = "1.2.0"
+export const IMAGE_EVIDENCE_REPORT_VERSION = "1.3.0"
 export const PROVENANCE_DETECTOR_VERSION = "exif-c2pa-inspector/2"
 export const VISIBLE_MARK_DETECTOR_VERSION = "platform-mark-matcher/2"
 export const IMAGE_INSPECTOR_MAX_BYTES = 25 * 1024 * 1024
@@ -87,8 +90,8 @@ const INITIAL_CHANNELS: DetectionChannelAvailability = {
 
 const REPORT_LIMITATIONS = [
   {
-    zh: "像素通道是统计估计，会受到压缩、裁剪、编辑方式、新生成器和图片类型影响。",
-    en: "The pixel channel is a statistical estimate affected by compression, crops, edits, new generators, and image type.",
+    zh: "像素模型及其组合仍是统计估计，会受到压缩、裁剪、编辑方式、新生成器和图片类型影响。",
+    en: "Pixel models and their combined output remain statistical estimates affected by compression, crops, edits, new generators, and image type.",
   },
   {
     zh: "可见标记通道只检查当前支持的 Gemini、豆包和即梦角标，不检查 SynthID 等不可见水印。",
@@ -205,6 +208,16 @@ export function buildImageEvidenceReport({
           model: IMAGE_PIXEL_MODEL_ID,
           revision: IMAGE_PIXEL_MODEL_REVISION,
           backend: pixel?.backend ?? null,
+          secondary: {
+            identifier: IMAGE_PIXEL_SECONDARY_DETECTOR_VERSION,
+            model: IMAGE_PIXEL_SECONDARY_MODEL_ID,
+            revision: IMAGE_PIXEL_SECONDARY_MODEL_REVISION,
+          },
+          cascade: pixel?.cascade ?? null,
+          models: pixel?.models?.map((model) => ({
+            identifier: model.model,
+            backend: model.backend,
+          })) ?? [],
         },
         result: pixel,
       },
@@ -234,6 +247,7 @@ export function buildReadableImageEvidenceReport({
     ? fuseImageDetection(pixel, inspection).evidenceAgreement
     : "insufficient"
   const fileSignals = explicitAiFileSignals(inspection)
+  const pixelModels = pixel?.models?.length ? pixel.models : pixel ? [pixel] : []
   const lines = [
     zh ? "# TabNative 图片来源证据摘要" : "# TabNative Image Source-Evidence Summary",
     "",
@@ -274,9 +288,17 @@ export function buildReadableImageEvidenceReport({
       "",
       `- ${zh ? "区域一致性" : "Region consistency"}: ${Math.round(pixel.consistency * 100)}%`,
       `- ${zh ? "区域差异" : "Regional spread"}: ${Math.round(pixel.spread * 100)} ${zh ? "个百分点" : "points"}`,
-      `- ${zh ? "推理后端" : "Inference backend"}: ${pixel.backend}`,
-      `- ${zh ? "模型" : "Model"}: ${pixel.model}`,
+      `- ${zh ? "检测层级" : "Detection stages"}: ${pixelModels.length}`,
+      `- ${zh ? "综合推理后端" : "Combined inference backend"}: ${pixel.backend}`,
     )
+    pixelModels.forEach((model, index) => {
+      lines.push(
+        `- ${index === 0 ? (zh ? "快速检测" : "Fast check") : (zh ? "增强检测" : "Enhanced check")}: ${readablePixelBand(pixelEstimateBand(model), zh)} · ${zh ? "原始输出" : "raw output"} ${Math.round(model.score * 100)}% · ${model.backend}`,
+      )
+    })
+    if (pixel.cascade?.secondary === "unavailable") {
+      lines.push(`- ${zh ? "增强检测状态" : "Enhanced-check status"}: ${zh ? "本次不可用，已保留快速检测结果" : "Unavailable this run; the fast-check result was preserved"}`)
+    }
   }
   lines.push(
     "",
@@ -314,7 +336,6 @@ export function ImageInspectorTool() {
   const [notice, setNotice] = useState("")
   const [inspectedAt, setInspectedAt] = useState<string | null>(null)
   const [handoffLoading, setHandoffLoading] = useState(false)
-  const [sampleLoading, setSampleLoading] = useState(false)
   const workerRef = useRef<Worker | null>(null)
   const pixelCancelRef = useRef<(() => void) | null>(null)
   const analysisAbortRef = useRef<AbortController | null>(null)
@@ -427,39 +448,6 @@ export function ImageInspectorTool() {
     setInspectedAt(null)
   }
 
-  async function loadSample() {
-    if (running || handoffLoading) return
-    setSampleLoading(true)
-    setNotice("")
-    try {
-      const response = await fetch("/illustrations/hero-ai-image-detection.webp", {
-        cache: "force-cache",
-      })
-      if (!response.ok) throw new Error(`HTTP ${response.status}`)
-      const blob = await response.blob()
-      const sample = new File([blob], "tabnative-ai-image-sample.webp", {
-        type: blob.type || "image/webp",
-      })
-      const validated = await validateImageFile(sample, IMAGE_INSPECTOR_MAX_PIXELS)
-      handleFile(validated.file)
-      setNotice(
-        pick(
-          "示例图片已准备好。点击“生成来源证据报告”即可体验完整检测。",
-          "The sample image is ready. Select “Create source-evidence report” to try the full check.",
-        ),
-      )
-    } catch {
-      setNotice(
-        pick(
-          "暂时无法载入示例图片，你仍可以选择自己的 JPG、PNG 或 WebP。",
-          "The sample image could not be loaded. You can still choose your own JPG, PNG, or WebP file.",
-        ),
-      )
-    } finally {
-      setSampleLoading(false)
-    }
-  }
-
   async function analyze() {
     if (!file) return
     analysisAbortRef.current?.abort()
@@ -506,9 +494,14 @@ export function ImageInspectorTool() {
       visibleMarkOutcome.status === "fulfilled"
         ? visibleMarkOutcome.value
         : null
+    const hasExplicitAiEvidence =
+      explicitAiFileSignals(baseInspection).some((signal) => signal.severity === "high") ||
+      Boolean(nextVisibleMark)
     setProgress(52)
     setStatus(pick("像素统计", "Pixel statistics"))
-    const pixelOutcome = await settleChannel(runPixelDetection(file, abortController.signal))
+    const pixelOutcome = await settleChannel(
+      runPixelDetection(file, abortController.signal, !hasExplicitAiEvidence),
+    )
     if (runRef.current !== runId || abortController.signal.aborted) return
     const nextInspection = baseInspection
       ? attachVisibleAiMarkEvidence(baseInspection, nextVisibleMark)
@@ -553,7 +546,11 @@ export function ImageInspectorTool() {
     }
   }
 
-  function runPixelDetection(source: File, signal?: AbortSignal) {
+  function runPixelDetection(
+    source: File,
+    signal?: AbortSignal,
+    allowSecondary = true,
+  ) {
     pixelCancelRef.current?.()
     return new Promise<PixelDetectionResult>((resolve, reject) => {
       let worker: Worker | null = null
@@ -597,31 +594,40 @@ export function ImageInspectorTool() {
       activeWorker.onmessage = (event: MessageEvent<WorkerMessage>) => {
         const message = event.data
         if (message.type === "progress") {
-          setProgress((current) => Math.max(
-            current,
-            Math.max(3, Math.min(82, Number(message.progress) * 0.82 || 3)),
-          ))
-          setStatus(
-            pick(
-              "正在准备首次检测所需组件",
-              "Preparing detection for first use",
-            ),
+          const modelProgress = Math.max(
+            0,
+            Math.min(100, Number(message.progress) || 0),
           )
+          if (message.tier === "secondary") {
+            setProgress((current) => Math.max(current, 80 + modelProgress * 0.12))
+            setStatus(pick("正在准备增强检测", "Preparing enhanced check"))
+          } else {
+            setProgress((current) => Math.max(current, 52 + modelProgress * 0.2))
+            setStatus(pick("正在准备快速检测", "Preparing fast check"))
+          }
         }
         if (message.type === "status") {
           if (message.stage === "decoding-image") {
-            setProgress((value) => Math.max(value, 84))
+            setProgress((value) => Math.max(value, 74))
             setStatus(pick("正在解码图片", "Decoding image"))
           }
           if (message.stage === "analyzing-views") {
-            setProgress(90)
+            setProgress((value) => Math.max(value, 78))
             setStatus(
               format(
-                "正在分析 {count} 个图片区域",
-                "Analyzing {count} image regions",
+                "正在进行快速检测（{count} 个区域）",
+                "Running fast check ({count} regions)",
                 { count: message.views || 1 },
               ),
             )
+          }
+          if (message.stage === "preparing-model" && message.tier === "secondary") {
+            setProgress((value) => Math.max(value, 80))
+            setStatus(pick("正在准备增强检测", "Preparing enhanced check"))
+          }
+          if (message.stage === "analyzing-secondary") {
+            setProgress((value) => Math.max(value, 94))
+            setStatus(pick("正在进行增强检测", "Running enhanced check"))
           }
         }
         if (message.type === "result" && message.result) finish({ value: message.result })
@@ -640,6 +646,7 @@ export function ImageInspectorTool() {
             buffer,
             mime: source.type,
             preferWebGpu: Boolean(nav.gpu),
+            allowSecondary,
           },
           [buffer],
         )
@@ -723,25 +730,6 @@ export function ImageInspectorTool() {
                 "正在读取上一步的本地图片并校验文件内容",
                 "Loading the local image from the previous tool and validating its contents",
               )}
-            </div>
-          ) : null}
-          {!file ? (
-            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-cyan-300/15 bg-cyan-300/[.025] p-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={loadSample}
-                disabled={sampleLoading || running || handoffLoading}
-              >
-                {sampleLoading ? <LoaderCircle className="animate-spin" /> : <ImagePlus />}
-                {pick("试用示例图片", "Try a sample image")}
-              </Button>
-              <p className="text-xs leading-5 text-zinc-500">
-                {pick(
-                  "无需先准备文件，示例只用于体验本地检测流程。",
-                  "No file needed. The bundled sample only demonstrates the local detection flow.",
-                )}
-              </p>
             </div>
           ) : null}
           <FileDropzone
@@ -859,6 +847,7 @@ function SourceEvidenceReport({
     : "insufficient"
   const relationshipCopy = getRelationshipCopy(relationship, pick)
   const pixelBand = pixel ? pixelEstimateBand(pixel) : null
+  const pixelModels = pixel?.models?.length ? pixel.models : pixel ? [pixel] : []
 
   return (
     <div className="space-y-6">
@@ -938,7 +927,9 @@ function SourceEvidenceReport({
             <ChannelStatusCard
               label={pick("像素统计", "Pixel statistics")}
               status={channels.pixel}
-              version={IMAGE_PIXEL_DETECTOR_VERSION}
+              version={pixelModels.length > 1
+                ? pick("两级本地像素检测", "Two-stage local pixel check")
+                : pick("快速本地像素检测", "Fast local pixel check")}
               finding={
                 pixelBand
                   ? getPixelBandCopy(pixelBand, pick).label
@@ -1111,12 +1102,49 @@ function SourceEvidenceReport({
                   {getPixelBandCopy(pixelEstimateBand(pixel), pick).label}
                 </p>
                 <p className="mt-2 text-xs leading-5 text-zinc-500">
-                  {pick(
-                    `模型原始输出 ${Math.round(pixel.score * 100)}%，不是“图片由 AI 创作的概率”。结果已结合区域差异与当前推理后端，优先显示保守区间。`,
-                    `Raw model output: ${Math.round(pixel.score * 100)}%. This is not the probability of AI authorship. The displayed band also accounts for regional disagreement and the current inference backend.`,
-                  )}
+                  {pixelModels.length > 1
+                    ? pick(
+                        `两级检测综合输出 ${Math.round(pixel.score * 100)}%，不是“图片由 AI 创作的概率”。增强检测会复核不确定或偏低的快速结果；两级明显冲突时仍显示为不确定。`,
+                        `Combined two-stage output: ${Math.round(pixel.score * 100)}%. This is not the probability of AI authorship. The enhanced check reviews uncertain or low fast-check results, and clear disagreement remains uncertain.`,
+                      )
+                    : pick(
+                        `快速检测原始输出 ${Math.round(pixel.score * 100)}%，不是“图片由 AI 创作的概率”。结果已结合区域差异与当前推理后端，优先显示保守区间。`,
+                        `Fast-check raw output: ${Math.round(pixel.score * 100)}%. This is not the probability of AI authorship. The displayed band also accounts for regional disagreement and the current inference backend.`,
+                      )}
                 </p>
               </div>
+              {pixelModels.length > 1 ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {pixelModels.map((model, index) => (
+                    <div
+                      key={`${model.model}-${index}`}
+                      className="rounded-xl border border-white/10 bg-white/[.02] p-3"
+                    >
+                      <p className="text-xs text-zinc-500">
+                        {index === 0
+                          ? pick("快速检测", "Fast check")
+                          : pick("增强检测", "Enhanced check")}
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-zinc-200">
+                        {getPixelBandCopy(pixelEstimateBand(model), pick).label}
+                      </p>
+                      <p className="mt-1 text-xs text-zinc-500">
+                        {format("原始输出 {score}%", "Raw output {score}%", {
+                          score: Math.round(model.score * 100),
+                        })}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {pixel.cascade?.secondary === "unavailable" ? (
+                <div className="rounded-xl border border-amber-300/20 bg-amber-300/[.04] px-3 py-2 text-xs leading-5 text-amber-100/80">
+                  {pick(
+                    "增强检测本次未能运行，已保留快速检测结果，没有补造分数。你可以稍后重试。",
+                    "The enhanced check was unavailable this run. The fast-check result was preserved without inventing a score; you can retry later.",
+                  )}
+                </div>
+              ) : null}
               <div className="grid grid-cols-2 gap-3">
                 <Info
                   label={pick("区域一致性", "Region consistency")}
@@ -1139,7 +1167,7 @@ function SourceEvidenceReport({
               ) : null}
               <details className="rounded-xl border border-white/10">
                 <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-zinc-300">
-                  {format("查看 {count} 个区域的原始输出", "View raw output for {count} region(s)", { count: pixel.views.length })}
+                  {format("查看快速检测的 {count} 个区域", "View {count} fast-check region(s)", { count: pixel.views.length })}
                 </summary>
                 <div className="space-y-3 border-t border-white/10 p-4">
                   {pixel.views.map((view) => (
@@ -1153,9 +1181,18 @@ function SourceEvidenceReport({
                   ))}
                 </div>
               </details>
-              <p className="break-all font-mono text-[11px] text-zinc-600">
-                {pixel.model}
-              </p>
+              <details className="rounded-xl border border-white/10">
+                <summary className="cursor-pointer px-4 py-3 text-xs text-zinc-500">
+                  {pick("技术信息", "Technical details")}
+                </summary>
+                <div className="space-y-2 border-t border-white/10 p-4">
+                  {pixelModels.map((model, index) => (
+                    <p key={`${model.model}-technical-${index}`} className="break-all font-mono text-[11px] text-zinc-600">
+                      {model.model} · {model.backend}
+                    </p>
+                  ))}
+                </div>
+              </details>
             </div>
           ) : (
             <UnavailableChannel

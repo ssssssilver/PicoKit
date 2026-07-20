@@ -1,4 +1,8 @@
 {
+  "Combine provenance, platform marks, and on-demand two-stage pixel checks with automatic review of weak results.": "出所情報、プラットフォームのマーク、必要に応じて実行する2段階のピクセル検査を組み合わせ、弱い結果は自動的に再検証します。",
+  "Wait for file provenance, visible platform marks, and pixel checks to finish independently. An enhanced check automatically reviews uncertain or low fast-check results.": "ファイルの出所情報、目に見えるプラットフォームのマーク、ピクセル検査がそれぞれ完了するまで待ちます。高速検査の結果が不確か、または低い場合は、強化検査が自動的に再確認します。",
+  "Review visible platform marks and the two-stage pixel result separately, note model disagreement, and do not treat a model percentage as a provenance fact.": "目に見えるプラットフォームのマークと2段階のピクセル結果を別々に確認し、モデル間の不一致に注意してください。モデルのパーセンテージを出所の事実として扱わないでください。",
+  "Export JSON to retain detector versions, channel availability, file evidence, per-stage model outputs, and limitations.": "JSONを書き出すと、検出器のバージョン、各チャンネルの利用可否、ファイル内の証拠、段階ごとのモデル出力、制限事項を保存できます。",
   ", followed by nearby-pixel repair. Auto mode leaves the image unchanged below its confidence threshold; manual mode changes only the region selected by the user.": "その後、近隣ピクセル修復が行われます。オートモードでは、画像は信頼度閾値以下で変化しません。マニュアルモードはユーザーが選択した地域のみを変更します。",
   "; {count} more were not added": ";{count}は追加されませんでした",
   ". Doubao and Jimeng use browser-side glyph localization inspired by": ".DoubaoとJimengはブラウザ側のグリフローカライズを使用しています。",

@@ -10,8 +10,22 @@ const headerSource = readFileSync(new URL("../components/site-header.tsx", impor
 
 describe("localized desktop header regression", () => {
   it("keeps the auxiliary brand badge out of the constrained desktop navigation row", () => {
-    expect(headerSource).toContain("sm:inline xl:hidden")
+    expect(headerSource).toContain("sm:inline md:hidden")
     expect(headerSource).toContain("on-device")
+  })
+
+  it("keeps the three flagship tools visible in the zoomed desktop range", () => {
+    expect(headerSource).toContain("md:flex")
+    expect(headerSource).toContain("lg:hidden")
+    expect(headerSource).toContain("lg:max-w-none")
+    expect(headerSource).toContain("truncate")
+    expect(headerSource).toContain('xl:inline-flex')
+    expect(headerSource.indexOf('href="/remove-background"')).toBeLessThan(
+      headerSource.indexOf('href="/pdf-tools"'),
+    )
+    expect(headerSource.indexOf('href="/pdf-tools"')).toBeLessThan(
+      headerSource.indexOf('href="/ai-image-detector"'),
+    )
   })
 
   it("uses concise localized labels for the longest desktop navigation languages", () => {

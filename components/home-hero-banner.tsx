@@ -41,7 +41,7 @@ export const homeHeroSlides: HeroSlide[] = [
     id: "inspection",
     eyebrow: { zh: "AI 图片来源证据", en: "AI image provenance evidence" },
     title: { zh: "别只看一个 AI 百分比。", en: "Look beyond a single AI percentage." },
-    description: { zh: "分别检查可验证的文件来源、可见平台标记与像素模型估计，并明确展示冲突、缺失通道和限制。", en: "Inspect verifiable file provenance, visible platform marks, and pixel-model estimates separately, with conflicts, unavailable channels, and limits made explicit." },
+    description: { zh: "结合文件来源、可见平台标记与按需两级像素检测；快速结果存疑时自动增强复核，并明确展示冲突与限制。", en: "Combine file provenance, visible platform marks, and on-demand two-stage pixel checks, with enhanced review for weak fast-check results and clear disclosure of conflicts and limits." },
     action: { zh: "检查图片来源证据", en: "Inspect image provenance" },
     href: "/ai-image-detector",
     imageSrc: "/illustrations/hero-ai-image-detection.webp",

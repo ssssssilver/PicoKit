@@ -140,7 +140,7 @@ describe("AI image detector quality regressions", () => {
       visibleMark: null,
       channels,
     })
-    expect(json.version).toBe("1.2.0")
+    expect(json.version).toBe("1.3.0")
     expect(json.channels.pixelStatistics.result?.aggregation).toBe("robust-full-region-v2")
     expect(zh).toContain("不是 AI 创作概率")
     expect(zh).toContain("较高的 AI 类像素信号")

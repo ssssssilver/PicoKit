@@ -46,35 +46,41 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#080808]/94 text-white backdrop-blur-xl">
       <div className="mx-auto flex h-20 max-w-[1280px] items-center justify-between px-3 sm:px-8">
-        <Link href="/" className="flex items-center gap-2 sm:gap-2.5" aria-label={pick("TabNative 首页", "TabNative home")}>
+        <Link href="/" className="flex shrink-0 items-center gap-2 sm:gap-2.5" aria-label={pick("TabNative 首页", "TabNative home")}>
           <span className="grid size-9 place-items-center rounded-[10px] bg-cyan-300 text-[#07111f] sm:size-10">
             <Blocks className="size-5 sm:size-6" strokeWidth={2.2} />
           </span>
           <span className="text-lg font-semibold tracking-[-0.03em] sm:text-xl">TabNative</span>
-          <span className="hidden whitespace-nowrap rounded-full border border-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-200 sm:inline xl:hidden">
+          <span className="hidden whitespace-nowrap rounded-full border border-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-200 sm:inline md:hidden">
             on-device
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-0.5 xl:flex" aria-label={pick("主导航", "Primary navigation")}>
-          <Link href="/remove-background" className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border border-cyan-300/25 bg-cyan-300/[.08] px-2.5 py-2 text-sm font-semibold text-cyan-200 transition hover:border-cyan-300/45 hover:bg-cyan-300/[.13] hover:text-cyan-100">
-            <Star className="size-3.5" fill="currentColor" aria-hidden="true" />{pick("图片交付流水线", "Image Delivery Pipeline")}
+        <nav className="mx-2 hidden min-w-0 flex-1 items-center justify-center gap-0.5 md:flex" aria-label={pick("主导航", "Primary navigation")}>
+          <Link href="/remove-background" title={pick("图片交付流水线", "Image Delivery Pipeline")} className="inline-flex max-w-24 min-w-0 items-center gap-1.5 rounded-md border border-cyan-300/25 bg-cyan-300/[.08] px-2 py-2 text-xs font-semibold text-cyan-200 transition hover:border-cyan-300/45 hover:bg-cyan-300/[.13] hover:text-cyan-100 lg:max-w-none lg:px-2.5 lg:text-sm">
+            <Star className="size-3.5 shrink-0" fill="currentColor" aria-hidden="true" />
+            <span className="truncate lg:hidden">{pick("图片流水线", "Image workflow")}</span>
+            <span className="hidden whitespace-nowrap lg:inline">{pick("图片交付流水线", "Image Delivery Pipeline")}</span>
           </Link>
-          <Link href="/pdf-tools" className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-300/[.06] hover:text-cyan-100">
-            <Star className="size-3.5" fill="currentColor" aria-hidden="true" />{pick("PDF 页面装配台", "PDF Page Assembly")}
+          <Link href="/pdf-tools" title={pick("PDF 页面装配台", "PDF Page Assembly")} className="inline-flex max-w-24 min-w-0 items-center gap-1.5 rounded-md px-2 py-2 text-xs font-semibold text-cyan-200 transition hover:bg-cyan-300/[.06] hover:text-cyan-100 lg:max-w-none lg:px-2.5 lg:text-sm">
+            <Star className="size-3.5 shrink-0" fill="currentColor" aria-hidden="true" />
+            <span className="truncate lg:hidden">{pick("PDF 装配", "PDF Page Assembly")}</span>
+            <span className="hidden whitespace-nowrap lg:inline">{pick("PDF 页面装配台", "PDF Page Assembly")}</span>
           </Link>
-          <Link href="/ai-image-detector" className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-2.5 py-2 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-300/[.06] hover:text-cyan-100">
-            <Star className="size-3.5" fill="currentColor" aria-hidden="true" />{pick("AI 图片检测", "AI image check")}
+          <Link href="/ai-image-detector" title={pick("AI 图片检测", "AI image check")} className="inline-flex max-w-24 min-w-0 items-center gap-1.5 rounded-md px-2 py-2 text-xs font-semibold text-cyan-200 transition hover:bg-cyan-300/[.06] hover:text-cyan-100 lg:max-w-none lg:px-2.5 lg:text-sm">
+            <Star className="size-3.5 shrink-0" fill="currentColor" aria-hidden="true" />
+            <span className="truncate lg:hidden">{pick("AI 图片检测", "AI image check")}</span>
+            <span className="hidden whitespace-nowrap lg:inline">{pick("AI 图片检测", "AI image check")}</span>
           </Link>
-          <Link href="/ai-tools" className="whitespace-nowrap rounded-md px-2.5 py-2 text-sm font-medium text-zinc-300 transition hover:bg-white/5 hover:text-white">
+          <Link href="/ai-tools" className="hidden whitespace-nowrap rounded-md px-2.5 py-2 text-sm font-medium text-zinc-300 transition hover:bg-white/5 hover:text-white xl:inline-flex">
             {pick("AI 工具导航", "AI tools")}
           </Link>
-          <Link href="/blog" className="whitespace-nowrap rounded-md px-2.5 py-2 text-sm text-zinc-300 transition hover:bg-white/5 hover:text-white">
+          <Link href="/blog" className="hidden whitespace-nowrap rounded-md px-2.5 py-2 text-sm text-zinc-300 transition hover:bg-white/5 hover:text-white xl:inline-flex">
             {pick("使用教程", "Guides")}
           </Link>
         </nav>
 
-        <div className="flex items-center gap-1 sm:gap-2">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           <button
             type="button"
             onClick={() => setTheme(toggleTheme(theme))}
@@ -124,7 +130,7 @@ export function SiteHeader() {
           </div>
           <Link href="/#my-tools" className="hidden h-10 items-center gap-2 whitespace-nowrap rounded-lg border border-cyan-300/20 px-3 text-sm font-medium text-cyan-300 transition hover:bg-cyan-300/[.06] hover:text-cyan-100 sm:inline-flex" aria-label={pick("查看我的工具", "View My tools")} title={pick("我的工具", "My tools")}>
             <Star className="size-[17px]" fill={myToolHrefs.length ? "currentColor" : "none"} />
-            <span className="hidden lg:inline">{pick("我的工具", "My tools")}</span>
+            <span className="hidden xl:inline">{pick("我的工具", "My tools")}</span>
             {myToolHrefs.length ? <span className="rounded-full bg-cyan-300/10 px-1.5 font-mono text-[9px]">{myToolHrefs.length}</span> : null}
           </Link>
           <a
