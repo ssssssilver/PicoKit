@@ -13,6 +13,8 @@ const AI_PATTERNS: Array<{ pattern: RegExp; label: string; severity: "high" | "m
 ]
 
 const C2PA_PATTERN = /c2pa|jumbf|content credentials|dcterms:provenance|c2pa\.manifest/i
+const OPENAI_IMAGE_PATTERN = /gpt[-_ ]?image(?:[-_ ]?(?:1(?:\.5)?|2(?:\.0)?))?|chatgpt(?:\s+images?)?|openai(?:\s+image)?/i
+const TRAINED_ALGORITHMIC_MEDIA_PATTERN = /(?:compositeWith)?TrainedAlgorithmicMedia/i
 
 function formatValue(value: unknown): string {
   if (value == null) return ""
@@ -112,6 +114,52 @@ function makeSignals(searchText: string, metadata: MetadataEntry[], hasC2paBytes
   if (camera) signals.push({ id: "camera", label: "相机信息", value: camera.value, group: "camera", severity: "info" })
 
   return signals.filter((item, index, items) => items.findIndex((candidate) => candidate.label === item.label) === index)
+}
+
+function compactManifestText(manifest: unknown) {
+  if (!manifest || typeof manifest !== "object") return ""
+  try {
+    return JSON.stringify(manifest).slice(0, 250_000)
+  } catch {
+    return ""
+  }
+}
+
+/** Extract explicit AI provenance from the parsed C2PA manifest itself. */
+export function c2paAiSignals(manifest: unknown): ImageSignal[] {
+  const text = compactManifestText(manifest)
+  if (!text) return []
+  const signals: ImageSignal[] = []
+  const openAi = text.match(OPENAI_IMAGE_PATTERN)?.[0]
+  if (openAi) {
+    signals.push({
+      id: "c2pa-ai-openai-image",
+      label: "OpenAI / GPT Image 来源凭证",
+      value: openAi,
+      group: "ai",
+      severity: "high",
+    })
+  }
+  const digitalSourceType = text.match(TRAINED_ALGORITHMIC_MEDIA_PATTERN)?.[0]
+  if (digitalSourceType) {
+    signals.push({
+      id: "c2pa-ai-digital-source-type",
+      label: "C2PA：AI 生成内容",
+      value: digitalSourceType,
+      group: "ai",
+      severity: "high",
+    })
+  }
+  return signals
+}
+
+function uniqueSignals(signals: ImageSignal[]) {
+  return signals.filter(
+    (item, index, items) =>
+      items.findIndex(
+        (candidate) => candidate.id === item.id || candidate.label === item.label,
+      ) === index,
+  )
 }
 
 async function inspectC2pa(file: File, likelyPresent: boolean, signal?: AbortSignal): Promise<C2paInspection> {
@@ -240,9 +288,12 @@ export async function inspectImage(file: File, options: { signal?: AbortSignal }
     metadata = []
   }
 
-  const signals = makeSignals(searchText, metadata, hasC2paBytes)
   const c2pa = await inspectC2pa(file, hasC2paBytes, options.signal)
   throwIfAborted(options.signal)
+  const signals = uniqueSignals([
+    ...makeSignals(searchText, metadata, hasC2paBytes),
+    ...c2paAiSignals(c2pa.manifest),
+  ])
   const highSignals = signals.filter((signal) => signal.severity === "high")
 
   return {

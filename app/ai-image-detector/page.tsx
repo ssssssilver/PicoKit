@@ -6,15 +6,15 @@ import { ToolAside } from "@/components/tool-aside"
 import { ToolShell } from "@/components/tool-shell"
 
 export const metadata: Metadata = {
-  title: "免费 AI 图片检测与来源证据报告",
-  description: "在浏览器本地用按需两级像素检测，并分通道检查可见平台标记、C2PA、EXIF、XMP 与生成器来源证据。图片不上传。",
+  title: "免费 AI 图片检测器",
+  description: "上传图片后直接判断是否由 AI 生成。检测在浏览器本地完成，图片不会上传；详细依据可按需下载为检测报告。",
 }
 
 export default function Page() {
   return <ToolShell
-    title={{ zh: "AI 图片来源证据检查", en: "AI Image Provenance Check" }}
-    description={{ zh: "分别检查可验证的文件来源、可见平台标记与按需两级像素估计。增强检测会自动复核不确定或偏低的快速结果；全部过程在浏览器中完成。", en: "Inspect verifiable file provenance, visible platform marks, and an on-demand two-stage pixel estimate. An enhanced check automatically reviews uncertain or low fast-check results, entirely in your browser." }}
-    eyebrow="AI Image Provenance"
+    title={{ zh: "AI 图片检测", en: "Free AI Image Detector" }}
+    description={{ zh: "选择一张图片，检测它是否由 AI 生成。图片只在当前设备处理，不会上传。", en: "Choose an image to check whether it was AI-generated. It stays on this device and is never uploaded." }}
+    eyebrow="AI Image Detector"
     icon={ScanSearch}
     compactHero
     aside={<ToolAside notes={[

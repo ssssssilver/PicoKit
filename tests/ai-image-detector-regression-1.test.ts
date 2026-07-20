@@ -115,7 +115,7 @@ describe("AI image detector quality regressions", () => {
     })
   })
 
-  it("exports both machine-readable and human-readable reports without claiming probability", () => {
+  it("exports a calibrated AI likelihood while keeping the evidence limits explicit", () => {
     const result = pixel(0.84)
     const json = buildImageEvidenceReport({
       file: { name: "sample.webp", type: "image/webp", bytes: 4096 },
@@ -140,11 +140,17 @@ describe("AI image detector quality regressions", () => {
       visibleMark: null,
       channels,
     })
-    expect(json.version).toBe("1.3.0")
+    expect(json.version).toBe("1.4.0")
+    expect(json.summary.aiLikelihoodPercent).toBeGreaterThanOrEqual(68)
+    expect(json.summary.likelihoodCalibration).toBe("evidence-weighted-likelihood-v1")
     expect(json.channels.pixelStatistics.result?.aggregation).toBe("robust-full-region-v2")
-    expect(zh).toContain("不是 AI 创作概率")
+    expect(zh).toContain("检测结果: AI 生成")
+    expect(en).toContain("Detection result: AI-generated")
+    expect(zh).toContain("AI 可能性:")
+    expect(zh).toContain("经保守校准后的估计")
     expect(zh).toContain("较高的 AI 类像素信号")
-    expect(en).toContain("not a probability of AI authorship")
+    expect(en).toContain("AI likelihood:")
+    expect(en).toContain("conservatively calibrated estimate")
     expect(en).toContain("Higher AI-like pixel signals")
   })
 })

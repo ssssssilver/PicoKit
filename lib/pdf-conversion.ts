@@ -12,6 +12,8 @@ export const PDF_IMAGE_MAX_TOTAL_BYTES = 250 * 1024 * 1024
 export const PDF_IMAGE_MAX_PIXELS = 40_000_000
 export const PDF_RASTER_MAX_PAGES = 200
 
+export type PdfPageSelectionPreset = "all" | "odd" | "even"
+
 const targetSizes = {
   a4: [595.28, 841.89],
   letter: [612, 792],
@@ -32,6 +34,46 @@ export function parsePdfPageSpec(spec: string, total: number) {
     }
   }
   return [...values]
+}
+
+export function buildPdfPageSelection(
+  total: number,
+  preset: PdfPageSelectionPreset = "all",
+  limit = PDF_RASTER_MAX_PAGES,
+) {
+  const safeTotal = Math.max(0, Math.floor(total))
+  const safeLimit = Math.max(0, Math.floor(limit))
+  const pages: number[] = []
+  for (let pageIndex = 0; pageIndex < safeTotal && pages.length < safeLimit; pageIndex++) {
+    const pageNumber = pageIndex + 1
+    if (preset === "odd" && pageNumber % 2 === 0) continue
+    if (preset === "even" && pageNumber % 2 !== 0) continue
+    pages.push(pageIndex)
+  }
+  return pages
+}
+
+export function formatPdfPageSelection(pageIndexes: readonly number[]) {
+  const pages = [...new Set(pageIndexes)]
+    .filter((pageIndex) => Number.isInteger(pageIndex) && pageIndex >= 0)
+    .sort((left, right) => left - right)
+    .map((pageIndex) => pageIndex + 1)
+  if (!pages.length) return ""
+
+  const groups: string[] = []
+  let start = pages[0]
+  let end = pages[0]
+  for (let index = 1; index <= pages.length; index++) {
+    const current = pages[index]
+    if (current === end + 1) {
+      end = current
+      continue
+    }
+    groups.push(start === end ? String(start) : `${start}-${end}`)
+    start = current
+    end = current
+  }
+  return groups.join(", ")
 }
 
 export function parsePdfSplitSpec(spec: string, total: number): PdfSplitGroup[] {

@@ -52,6 +52,7 @@ export type FusedImageDetection = {
   band: ImageDetectionBand
   reliability: ImageDetectionReliability
   overallScore: number
+  calibration: "evidence-weighted-likelihood-v1"
   pixelScore: number | null
   provenanceSignalCount: number
   strongProvenanceSignalCount: number
@@ -257,8 +258,23 @@ export function fuseImageDetection(pixel: PixelDetectionResult | null, inspectio
   const pixelHigher = pixelBand === "higher"
   const pixelLower = pixelBand === "lower"
   const provenanceHigher = strong.length > 0
-  const evidenceFloor = visibleMarks.length ? 0.94 : strong.length ? 0.86 : provenance.length ? 0.66 : 0
-  const overallScore = clamp(Math.max(pixel?.score ?? 0.5, evidenceFloor))
+  const c2paBackedAiSignal = strong.some((signal) => signal.id.startsWith("c2pa-ai-"))
+    && inspection.c2pa.present
+    && inspection.c2pa.validated === true
+  const trustedC2paBackedAiSignal = c2paBackedAiSignal && inspection.c2pa.trust === "trusted"
+  const evidenceFloor = trustedC2paBackedAiSignal
+    ? 0.99
+    : c2paBackedAiSignal
+      ? 0.97
+      : visibleMarks.length
+        ? 0.94
+        : strong.length
+          ? 0.9
+          : provenance.length
+            ? 0.7
+            : 0
+  const pixelLikelihood = calibratedPixelAiLikelihood(pixel)
+  const overallScore = clamp(Math.max(pixelLikelihood, evidenceFloor))
 
   let band: ImageDetectionBand = "uncertain"
   if (provenanceHigher || pixelHigher) band = "higher-ai-signals"
@@ -279,12 +295,31 @@ export function fuseImageDetection(pixel: PixelDetectionResult | null, inspectio
     band,
     reliability,
     overallScore,
+    calibration: "evidence-weighted-likelihood-v1",
     pixelScore: pixel?.score ?? null,
     provenanceSignalCount: provenance.length,
     strongProvenanceSignalCount: strong.length,
     visibleMarkSignalCount: visibleMarks.length,
     evidenceAgreement,
   }
+}
+
+/**
+ * Shrink classifier scores toward 50% unless regional consistency and model
+ * agreement support a stronger result. This is an evidence-weighted likelihood
+ * for the product UI, not the raw softmax output of either classifier.
+ */
+export function calibratedPixelAiLikelihood(pixel: PixelDetectionResult | null) {
+  if (!pixel) return 0.5
+  const band = pixelEstimateBand(pixel)
+  const agreement = clamp(pixel.modelAgreement ?? 1)
+  const support = clamp(pixel.consistency) * agreement
+  const weight = 0.42 + support * 0.38
+  let likelihood = 0.5 + (clamp(pixel.score) - 0.5) * weight
+  if (band === "higher") likelihood = Math.max(likelihood, 0.68)
+  if (band === "lower") likelihood = Math.min(likelihood, 0.32)
+  if (band === "uncertain") likelihood = Math.max(0.38, Math.min(0.62, likelihood))
+  return clamp(likelihood)
 }
 
 function clamp(value: number) {

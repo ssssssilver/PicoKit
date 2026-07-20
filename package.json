@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
-    "@contentauth/c2pa-web": "^0.12.1",
+    "@contentauth/c2pa-web": "0.12.3",
     "@huggingface/transformers": "^4.2.0",
     "@pilio/gemini-watermark-remover": "^1.0.29",
     "class-variance-authority": "^0.7.1",

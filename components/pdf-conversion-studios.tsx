@@ -7,6 +7,9 @@ import {
   ArrowDown,
   ArrowRight,
   ArrowUp,
+  Check,
+  ChevronLeft,
+  ChevronRight,
   Download,
   FileCheck2,
   FileImage,
@@ -14,6 +17,7 @@ import {
   GripVertical,
   Images,
   LoaderCircle,
+  Maximize2,
   Package,
   Trash2,
   X,
@@ -29,8 +33,9 @@ import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
 import { baseName, canvasToBlob, downloadBlob, formatBytes, waitForBrowserPaint } from "@/lib/browser-files"
 import {
+  buildPdfPageSelection,
+  formatPdfPageSelection,
   layoutPdfImage,
-  parsePdfPageSpec,
   PDF_IMAGE_MAX_FILES,
   PDF_IMAGE_MAX_PIXELS,
   PDF_IMAGE_MAX_TOTAL_BYTES,
@@ -54,6 +59,9 @@ type ImageQueueItem = {
 
 type PdfPreview = { page: number; url: string }
 
+const PDF_PAGE_SELECTOR_WINDOW = 60
+const PDF_PREVIEW_PAGE_SIZE = 12
+
 export type PdfFileHandoff = { id: string; file: File }
 
 export function ImagesToPdfStudio({ onContinueToWorkspace }: { onContinueToWorkspace?: (file: File) => void }) {
@@ -73,6 +81,13 @@ export function ImagesToPdfStudio({ onContinueToWorkspace }: { onContinueToWorks
   const [margin, setMargin] = useState(18)
   const [outputName, setOutputName] = useState("tabnative-images.pdf")
   const [generatedPdf, setGeneratedPdf] = useState<File | null>(null)
+  const [previewItemId, setPreviewItemId] = useState("")
+
+  const previewItemIndex = useMemo(
+    () => items.findIndex((item) => item.id === previewItemId),
+    [items, previewItemId],
+  )
+  const previewItem = previewItemIndex >= 0 ? items[previewItemIndex] : null
 
   useEffect(() => () => {
     for (const url of urlsRef.current) URL.revokeObjectURL(url)
@@ -125,6 +140,7 @@ export function ImagesToPdfStudio({ onContinueToWorkspace }: { onContinueToWorks
   }
 
   function removeItem(id: string) {
+    if (previewItemId === id) setPreviewItemId("")
     setItems((current) => {
       const removed = current.find((item) => item.id === id)
       if (removed) {
@@ -222,9 +238,16 @@ export function ImagesToPdfStudio({ onContinueToWorkspace }: { onContinueToWorks
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {items.map((item, index) => <article key={item.id} draggable={!running} onDragStart={() => setDraggedId(item.id)} onDragOver={(event) => event.preventDefault()} onDrop={() => dropOn(item.id)} className="flex min-w-0 items-center gap-3 rounded-xl border border-border bg-muted/10 p-3">
             <GripVertical className="size-4 shrink-0 text-muted-foreground" />
-            <figure className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[linear-gradient(45deg,#ddd_25%,transparent_25%),linear-gradient(-45deg,#ddd_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#ddd_75%),linear-gradient(-45deg,transparent_75%,#ddd_75%)] bg-[length:14px_14px] bg-[position:0_0,0_7px,7px_-7px,-7px_0px]">
+            <button
+              type="button"
+              disabled={running}
+              onClick={() => setPreviewItemId(item.id)}
+              aria-label={pick("预览", "Preview")}
+              className="group relative flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[linear-gradient(45deg,#ddd_25%,transparent_25%),linear-gradient(-45deg,#ddd_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#ddd_75%),linear-gradient(-45deg,transparent_75%,#ddd_75%)] bg-[length:14px_14px] bg-[position:0_0,0_7px,7px_-7px,-7px_0px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+            >
               <img src={item.previewUrl} alt="" className="max-h-full max-w-full object-contain" />
-            </figure>
+              <span className="absolute right-1 top-1 grid size-7 place-items-center rounded-md border border-white/25 bg-zinc-950/75 text-white shadow-sm transition group-hover:bg-zinc-950" aria-hidden="true"><Maximize2 className="size-3.5" /></span>
+            </button>
             <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{index + 1}. {item.file.name}</p><p className="mt-1 text-xs text-muted-foreground">{item.width} × {item.height} · {formatBytes(item.file.size)}</p></div>
             <div className="grid shrink-0 gap-1">
               <Button size="icon-sm" variant="outline" disabled={index === 0 || running} onClick={() => moveItem(index, -1)} aria-label={pick("向前移动", "Move earlier")}><ArrowUp /></Button>
@@ -257,6 +280,25 @@ export function ImagesToPdfStudio({ onContinueToWorkspace }: { onContinueToWorks
         <div className="flex flex-wrap gap-2"><Button disabled={running} onClick={() => void exportPdf()}>{running ? <LoaderCircle className="animate-spin" /> : <Download />}{pick("生成并下载 PDF", "Create and download PDF")}</Button>{running ? <Button variant="outline" onClick={() => { cancelledRef.current = true }}><X />{pick("取消", "Cancel")}</Button> : null}</div>
       </CardContent>
     </Card> : null}
+
+    <ImagePreviewDialog
+      open={Boolean(previewItem)}
+      title={previewItem?.file.name ?? ""}
+      description={previewItem ? previewItem.width + " × " + previewItem.height + " · " + formatBytes(previewItem.file.size) + " · " + (previewItemIndex + 1) + " / " + items.length : ""}
+      imageUrl={previewItem?.previewUrl ?? ""}
+      imageAlt={previewItem?.file.name ?? ""}
+      onClose={() => setPreviewItemId("")}
+      onPrevious={() => {
+        const previous = items[previewItemIndex - 1]
+        if (previous) setPreviewItemId(previous.id)
+      }}
+      onNext={() => {
+        const next = items[previewItemIndex + 1]
+        if (next) setPreviewItemId(next.id)
+      }}
+      hasPrevious={previewItemIndex > 0}
+      hasNext={previewItemIndex >= 0 && previewItemIndex < items.length - 1}
+    />
   </div>
 }
 
@@ -265,15 +307,26 @@ export function PdfToImagesStudio({ incomingPdf }: { incomingPdf?: PdfFileHandof
   const inputRef = useRef<HTMLInputElement>(null)
   const pdfRef = useRef<PDFDocumentProxy | null>(null)
   const renderRef = useRef<RenderTask | null>(null)
+  const previewRenderRef = useRef<RenderTask | null>(null)
+  const previewUrlRef = useRef("")
+  const previewRequestRef = useRef(0)
+  const thumbnailRenderRef = useRef<RenderTask | null>(null)
+  const thumbnailRequestRef = useRef(0)
   const urlsRef = useRef(new Set<string>())
   const requestRef = useRef(0)
   const cancelledRef = useRef(false)
   const incomingRef = useRef("")
   const choosePdfRef = useRef<(file: File | undefined) => Promise<void>>(async () => undefined)
+  const lastSelectedPageRef = useRef<number | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [pageCount, setPageCount] = useState(0)
-  const [pageSpec, setPageSpec] = useState("")
+  const [selectedPageIndexes, setSelectedPageIndexes] = useState<Set<number>>(new Set())
+  const [pageWindow, setPageWindow] = useState(0)
+  const [selectionNotice, setSelectionNotice] = useState("")
   const [previews, setPreviews] = useState<PdfPreview[]>([])
+  const [previewPage, setPreviewPage] = useState(0)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewError, setPreviewError] = useState("")
   const [loading, setLoading] = useState(false)
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -281,17 +334,118 @@ export function PdfToImagesStudio({ incomingPdf }: { incomingPdf?: PdfFileHandof
   const [formatName, setFormatName] = useState<"png" | "jpeg" | "webp">("png")
   const [scale, setScale] = useState(1.5)
   const [quality, setQuality] = useState(90)
+  const [focusedPageIndex, setFocusedPageIndex] = useState<number | null>(null)
+  const [pagePreview, setPagePreview] = useState<{ pageIndex: number | null; imageUrl: string; loading: boolean; error: string }>({
+    pageIndex: null,
+    imageUrl: "",
+    loading: false,
+    error: "",
+  })
 
-  const selectedPages = useMemo(() => parsePdfPageSpec(pageSpec, pageCount), [pageCount, pageSpec])
+  const selectedPages = useMemo(
+    () => [...selectedPageIndexes].sort((left, right) => left - right),
+    [selectedPageIndexes],
+  )
+  const selectedPageSummary = useMemo(
+    () => formatPdfPageSelection(selectedPages),
+    [selectedPages],
+  )
+  const pageWindowCount = Math.max(1, Math.ceil(pageCount / PDF_PAGE_SELECTOR_WINDOW))
+  const pageWindowStart = pageWindow * PDF_PAGE_SELECTOR_WINDOW
+  const previewPageCount = Math.max(1, Math.ceil(pageCount / PDF_PREVIEW_PAGE_SIZE))
+  const previewPageStart = previewPage * PDF_PREVIEW_PAGE_SIZE
+  const previewPageEnd = Math.min(pageCount, previewPageStart + PDF_PREVIEW_PAGE_SIZE)
+  const visiblePageIndexes = useMemo(
+    () => Array.from(
+      { length: Math.max(0, Math.min(PDF_PAGE_SELECTOR_WINDOW, pageCount - pageWindowStart)) },
+      (_, index) => pageWindowStart + index,
+    ),
+    [pageCount, pageWindowStart],
+  )
 
   useEffect(() => () => {
     requestRef.current += 1
+    previewRequestRef.current += 1
+    thumbnailRequestRef.current += 1
     try { renderRef.current?.cancel() } catch { /* Completed between checks. */ }
+    try { previewRenderRef.current?.cancel() } catch { /* Completed between checks. */ }
+    try { thumbnailRenderRef.current?.cancel() } catch { /* Completed between checks. */ }
     void pdfRef.current?.cleanup().catch(() => undefined)
     void pdfRef.current?.loadingTask.destroy().catch(() => undefined)
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
     for (const url of urlsRef.current) URL.revokeObjectURL(url)
     urlsRef.current.clear()
   }, [])
+
+  async function renderPreviewPage(pdf: PDFDocumentProxy, nextPreviewPage: number) {
+    const request = ++thumbnailRequestRef.current
+    try { thumbnailRenderRef.current?.cancel() } catch { /* Completed between checks. */ }
+    thumbnailRenderRef.current = null
+    for (const url of urlsRef.current) URL.revokeObjectURL(url)
+    urlsRef.current.clear()
+    setPreviews([])
+    setPreviewLoading(true)
+    setPreviewError("")
+
+    const start = nextPreviewPage * PDF_PREVIEW_PAGE_SIZE
+    const end = Math.min(pdf.numPages, start + PDF_PREVIEW_PAGE_SIZE)
+    const nextPreviews: PdfPreview[] = []
+    const generatedUrls: string[] = []
+    let failedPages = 0
+
+    for (let index = start; index < end; index++) {
+      if (request !== thumbnailRequestRef.current) break
+      let page: Awaited<ReturnType<PDFDocumentProxy["getPage"]>> | null = null
+      try {
+        page = await pdf.getPage(index + 1)
+        if (request !== thumbnailRequestRef.current) break
+        const base = page.getViewport({ scale: 1 })
+        const thumbnailScale = Math.min(0.45, 220 / Math.max(1, base.width))
+        const viewport = page.getViewport({ scale: thumbnailScale })
+        const canvas = document.createElement("canvas")
+        canvas.width = Math.ceil(viewport.width)
+        canvas.height = Math.ceil(viewport.height)
+        const context = canvas.getContext("2d")
+        if (!context) throw new Error("canvas")
+        const task = page.render({ canvas, canvasContext: context, viewport, background: "#ffffff" })
+        thumbnailRenderRef.current = task
+        await task.promise
+        thumbnailRenderRef.current = null
+        if (request !== thumbnailRequestRef.current) break
+        const url = URL.createObjectURL(await canvasToBlob(canvas))
+        generatedUrls.push(url)
+        nextPreviews.push({ page: index + 1, url })
+      } catch {
+        if (request === thumbnailRequestRef.current) failedPages += 1
+      } finally {
+        page?.cleanup()
+      }
+    }
+
+    if (request !== thumbnailRequestRef.current) {
+      for (const url of generatedUrls) URL.revokeObjectURL(url)
+      return
+    }
+    for (const url of generatedUrls) urlsRef.current.add(url)
+    setPreviews(nextPreviews)
+    setPreviewError(failedPages
+      ? pick(
+          "这一组有部分页面未能生成缩略图，你仍可通过页码选择并转换。",
+          "Some pages in this group could not be previewed. You can still select and convert them by page number.",
+        )
+      : "")
+    setPreviewLoading(false)
+  }
+
+  function changePreviewPage(nextPreviewPage: number) {
+    const pdf = pdfRef.current
+    if (!pdf || previewLoading || running || nextPreviewPage < 0 || nextPreviewPage >= previewPageCount) return
+    const nextPageIndex = nextPreviewPage * PDF_PREVIEW_PAGE_SIZE
+    setPreviewPage(nextPreviewPage)
+    setFocusedPageIndex(nextPageIndex)
+    setPageWindow(Math.floor(nextPageIndex / PDF_PAGE_SELECTOR_WINDOW))
+    void renderPreviewPage(pdf, nextPreviewPage)
+  }
 
   async function choosePdf(nextFile: File | undefined) {
     if (!nextFile || loading || running) return
@@ -303,6 +457,10 @@ export function PdfToImagesStudio({ incomingPdf }: { incomingPdf?: PdfFileHandof
       const signature = new TextDecoder("latin1").decode(await nextFile.slice(0, 1_024).arrayBuffer())
       if (!signature.includes("%PDF-")) throw new Error("invalid")
       if (nextFile.size > 150 * 1024 * 1024) throw new Error("too-large")
+      closePagePreview()
+      thumbnailRequestRef.current += 1
+      try { thumbnailRenderRef.current?.cancel() } catch { /* Completed between checks. */ }
+      thumbnailRenderRef.current = null
       await disposePdfPreview(pdfRef, renderRef, urlsRef)
       const pdfjs = await import("pdfjs-dist")
       pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs"
@@ -319,32 +477,19 @@ export function PdfToImagesStudio({ incomingPdf }: { incomingPdf?: PdfFileHandof
       pdfRef.current = pdf
       setFile(nextFile)
       setPageCount(pdf.numPages)
-      setPageSpec(pdf.numPages > 1 ? `1-${pdf.numPages}` : "1")
-      const nextPreviews: PdfPreview[] = []
-      for (let index = 0; index < Math.min(12, pdf.numPages); index++) {
-        if (request !== requestRef.current) return
-        const page = await pdf.getPage(index + 1)
-        try {
-          const base = page.getViewport({ scale: 1 })
-          const previewScale = Math.min(0.45, 220 / Math.max(1, base.width))
-          const viewport = page.getViewport({ scale: previewScale })
-          const canvas = document.createElement("canvas")
-          canvas.width = Math.ceil(viewport.width)
-          canvas.height = Math.ceil(viewport.height)
-          const context = canvas.getContext("2d")
-          if (!context) continue
-          const task = page.render({ canvas, canvasContext: context, viewport, background: "#ffffff" })
-          renderRef.current = task
-          await task.promise
-          renderRef.current = null
-          const url = URL.createObjectURL(await canvasToBlob(canvas))
-          urlsRef.current.add(url)
-          nextPreviews.push({ page: index + 1, url })
-        } finally {
-          page.cleanup()
-        }
-      }
-      if (request === requestRef.current) setPreviews(nextPreviews)
+      setSelectedPageIndexes(new Set(buildPdfPageSelection(pdf.numPages)))
+      setPageWindow(0)
+      setPreviewPage(0)
+      setFocusedPageIndex(0)
+      setSelectionNotice(pdf.numPages > PDF_RASTER_MAX_PAGES
+        ? format(
+            "为控制浏览器内存，已选择前 {count} 页；你可以取消部分页面后再点选其他页。",
+            "To protect browser memory, the first {count} pages were selected. Clear some pages to choose others.",
+            { count: PDF_RASTER_MAX_PAGES },
+          )
+        : "")
+      lastSelectedPageRef.current = null
+      await renderPreviewPage(pdf, 0)
     } catch (reason) {
       if (request === requestRef.current) {
         const message = reason instanceof Error ? reason.message : ""
@@ -366,15 +511,145 @@ export function PdfToImagesStudio({ incomingPdf }: { incomingPdf?: PdfFileHandof
     void choosePdfRef.current(incomingPdf.file)
   }, [incomingPdf])
 
+  function selectPreset(preset: "all" | "odd" | "even") {
+    const pages = buildPdfPageSelection(pageCount, preset)
+    setSelectedPageIndexes(new Set(pages))
+    lastSelectedPageRef.current = pages.at(-1) ?? null
+    setSelectionNotice(pageCount > PDF_RASTER_MAX_PAGES && preset === "all"
+      ? format(
+          "为控制浏览器内存，已选择前 {count} 页；你可以取消部分页面后再点选其他页。",
+          "To protect browser memory, the first {count} pages were selected. Clear some pages to choose others.",
+          { count: PDF_RASTER_MAX_PAGES },
+        )
+      : "")
+    setError("")
+  }
+
+  function selectVisiblePageGroup() {
+    const next = new Set(selectedPageIndexes)
+    for (const pageIndex of visiblePageIndexes) {
+      if (next.size >= PDF_RASTER_MAX_PAGES) break
+      next.add(pageIndex)
+    }
+    setSelectedPageIndexes(next)
+    setSelectionNotice(next.size >= PDF_RASTER_MAX_PAGES && visiblePageIndexes.some((pageIndex) => !next.has(pageIndex))
+      ? format(
+          "单次最多选择 {count} 页；请先取消部分页面。",
+          "Select up to {count} pages per run. Clear some pages first.",
+          { count: PDF_RASTER_MAX_PAGES },
+        )
+      : "")
+    setError("")
+  }
+
+  function clearPageSelection() {
+    setSelectedPageIndexes(new Set())
+    lastSelectedPageRef.current = null
+    setSelectionNotice("")
+    setError("")
+  }
+
+  function togglePageSelection(pageIndex: number, extendRange = false) {
+    const next = new Set(selectedPageIndexes)
+    const lastSelected = lastSelectedPageRef.current
+    if (extendRange && lastSelected !== null) {
+      const start = Math.min(lastSelected, pageIndex)
+      const end = Math.max(lastSelected, pageIndex)
+      for (let candidate = start; candidate <= end; candidate++) {
+        if (next.size >= PDF_RASTER_MAX_PAGES && !next.has(candidate)) break
+        next.add(candidate)
+      }
+    } else if (next.has(pageIndex)) {
+      next.delete(pageIndex)
+    } else if (next.size < PDF_RASTER_MAX_PAGES) {
+      next.add(pageIndex)
+    }
+
+    const reachedLimit = !next.has(pageIndex) && !selectedPageIndexes.has(pageIndex)
+    setSelectedPageIndexes(next)
+    setFocusedPageIndex(pageIndex)
+    lastSelectedPageRef.current = pageIndex
+    setSelectionNotice(reachedLimit
+      ? format(
+          "单次最多选择 {count} 页；请先取消部分页面。",
+          "Select up to {count} pages per run. Clear some pages first.",
+          { count: PDF_RASTER_MAX_PAGES },
+        )
+      : "")
+    setError("")
+  }
+
+  function closePagePreview() {
+    previewRequestRef.current += 1
+    try { previewRenderRef.current?.cancel() } catch { /* Completed between checks. */ }
+    previewRenderRef.current = null
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current)
+      previewUrlRef.current = ""
+    }
+    setPagePreview({ pageIndex: null, imageUrl: "", loading: false, error: "" })
+  }
+
+  async function openPdfPagePreview(pageIndex: number) {
+    const pdf = pdfRef.current
+    if (!pdf || pageIndex < 0 || pageIndex >= pdf.numPages || running) return
+    const request = ++previewRequestRef.current
+    setFocusedPageIndex(pageIndex)
+    try { previewRenderRef.current?.cancel() } catch { /* Completed between checks. */ }
+    previewRenderRef.current = null
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current)
+      previewUrlRef.current = ""
+    }
+    setPagePreview({ pageIndex, imageUrl: "", loading: true, error: "" })
+    let page: Awaited<ReturnType<PDFDocumentProxy["getPage"]>> | null = null
+    try {
+      page = await pdf.getPage(pageIndex + 1)
+      if (request !== previewRequestRef.current) return
+      const base = page.getViewport({ scale: 1 })
+      const previewScale = Math.min(2, Math.max(0.75, 1_440 / Math.max(1, base.width, base.height)))
+      const viewport = page.getViewport({ scale: previewScale })
+      const canvas = document.createElement("canvas")
+      canvas.width = Math.ceil(viewport.width)
+      canvas.height = Math.ceil(viewport.height)
+      const context = canvas.getContext("2d")
+      if (!context) throw new Error("canvas")
+      const task = page.render({ canvas, canvasContext: context, viewport, background: "#ffffff" })
+      previewRenderRef.current = task
+      await task.promise
+      previewRenderRef.current = null
+      if (request !== previewRequestRef.current) return
+      const url = URL.createObjectURL(await canvasToBlob(canvas))
+      if (request !== previewRequestRef.current) {
+        URL.revokeObjectURL(url)
+        return
+      }
+      previewUrlRef.current = url
+      setPagePreview({ pageIndex, imageUrl: url, loading: false, error: "" })
+    } catch {
+      if (request === previewRequestRef.current) {
+        previewRenderRef.current = null
+        setPagePreview({
+          pageIndex,
+          imageUrl: "",
+          loading: false,
+          error: pick("无法生成这一页的大图预览，你仍可选择并转换该页。", "Unable to create a large preview for this page. You can still select and convert it."),
+        })
+      }
+    } finally {
+      page?.cleanup()
+    }
+  }
+
   async function exportImages() {
     const pdf = pdfRef.current
     if (!pdf || !file || running) return
     if (!selectedPages.length) {
-      setError(pick("请输入有效页码，例如 1-3,5。", "Enter a valid page range, such as 1-3,5."))
+      setError(pick("请先点选至少一页。", "Select at least one page."))
       return
     }
     if (selectedPages.length > PDF_RASTER_MAX_PAGES) {
-      setError(format("一次最多转换 {count} 页，请缩小页码范围。", "Convert up to {count} pages at a time; narrow the page range.", { count: PDF_RASTER_MAX_PAGES }))
+      setError(format("一次最多转换 {count} 页，请取消部分页面。", "Convert up to {count} pages at a time; clear some selected pages.", { count: PDF_RASTER_MAX_PAGES }))
       return
     }
     setRunning(true)
@@ -430,7 +705,7 @@ export function PdfToImagesStudio({ incomingPdf }: { incomingPdf?: PdfFileHandof
       if (!(reason instanceof Error && reason.message === "cancelled")) {
         setError(reason instanceof Error && reason.message === "too-many-pixels"
           ? pick("当前倍率会生成过大的图片，请降低倍率后重试。", "This scale would create an oversized image. Choose a lower scale and retry.")
-          : pick("无法完成图片转换。请缩小页码范围或降低倍率。", "Unable to convert the pages. Narrow the range or lower the scale."))
+          : pick("无法完成图片转换。请减少所选页面或降低倍率。", "Unable to convert the pages. Select fewer pages or lower the scale."))
       }
     } finally {
       renderRef.current = null
@@ -445,12 +720,12 @@ export function PdfToImagesStudio({ incomingPdf }: { incomingPdf?: PdfFileHandof
 
   return <div className="space-y-6">
     <Card>
-      <CardHeader><CardTitle className="flex items-center gap-2"><FileImage className="size-5 text-cyan-500" />{pick("PDF 转图片工作台", "PDF to images workspace")}</CardTitle><p className="text-sm leading-6 text-muted-foreground">{pick("先预览页面，再按页码范围导出 PNG、JPG 或 WebP；多页自动打包为 ZIP。", "Preview the document, then export a page range as PNG, JPG, or WebP; multiple pages are bundled in a ZIP.")}</p></CardHeader>
+      <CardHeader><CardTitle className="flex items-center gap-2"><FileImage className="size-5 text-cyan-500" />{pick("PDF 转图片工作台", "PDF to images workspace")}</CardTitle><p className="text-sm leading-6 text-muted-foreground">{pick("预览后直接点选需要导出的页面，再转换为 PNG、JPG 或 WebP；多页自动打包为 ZIP。", "Preview and click the pages you want to export as PNG, JPG, or WebP; multiple pages are bundled in a ZIP.")}</p></CardHeader>
       <CardContent className="space-y-4">
         <button type="button" disabled={loading || running} aria-busy={loading} onClick={() => inputRef.current?.click()} className="flex min-h-28 w-full flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 px-5 text-center hover:border-cyan-500/50">
           {loading ? <LoaderCircle className="size-7 animate-spin text-cyan-500" /> : <FilePlus2 className="size-7 text-cyan-500" />}
           <span className="mt-2 text-sm font-semibold">{loading ? pick("正在读取并生成预览", "Reading and creating previews") : pick("选择一个 PDF", "Choose one PDF")}</span>
-          <span className="mt-1 text-xs text-muted-foreground">{pick("单个最大 150 MB · 最多预览前 12 页", "150 MB maximum · previews for the first 12 pages")}</span>
+          <span className="mt-1 text-xs font-medium text-muted-foreground">{pick("单个最大 150 MB · 每组预览 12 页", "150 MB maximum · 12 previews per group")}</span>
         </button>
         <input ref={inputRef} type="file" accept="application/pdf,.pdf" className="sr-only" onChange={(event) => { void choosePdf(event.target.files?.[0]); event.currentTarget.value = "" }} />
         {error ? <Alert variant="destructive"><AlertTriangle /><AlertTitle>{pick("无法完成转换", "Unable to complete conversion")}</AlertTitle><AlertDescription>{error}</AlertDescription></Alert> : null}
@@ -460,12 +735,107 @@ export function PdfToImagesStudio({ incomingPdf }: { incomingPdf?: PdfFileHandof
     {file && pageCount ? <Card>
       <CardHeader><CardTitle>{file.name}</CardTitle><p className="text-sm text-muted-foreground">{format("{pages} 页 · {size}", "{pages} pages · {size}", { pages: pageCount, size: formatBytes(file.size) })}</p></CardHeader>
       <CardContent className="space-y-5">
-        {previews.length ? <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-          {previews.map((preview) => <figure key={preview.url} className="overflow-hidden rounded-lg border border-border bg-white"><img src={preview.url} alt={format("第 {page} 页预览", "Preview of page {page}", { page: preview.page })} className="aspect-[.72] w-full object-contain" /><figcaption className="bg-zinc-950 py-1 text-center text-xs text-zinc-300">{preview.page}</figcaption></figure>)}
-        </div> : null}
-        {pageCount > 12 ? <p className="text-xs text-muted-foreground">{format("仅预览前 12 页，全部 {count} 页仍可按范围转换。", "Only the first 12 pages are previewed; all {count} pages remain available by range.", { count: pageCount })}</p> : null}
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <label className="space-y-2 text-sm"><span>{pick("页码范围", "Page range")}</span><Input value={pageSpec} onChange={(event) => setPageSpec(event.target.value)} placeholder="1-3,5" /><span className="block text-xs text-muted-foreground">{format("已选择 {count} 页", "{count} pages selected", { count: selectedPages.length })}</span></label>
+        <section className="space-y-3" aria-labelledby="pdf-page-previews">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="mr-auto">
+              <h3 id="pdf-page-previews" className="text-sm font-semibold text-foreground">{pick("页面预览", "Page previews")}</h3>
+              <p className="mt-1 text-xs font-medium text-slate-600 dark:text-slate-300">{format("第 {start}-{end} 页，共 {count} 页", "Pages {start}-{end} of {count}", { start: previewPageStart + 1, end: previewPageEnd, count: pageCount })}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="icon-sm"
+                variant="outline"
+                disabled={running || previewLoading || previewPage === 0}
+                onClick={() => changePreviewPage(previewPage - 1)}
+                aria-label={pick("上一组页面", "Previous page group")}
+                className="border-slate-300 bg-white text-slate-900 shadow-sm hover:border-cyan-600 hover:bg-cyan-50 hover:text-cyan-800 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-cyan-500/10"
+              ><ChevronLeft /></Button>
+              <span className="min-w-16 rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-center text-sm font-semibold tabular-nums text-slate-900 dark:border-border dark:bg-muted/40 dark:text-foreground">{previewPage + 1} / {previewPageCount}</span>
+              <Button
+                size="icon-sm"
+                variant="outline"
+                disabled={running || previewLoading || previewPage >= previewPageCount - 1}
+                onClick={() => changePreviewPage(previewPage + 1)}
+                aria-label={pick("下一组页面", "Next page group")}
+                className="border-slate-300 bg-white text-slate-900 shadow-sm hover:border-cyan-600 hover:bg-cyan-50 hover:text-cyan-800 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-cyan-500/10"
+              ><ChevronRight /></Button>
+            </div>
+          </div>
+
+          {previewLoading ? <div role="status" aria-label={pick("正在读取并生成预览", "Reading and creating previews")} className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+            {Array.from({ length: Math.max(1, previewPageEnd - previewPageStart) }, (_, index) => <div key={index} className="aspect-[.72] animate-pulse rounded-lg border border-slate-300 bg-slate-100 dark:border-border dark:bg-muted/35" />)}
+          </div> : null}
+
+          {!previewLoading && previews.length ? <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+            {previews.map((preview) => {
+              const pageIndex = preview.page - 1
+              const selected = selectedPageIndexes.has(pageIndex)
+              return <div key={preview.url} className={selected ? "relative overflow-hidden rounded-lg border border-cyan-700 bg-white shadow-sm ring-2 ring-cyan-700/35 dark:border-cyan-400 dark:ring-cyan-400/35" : "relative overflow-hidden rounded-lg border border-slate-300 bg-white shadow-sm transition hover:border-cyan-600 dark:border-zinc-700 dark:hover:border-cyan-400"}>
+                <button
+                  type="button"
+                  disabled={running}
+                  aria-pressed={selected}
+                  aria-label={format("选择第 {page} 页", "Select page {page}", { page: preview.page })}
+                  onClick={(event) => togglePageSelection(pageIndex, event.shiftKey)}
+                  className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-600 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <img src={preview.url} alt={format("第 {page} 页预览", "Preview of page {page}", { page: preview.page })} className="aspect-[.72] w-full bg-white object-contain" />
+                  <span className={selected ? "flex items-center justify-center gap-1 border-t border-cyan-800 bg-cyan-700 py-1.5 text-center text-xs font-bold text-white dark:border-cyan-300 dark:bg-cyan-400 dark:text-slate-950" : "flex items-center justify-center gap-1 border-t border-slate-200 bg-slate-100 py-1.5 text-center text-xs font-semibold text-slate-800 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"}>{selected ? <Check className="size-3.5" strokeWidth={2.75} /> : null}{preview.page}</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={running}
+                  onClick={() => void openPdfPagePreview(pageIndex)}
+                  aria-label={format("第 {page} 页预览", "Preview of page {page}", { page: preview.page })}
+                  className="absolute right-1.5 top-1.5 grid size-8 place-items-center rounded-lg border border-slate-300 bg-white/95 text-slate-900 shadow-md transition hover:border-cyan-600 hover:bg-cyan-50 hover:text-cyan-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/25 dark:bg-zinc-950/90 dark:text-white dark:hover:bg-zinc-900"
+                ><Maximize2 className="size-4" strokeWidth={2.5} /></button>
+              </div>
+            })}
+          </div> : null}
+
+          {previewError ? <p role="status" className="rounded-lg border border-amber-400/60 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">{previewError}</p> : null}
+          {pageCount > PDF_PREVIEW_PAGE_SIZE ? <p className="text-xs font-medium leading-5 text-slate-600 dark:text-slate-300">{format("全部 {count} 页均可预览，每组显示 {size} 页；使用箭头切换。", "All {count} pages can be previewed in groups of {size}. Use the arrows to switch groups.", { count: pageCount, size: PDF_PREVIEW_PAGE_SIZE })}</p> : null}
+        </section>
+
+        <section className="space-y-3 rounded-xl border border-border bg-muted/10 p-4" aria-labelledby="pdf-image-page-selection">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="mr-auto">
+              <h3 id="pdf-image-page-selection" className="text-sm font-semibold">{pick("选择导出页面", "Select pages")}</h3>
+              <p className="mt-1 text-xs text-muted-foreground">{format("已选择 {count} 页", "{count} pages selected", { count: selectedPages.length })}{selectedPageSummary ? ` · ${selectedPageSummary}` : ""}</p>
+            </div>
+            <Button size="sm" variant="outline" disabled={running} onClick={() => selectPreset("all")}>{pageCount > PDF_RASTER_MAX_PAGES ? format("选择前 {count} 页", "Select first {count} pages", { count: PDF_RASTER_MAX_PAGES }) : pick("全选", "Select all")}</Button>
+            <Button size="sm" variant="outline" disabled={running || !selectedPages.length} onClick={clearPageSelection}>{pick("取消选择", "Clear selection")}</Button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button size="icon-sm" variant="outline" disabled={running || pageWindow === 0} onClick={() => setPageWindow((current) => Math.max(0, current - 1))} aria-label={pick("上一组页面", "Previous page group")}><ChevronLeft /></Button>
+            <span className="min-w-0 flex-1 text-center text-xs font-medium text-muted-foreground">{pageWindowStart + 1}-{Math.min(pageCount, pageWindowStart + PDF_PAGE_SELECTOR_WINDOW)} / {pageCount}</span>
+            <Button size="sm" variant="outline" disabled={running || selectedPages.length >= PDF_RASTER_MAX_PAGES} onClick={selectVisiblePageGroup}>{pick("选择当前组", "Select current group")}</Button>
+            <Button size="icon-sm" variant="outline" disabled={running || pageWindow >= pageWindowCount - 1} onClick={() => setPageWindow((current) => Math.min(pageWindowCount - 1, current + 1))} aria-label={pick("下一组页面", "Next page group")}><ChevronRight /></Button>
+          </div>
+
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(2.75rem,1fr))] gap-2" role="group" aria-label={pick("可选择的 PDF 页面", "Selectable PDF pages")}>
+            {visiblePageIndexes.map((pageIndex) => {
+              const selected = selectedPageIndexes.has(pageIndex)
+              return <button
+                key={pageIndex}
+                type="button"
+                disabled={running}
+                aria-pressed={selected}
+                title={format("第 {page} 页", "Page {page}", { page: pageIndex + 1 })}
+                onClick={(event) => togglePageSelection(pageIndex, event.shiftKey)}
+                className={`h-10 rounded-lg border text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-600 ${selected ? "border-cyan-800 bg-cyan-700 text-white shadow-sm dark:border-cyan-300 dark:bg-cyan-400 dark:text-slate-950" : "border-slate-300 bg-white text-slate-900 hover:border-cyan-600 hover:bg-cyan-50 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-cyan-500/10"}`}
+              >{pageIndex + 1}</button>
+            })}
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs leading-5 text-muted-foreground">{format("单击选择或取消页面；按住 Shift 可连续选择。单次最多 {count} 页。", "Click to select or clear pages; hold Shift to select a continuous range. Up to {count} pages per run.", { count: PDF_RASTER_MAX_PAGES })}</p>
+            <Button size="sm" variant="outline" disabled={running || focusedPageIndex === null} onClick={() => { if (focusedPageIndex !== null) void openPdfPagePreview(focusedPageIndex) }}><Maximize2 />{focusedPageIndex === null ? pick("预览", "Preview") : format("第 {page} 页预览", "Preview of page {page}", { page: focusedPageIndex + 1 })}</Button>
+          </div>
+          {selectionNotice ? <p role="status" className="rounded-lg border border-amber-500/25 bg-amber-500/[.08] px-3 py-2 text-xs leading-5 text-amber-900 dark:text-amber-100">{selectionNotice}</p> : null}
+        </section>
+
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <SelectField label={pick("输出格式", "Output format")} value={formatName} onChange={(value) => setFormatName(value as "png" | "jpeg" | "webp")} options={[["png", "PNG"], ["jpeg", "JPG"], ["webp", "WebP"]]} />
           <SelectField label={pick("清晰度倍率", "Resolution scale")} value={String(scale)} onChange={(value) => setScale(Number(value))} options={[["1", "1×"], ["1.5", "1.5×"], ["2", "2×"]]} />
           {formatName !== "png" ? <label className="space-y-2 text-sm"><span>{pick("图片质量", "Image quality")} · {quality}%</span><input type="range" min={60} max={100} value={quality} onChange={(event) => setQuality(Number(event.target.value))} className="h-9 w-full accent-cyan-500" /></label> : <div className="rounded-xl border border-border bg-muted/15 p-3 text-xs leading-5 text-muted-foreground"><Package className="mb-1 size-4 text-cyan-500" />{pick("多页结果自动打包为 ZIP；单页直接下载图片。", "Multiple pages are bundled in a ZIP; a single page downloads directly.")}</div>}
@@ -475,6 +845,89 @@ export function PdfToImagesStudio({ incomingPdf }: { incomingPdf?: PdfFileHandof
         <div className="flex flex-wrap gap-2"><Button disabled={running || !selectedPages.length} onClick={() => void exportImages()}>{running ? <LoaderCircle className="animate-spin" /> : <Download />}{pick("转换并下载", "Convert and download")}</Button>{running ? <Button variant="outline" onClick={cancelExport}><X />{pick("取消", "Cancel")}</Button> : null}</div>
       </CardContent>
     </Card> : null}
+
+    <ImagePreviewDialog
+      open={pagePreview.pageIndex !== null}
+      title={pagePreview.pageIndex === null ? "" : format("第 {page} 页预览", "Preview of page {page}", { page: pagePreview.pageIndex + 1 })}
+      description={file?.name ?? ""}
+      imageUrl={pagePreview.imageUrl}
+      imageAlt={pagePreview.pageIndex === null ? "" : format("第 {page} 页预览", "Preview of page {page}", { page: pagePreview.pageIndex + 1 })}
+      loading={pagePreview.loading}
+      error={pagePreview.error}
+      onClose={closePagePreview}
+      onPrevious={() => { if (pagePreview.pageIndex !== null) void openPdfPagePreview(pagePreview.pageIndex - 1) }}
+      onNext={() => { if (pagePreview.pageIndex !== null) void openPdfPagePreview(pagePreview.pageIndex + 1) }}
+      hasPrevious={pagePreview.pageIndex !== null && pagePreview.pageIndex > 0}
+      hasNext={pagePreview.pageIndex !== null && pagePreview.pageIndex < pageCount - 1}
+    />
+  </div>
+}
+
+function ImagePreviewDialog({
+  open,
+  title,
+  description,
+  imageUrl,
+  imageAlt,
+  loading = false,
+  error = "",
+  onClose,
+  onPrevious,
+  onNext,
+  hasPrevious = false,
+  hasNext = false,
+}: {
+  open: boolean
+  title: string
+  description: string
+  imageUrl: string
+  imageAlt: string
+  loading?: boolean
+  error?: string
+  onClose: () => void
+  onPrevious?: () => void
+  onNext?: () => void
+  hasPrevious?: boolean
+  hasNext?: boolean
+}) {
+  const { pick } = useLanguage()
+
+  useEffect(() => {
+    if (!open) return
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose()
+      else if (event.key === "ArrowLeft" && hasPrevious) onPrevious?.()
+      else if (event.key === "ArrowRight" && hasNext) onNext?.()
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [hasNext, hasPrevious, onClose, onNext, onPrevious, open])
+
+  if (!open) return null
+
+  return <div
+    className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 p-3 backdrop-blur-sm sm:p-6"
+    role="dialog"
+    aria-modal="true"
+    aria-label={title || pick("预览", "Preview")}
+    onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}
+  >
+    <div className="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-border bg-background text-foreground shadow-2xl">
+      <header className="flex items-center gap-3 border-b border-border px-4 py-3 sm:px-5">
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate text-sm font-semibold sm:text-base">{title}</h2>
+          {description ? <p className="mt-0.5 truncate text-xs text-muted-foreground">{description}</p> : null}
+        </div>
+        <Button size="icon-sm" variant="outline" onClick={onClose} aria-label={pick("关闭", "Close")}><X /></Button>
+      </header>
+      <div className="relative flex min-h-72 flex-1 items-center justify-center overflow-hidden bg-zinc-950 p-4 sm:min-h-[32rem] sm:p-6">
+        {loading ? <div role="status" className="flex flex-col items-center gap-3 text-sm text-zinc-200"><LoaderCircle className="size-7 animate-spin text-cyan-400" />{pick("正在读取并生成预览", "Reading and creating previews")}</div> : null}
+        {!loading && error ? <div role="alert" className="max-w-md rounded-xl border border-red-400/25 bg-red-500/10 px-4 py-3 text-center text-sm leading-6 text-red-100">{error}</div> : null}
+        {!loading && !error && imageUrl ? <img src={imageUrl} alt={imageAlt} className="max-h-[72vh] max-w-full object-contain" /> : null}
+        {hasPrevious ? <button type="button" onClick={onPrevious} aria-label={pick("上一张", "Previous image")} className="absolute left-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/65 text-white shadow-lg hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"><ChevronLeft /></button> : null}
+        {hasNext ? <button type="button" onClick={onNext} aria-label={pick("下一张", "Next image")} className="absolute right-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full border border-white/20 bg-black/65 text-white shadow-lg hover:bg-black/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"><ChevronRight /></button> : null}
+      </div>
+    </div>
   </div>
 }
 

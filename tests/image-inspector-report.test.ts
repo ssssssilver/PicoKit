@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   buildImageEvidenceReport,
+  getSimpleImageVerdict,
   IMAGE_EVIDENCE_REPORT_VERSION,
   IMAGE_INSPECTOR_MAX_PIXELS,
   summarizeImageEvidence,
@@ -119,6 +120,38 @@ describe("image source-evidence report", () => {
     ).toBe("insufficient")
   })
 
+  it("reduces the visible result to an AI or non-AI verdict while keeping reliability", () => {
+    const aiInspection: ImageInspection = {
+      ...emptyInspection,
+      signals: [{
+        id: "generator",
+        label: "Generator",
+        value: "ComfyUI",
+        group: "ai",
+        severity: "high",
+      }],
+    }
+    expect(getSimpleImageVerdict({
+      inspection: aiInspection,
+      pixel: null,
+      visibleMark: null,
+    })).toMatchObject({
+      aiGenerated: true,
+      reliability: "medium",
+      aiLikelihoodPercent: 90,
+    })
+
+    expect(getSimpleImageVerdict({
+      inspection: emptyInspection,
+      pixel: { ...pixel, score: 0.08 },
+      visibleMark: null,
+    })).toMatchObject({
+      aiGenerated: false,
+      reliability: "medium",
+      aiLikelihoodPercent: 21,
+    })
+  })
+
   it("exports detector versions, channel availability, and limitations without a combined score", () => {
     const report = buildImageEvidenceReport({
       createdAt: "2026-07-15T00:00:00.000Z",
@@ -156,6 +189,12 @@ describe("image source-evidence report", () => {
       "doubao",
       "jimeng",
     ])
+    expect(report.summary).toMatchObject({
+      classification: "ai-generated",
+      reliability: "low",
+      aiLikelihoodPercent: 62,
+      likelihoodCalibration: "evidence-weighted-likelihood-v1",
+    })
     expect(report.limitations).toHaveLength(4)
     expect(JSON.stringify(report)).not.toContain("overallScore")
   })
@@ -182,15 +221,14 @@ describe("image source-evidence report", () => {
     })
   })
 
-  it("renders three labeled channels and validates local handoffs without restoring the score dial", () => {
+  it("renders a simple verdict and keeps technical evidence out of the visible result", () => {
     expect(IMAGE_INSPECTOR_MAX_PIXELS).toBe(24_000_000)
-    expect(source).toContain("确定文件证据")
-    expect(source).toContain("可见平台标记")
-    expect(source).toContain("像素统计估计")
-    expect(source).toContain("三类证据概览")
-    expect(source).toContain("检测证据存在冲突")
-    expect(source).toContain("像素结果不确定")
-    expect(source).toContain("部分通道未完成")
+    expect(source).toContain("是 AI 生成")
+    expect(source).toContain("不是 AI 生成")
+    expect(source).toContain("AI 可能性")
+    expect(source).toContain("换一张图片")
+    expect(source).toContain("下载检测报告")
+    expect(source).toContain("const SHOW_INLINE_TECHNICAL_REPORT = false")
     expect(source).toContain("allowSecondary")
     expect(source).toContain("正在准备增强检测")
     expect(source).toContain("useState<File | null>(null)")

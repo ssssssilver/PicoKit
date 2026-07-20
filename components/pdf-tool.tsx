@@ -107,7 +107,7 @@ function PdfToolAside({ mode }: { mode: PdfToolMode }) {
         ]
       : [
           pick("单个 PDF 最大 150 MB", "One PDF up to 150 MB"),
-          pick("先预览前 12 页，再按页码范围转换", "Preview the first 12 pages, then convert by page range"),
+          pick("预览后直接点选需要转换的页面", "Select pages"),
           pick("一次最多转换 200 页，多页自动打包为 ZIP", "Convert up to 200 pages per run; multiple pages are zipped"),
         ]
 

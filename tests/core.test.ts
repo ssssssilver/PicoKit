@@ -11,6 +11,7 @@ import {
   aiImageScore,
   attachVisibleAiMarkEvidence,
   buildImageViewPlan,
+  calibratedPixelAiLikelihood,
   combinePixelModelResults,
   fuseImageDetection,
   pixelEstimateBand,
@@ -295,6 +296,29 @@ describe("AI image detector core", () => {
   it("keeps uncertain pixel results uncertain without explicit provenance", () => {
     const pixel = aggregateImageViews([[{ label: "fake", score: 0.55 }]], ["full"], "wasm", "test-model")
     expect(fuseImageDetection(pixel, inspection).band).toBe("uncertain")
+  })
+
+  it("shrinks uncertain raw classifier scores before showing an AI likelihood", () => {
+    const uncertain = aggregateImageViews([[{ label: "fake", score: 0.79 }]], ["full"], "wasm", "test-model")
+    expect(pixelEstimateBand(uncertain)).toBe("uncertain")
+    expect(calibratedPixelAiLikelihood(uncertain)).toBeLessThanOrEqual(0.62)
+  })
+
+  it("uses validated OpenAI C2PA provenance as a high-confidence likelihood floor", () => {
+    const withOpenAiC2pa: ImageInspection = {
+      ...inspection,
+      signals: [{ id: "c2pa-ai-openai-image", label: "OpenAI", value: "gpt-image-2", group: "ai", severity: "high" }],
+      c2pa: {
+        present: true,
+        validated: true,
+        validationState: "trusted",
+        trust: "trusted",
+        summary: "trusted",
+      },
+    }
+    const fused = fuseImageDetection(null, withOpenAiC2pa)
+    expect(fused.overallScore).toBe(0.99)
+    expect(fused.calibration).toBe("evidence-weighted-likelihood-v1")
   })
 
   it("lets strong explicit AI provenance override a conflicting low pixel score", () => {

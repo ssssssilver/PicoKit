@@ -2,7 +2,7 @@ import { File as NodeFile } from "node:buffer"
 
 import { describe, expect, it } from "vitest"
 
-import { inspectImage, summarizeC2paValidation } from "@/lib/image-inspector"
+import { c2paAiSignals, inspectImage, summarizeC2paValidation } from "@/lib/image-inspector"
 
 const transparentPixel = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
@@ -50,5 +50,22 @@ describe("image provenance signal precision", () => {
 
     const inspection = await inspectImage(file)
     expect(inspection.signals.some((signal) => signal.group === "ai" && /ComfyUI/i.test(signal.value))).toBe(true)
+  })
+
+  it("extracts GPT Image 2 and algorithmic-media assertions from a parsed C2PA manifest", () => {
+    const signals = c2paAiSignals({
+      active_manifest: {
+        claim_generator: "OpenAI ChatGPT Images",
+        assertions: [{ data: { digitalSourceType: "http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia" } }],
+      },
+    })
+    expect(signals).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "c2pa-ai-openai-image", severity: "high" }),
+      expect.objectContaining({ id: "c2pa-ai-digital-source-type", severity: "high" }),
+    ]))
+  })
+
+  it("does not turn a generic C2PA manifest into AI provenance", () => {
+    expect(c2paAiSignals({ active_manifest: { claim_generator: "Camera Vendor" } })).toEqual([])
   })
 })

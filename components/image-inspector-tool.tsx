@@ -30,6 +30,7 @@ import { Progress } from "@/components/ui/progress"
 import {
   attachVisibleAiMarkEvidence,
   buildImageViewPlan,
+  calibratedPixelAiLikelihood,
   fuseImageDetection,
   IMAGE_PIXEL_DETECTOR_VERSION,
   IMAGE_PIXEL_MODEL_ID,
@@ -76,8 +77,8 @@ export type EvidenceSummaryKind =
   | "statistical-estimate"
   | "insufficient"
 
-export const IMAGE_EVIDENCE_REPORT_VERSION = "1.3.0"
-export const PROVENANCE_DETECTOR_VERSION = "exif-c2pa-inspector/2"
+export const IMAGE_EVIDENCE_REPORT_VERSION = "1.4.0"
+export const PROVENANCE_DETECTOR_VERSION = "exif-c2pa-inspector/3"
 export const VISIBLE_MARK_DETECTOR_VERSION = "platform-mark-matcher/2"
 export const IMAGE_INSPECTOR_MAX_BYTES = 25 * 1024 * 1024
 export const IMAGE_INSPECTOR_MAX_PIXELS = 24_000_000
@@ -87,6 +88,8 @@ const INITIAL_CHANNELS: DetectionChannelAvailability = {
   visibleMark: "not-run",
   pixel: "not-run",
 }
+
+const SHOW_INLINE_TECHNICAL_REPORT = false
 
 const REPORT_LIMITATIONS = [
   {
@@ -142,6 +145,33 @@ export function summarizeImageEvidence({
   }
 }
 
+export function getSimpleImageVerdict({
+  inspection,
+  pixel,
+  visibleMark,
+}: {
+  inspection: ImageInspection | null
+  pixel: PixelDetectionResult | null
+  visibleMark: VisibleAiMarkDetection | null
+}) {
+  const fused = inspection ? fuseImageDetection(pixel, inspection) : null
+  const pixelBand = pixel ? pixelEstimateBand(pixel) : null
+  const reliability = fused?.reliability
+    ?? (visibleMark || (pixelBand !== null && pixelBand !== "uncertain" && (pixel?.consistency ?? 0) >= 0.6)
+      ? "medium"
+      : "low")
+  const aiLikelihood = fused?.overallScore
+    ?? (visibleMark ? Math.max(0.94, visibleMark.confidence) : calibratedPixelAiLikelihood(pixel))
+  const aiGenerated = aiLikelihood > 0.5
+
+  return {
+    aiGenerated,
+    reliability,
+    aiLikelihood,
+    aiLikelihoodPercent: Math.round(aiLikelihood * 100),
+  }
+}
+
 export function buildImageEvidenceReport({
   createdAt = new Date().toISOString(),
   inspectedAt,
@@ -167,6 +197,7 @@ export function buildImageEvidenceReport({
   channels: DetectionChannelAvailability
 }) {
   const summary = summarizeImageEvidence({ inspection, pixel, visibleMark })
+  const verdict = getSimpleImageVerdict({ inspection, pixel, visibleMark })
   const relationship = inspection
     ? fuseImageDetection(pixel, inspection).evidenceAgreement
     : "insufficient"
@@ -183,6 +214,11 @@ export function buildImageEvidenceReport({
     } : null,
     summary: {
       ...summary,
+      classification: verdict.aiGenerated ? "ai-generated" : "not-ai-generated",
+      reliability: verdict.reliability,
+      aiLikelihood: verdict.aiLikelihood,
+      aiLikelihoodPercent: verdict.aiLikelihoodPercent,
+      likelihoodCalibration: "evidence-weighted-likelihood-v1",
       evidenceRelationship: relationship,
     },
     channels: {
@@ -243,6 +279,7 @@ export function buildReadableImageEvidenceReport({
 }) {
   const zh = language.startsWith("zh")
   const summary = summarizeImageEvidence({ inspection, pixel, visibleMark })
+  const verdict = getSimpleImageVerdict({ inspection, pixel, visibleMark })
   const relationship = inspection
     ? fuseImageDetection(pixel, inspection).evidenceAgreement
     : "insufficient"
@@ -259,6 +296,9 @@ export function buildReadableImageEvidenceReport({
     "",
     `## ${zh ? "结论概览" : "Evidence overview"}`,
     "",
+    `${zh ? "检测结果" : "Detection result"}: ${verdict.aiGenerated ? (zh ? "AI 生成" : "AI-generated") : (zh ? "非 AI 生成" : "Not AI-generated")}`,
+    `${zh ? "AI 可能性" : "AI likelihood"}: ${verdict.aiLikelihoodPercent}%`,
+    `${zh ? "检测可信度" : "Confidence"}: ${readableReliability(verdict.reliability, zh)}`,
     `${zh ? "主要证据级别" : "Primary evidence level"}: ${readableSummaryKind(summary.kind, zh)}`,
     `${zh ? "证据关系" : "Evidence relationship"}: ${readableRelationship(relationship, zh)}`,
     "",
@@ -305,8 +345,8 @@ export function buildReadableImageEvidenceReport({
     `## ${zh ? "使用限制" : "Limitations"}`,
     "",
     zh
-      ? "本报告不是 AI 创作概率，也不能单独用于处罚、版权归属、作者身份或事实真实性判断。没有检测到来源证据，不等于图片一定由真人创作。"
-      : "This report is not a probability of AI authorship and must not be the sole basis for penalties, copyright, authorship, or factual-authenticity decisions. No detected provenance does not prove human authorship.",
+      ? "AI 可能性是来源凭证、平台标记与像素模型经保守校准后的估计，不是作者身份或事实真实性证明，也不能单独用于处罚或版权归属判断。"
+      : "AI likelihood is a conservatively calibrated estimate from provenance, platform marks, and pixel models. It is not proof of authorship or factual authenticity and must not be the sole basis for penalties or copyright decisions.",
     "",
   )
   return lines.join("\n")
@@ -332,7 +372,7 @@ export function ImageInspectorTool() {
     useState<DetectionChannelAvailability>(INITIAL_CHANNELS)
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState(0)
-  const [status, setStatus] = useState("")
+  const [, setStatus] = useState("")
   const [notice, setNotice] = useState("")
   const [inspectedAt, setInspectedAt] = useState<string | null>(null)
   const [handoffLoading, setHandoffLoading] = useState(false)
@@ -710,15 +750,15 @@ export function ImageInspectorTool() {
 
   return (
     <div className="space-y-6" aria-busy={running}>
-      <Card className="border-white/10 bg-[#0d0d0d] shadow-sm">
+      <Card className={hasReport ? "hidden" : "border-white/10 bg-[#0d0d0d] shadow-sm"}>
         <CardHeader>
           <CardTitle className="text-base text-zinc-100">
             {pick("上传待检查图片", "Choose an image to inspect")}
           </CardTitle>
           <p className="mt-1.5 text-sm leading-6 text-zinc-500">
             {pick(
-              "工具会分别读取文件来源、检查可见平台标记，并给出像素统计估计。三个通道独立运行，图片不会上传。",
-              "The tool reads file provenance, checks visible platform marks, and produces a pixel-based statistical estimate in separate local channels. The image is never uploaded.",
+              "选择一张图片，检测它是否由 AI 生成。图片只在当前设备处理，不会上传。",
+              "Choose an image to check whether it was AI-generated. It stays on this device and is never uploaded.",
             )}
           </p>
         </CardHeader>
@@ -760,7 +800,7 @@ export function ImageInspectorTool() {
                 <div className="mt-4 flex flex-wrap gap-3">
                   <Button size="lg" onClick={analyze} disabled={running}>
                     <Play />
-                    {pick("生成来源证据报告", "Create source-evidence report")}
+                    {pick("开始检测", "Start local detection")}
                   </Button>
                   {running ? (
                     <Button variant="outline" size="lg" onClick={cancel}>
@@ -777,7 +817,7 @@ export function ImageInspectorTool() {
               <div className="flex items-center justify-between gap-4 text-xs text-zinc-500">
                 <span className="flex min-w-0 items-center gap-2">
                   <LoaderCircle className="size-3.5 shrink-0 animate-spin text-cyan-300" />
-                  <span className="truncate">{status}</span>
+                  <span className="truncate">{pick("正在检测图片", "Analyzing locally")}</span>
                 </span>
                 <span>{Math.round(progress)}%</span>
               </div>
@@ -806,8 +846,10 @@ export function ImageInspectorTool() {
           channels={channels}
           onExport={exportReport}
           onExportReadable={exportReadableReport}
+          onTryAnother={() => handleFile(null)}
           headingRef={reportHeadingRef}
           previewUrl={previewUrl}
+          fileName={file?.name ?? ""}
         />
       ) : null}
     </div>
@@ -821,8 +863,10 @@ function SourceEvidenceReport({
   channels,
   onExport,
   onExportReadable,
+  onTryAnother,
   headingRef,
   previewUrl,
+  fileName,
 }: {
   inspection: ImageInspection | null
   pixel: PixelDetectionResult | null
@@ -830,8 +874,10 @@ function SourceEvidenceReport({
   channels: DetectionChannelAvailability
   onExport: () => void
   onExportReadable: () => void
+  onTryAnother: () => void
   headingRef: RefObject<HTMLHeadingElement | null>
   previewUrl: string
+  fileName: string
 }) {
   const { pick, format } = useLanguage()
   const [selectedView, setSelectedView] = useState("full")
@@ -848,9 +894,100 @@ function SourceEvidenceReport({
   const relationshipCopy = getRelationshipCopy(relationship, pick)
   const pixelBand = pixel ? pixelEstimateBand(pixel) : null
   const pixelModels = pixel?.models?.length ? pixel.models : pixel ? [pixel] : []
+  const verdict = getSimpleImageVerdict({ inspection, pixel, visibleMark })
+  const confidenceLabel = verdict.reliability === "high"
+    ? pick("高", "High")
+    : verdict.reliability === "medium"
+      ? pick("中", "Medium")
+      : pick("有限", "Limited")
 
   return (
     <div className="space-y-6">
+      <Card className="overflow-hidden border-border bg-card shadow-sm">
+        <CardContent className="p-0">
+          <div className="grid lg:min-h-[500px] lg:grid-cols-[minmax(0,1.15fr)_minmax(340px,.85fr)]">
+            <div className="flex min-h-80 flex-col border-b border-border bg-muted/25 p-5 sm:p-7 lg:border-b-0 lg:border-r">
+              <div className="relative min-h-72 flex-1 overflow-hidden rounded-xl bg-black/[.04] dark:bg-black/35">
+                <Image
+                  src={previewUrl}
+                  alt={pick("待检查图片预览", "Image preview")}
+                  fill
+                  unoptimized
+                  className="object-contain p-3"
+                />
+              </div>
+              {fileName ? <p className="mt-3 truncate text-center text-sm font-medium text-muted-foreground">{fileName}</p> : null}
+            </div>
+
+            <div className="flex flex-col justify-center gap-5 p-5 sm:p-7">
+              <div className={verdict.aiGenerated
+                ? "rounded-xl border border-red-300 bg-red-50 p-5 text-red-950 dark:border-red-500/35 dark:bg-red-500/10 dark:text-red-100"
+                : "rounded-xl border border-emerald-300 bg-emerald-50 p-5 text-emerald-950 dark:border-emerald-500/35 dark:bg-emerald-500/10 dark:text-emerald-100"}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium opacity-75">{pick("检测结果", "Result")}</p>
+                    <h2
+                      ref={headingRef}
+                      tabIndex={-1}
+                      className="mt-2 scroll-mt-24 text-3xl font-bold tracking-tight outline-none"
+                    >
+                      {verdict.aiGenerated
+                        ? pick("是 AI 生成", "AI-generated")
+                        : pick("不是 AI 生成", "Not AI-generated")}
+                    </h2>
+                  </div>
+                  <span className={verdict.aiGenerated
+                    ? "shrink-0 rounded-full bg-red-200 px-4 py-2 text-sm font-bold tabular-nums text-red-700 dark:bg-red-400/20 dark:text-red-200"
+                    : "shrink-0 rounded-full bg-emerald-200 px-4 py-2 text-sm font-bold tabular-nums text-emerald-700 dark:bg-emerald-400/20 dark:text-emerald-200"}
+                  >
+                    {verdict.aiLikelihoodPercent}% AI
+                  </span>
+                </div>
+                <p className="mt-4 text-sm leading-6 opacity-85">
+                  {verdict.aiGenerated
+                    ? pick("这张图片是 AI 生成的。", "This image is AI-generated.")
+                    : pick("这张图片不是 AI 生成的。", "This image is not AI-generated.")}
+                </p>
+              </div>
+
+              <div className="divide-y divide-border rounded-xl border border-border bg-background px-5">
+                <ResultMetric
+                  label={pick("AI 可能性", "AI likelihood")}
+                  value={`${verdict.aiLikelihoodPercent}%`}
+                  emphasized
+                  danger={verdict.aiGenerated}
+                />
+                <ResultMetric
+                  label={pick("可信度", "Confidence")}
+                  value={confidenceLabel}
+                />
+                <ResultMetric
+                  label={pick("判定", "Classification")}
+                  value={verdict.aiGenerated ? pick("AI 生成", "AI-generated") : pick("非 AI 生成", "Not AI-generated")}
+                  danger={verdict.aiGenerated}
+                />
+              </div>
+
+              <div className="mt-auto grid gap-3">
+                <Button size="lg" onClick={onTryAnother}>
+                  <RotateCcw />
+                  {pick("换一张图片", "Try another image")}
+                </Button>
+                <Button size="lg" variant="outline" onClick={onExportReadable}>
+                  <Download />
+                  {pick("下载检测报告", "Download detection report")}
+                </Button>
+                <p className="text-center text-xs leading-5 text-muted-foreground">
+                  {pick("详细检测信息与未完成项仅保留在下载报告中。", "Detailed findings and incomplete checks are available only in the downloaded report.")}
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {SHOW_INLINE_TECHNICAL_REPORT ? <div>
       <Card className="overflow-hidden border-white/10 bg-[#0d0d0d]">
         <div className="border-b border-white/10 bg-[#101010] p-6 md:p-8">
           <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
@@ -864,8 +1001,6 @@ function SourceEvidenceReport({
                 </Badge>
               </div>
               <h2
-                ref={headingRef}
-                tabIndex={-1}
                 className="mt-4 scroll-mt-24 text-2xl font-semibold tracking-tight text-white outline-none"
               >
                 {pick("图片来源证据报告", "Image source-evidence report")}
@@ -1223,6 +1358,7 @@ function SourceEvidenceReport({
           </ul>
         </CardContent>
       </Card>
+      </div> : null}
     </div>
   )
 }
@@ -1356,6 +1492,35 @@ function RawMetadata({ inspection }: { inspection: ImageInspection }) {
       </div>
       <p className="sr-only">{pick("原始元数据", "Raw metadata")}</p>
     </details>
+  )
+}
+
+function ResultMetric({
+  label,
+  value,
+  emphasized = false,
+  danger = false,
+}: {
+  label: string
+  value: string
+  emphasized?: boolean
+  danger?: boolean
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-4">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span
+        className={`text-sm font-semibold tabular-nums ${
+          danger
+            ? "text-red-600 dark:text-red-300"
+            : emphasized
+              ? "text-cyan-700 dark:text-cyan-300"
+              : "text-foreground"
+        }`}
+      >
+        {value}
+      </span>
+    </div>
   )
 }
 
@@ -1691,6 +1856,18 @@ function readableRelationship(
     insufficient: ["当前证据不足", "Current evidence is insufficient"],
   }
   return labels[relationship][zh ? 0 : 1]
+}
+
+function readableReliability(
+  reliability: FusedImageDetection["reliability"],
+  zh: boolean,
+) {
+  const labels: Record<FusedImageDetection["reliability"], [string, string]> = {
+    high: ["高", "High"],
+    medium: ["中", "Medium"],
+    low: ["有限", "Limited"],
+  }
+  return labels[reliability][zh ? 0 : 1]
 }
 
 function readableChannelStatus(status: DetectionChannelStatus, zh: boolean) {
