@@ -49,4 +49,10 @@ describe("local image handoff", () => {
     }
     expect(optimizer).not.toContain("maxBatchFiles = 50")
   })
+
+  it("subscribes to IndexedDB completion before requests can finish", async () => {
+    const source = await readFile("lib/local-asset-transfer.ts", "utf8")
+    expect(source.match(/const completed = transactionDone\(transaction\)/g)).toHaveLength(6)
+    expect(source).not.toContain("await transactionDone(transaction)")
+  })
 })

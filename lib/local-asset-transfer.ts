@@ -97,8 +97,9 @@ async function deleteLocalAsset(id: string) {
   const database = await openDatabase()
   try {
     const transaction = database.transaction(LOCAL_ASSET_STORE_NAME, "readwrite")
+    const completed = transactionDone(transaction)
     transaction.objectStore(LOCAL_ASSET_STORE_NAME).delete(id)
-    await transactionDone(transaction)
+    await completed
   } finally {
     database.close()
   }
@@ -116,12 +117,13 @@ export async function cleanExpiredLocalAssets(now = Date.now()) {
   const database = await openDatabase()
   try {
     const transaction = database.transaction(LOCAL_ASSET_STORE_NAME, "readwrite")
+    const completed = transactionDone(transaction)
     const store = transaction.objectStore(LOCAL_ASSET_STORE_NAME)
     const records = await requestResult(store.getAll() as IDBRequest<StoredLocalAsset[]>)
     for (const record of records) {
       if (isLocalAssetExpired(record.createdAt, now)) store.delete(record.id)
     }
-    await transactionDone(transaction)
+    await completed
   } finally {
     database.close()
   }
@@ -144,8 +146,9 @@ export async function saveLocalAsset(blob: Blob, name: string, source: LocalAsse
   const database = await openDatabase()
   try {
     const transaction = database.transaction(LOCAL_ASSET_STORE_NAME, "readwrite")
+    const completed = transactionDone(transaction)
     transaction.objectStore(LOCAL_ASSET_STORE_NAME).put(record)
-    await transactionDone(transaction)
+    await completed
   } finally {
     database.close()
   }
@@ -183,8 +186,9 @@ export async function saveLocalAssetBatch(
   const database = await openDatabase()
   try {
     const transaction = database.transaction(LOCAL_ASSET_STORE_NAME, "readwrite")
+    const completed = transactionDone(transaction)
     transaction.objectStore(LOCAL_ASSET_STORE_NAME).put(record)
-    await transactionDone(transaction)
+    await completed
   } finally {
     database.close()
   }
@@ -201,12 +205,13 @@ export async function loadLocalAsset(id: string, consume = false): Promise<Local
     // Reads use a write transaction so an expired blob is removed immediately
     // instead of being left behind after it has become inaccessible.
     const transaction = database.transaction(LOCAL_ASSET_STORE_NAME, "readwrite")
+    const completed = transactionDone(transaction)
     const store = transaction.objectStore(LOCAL_ASSET_STORE_NAME)
     const stored = await requestResult(store.get(id) as IDBRequest<StoredLocalAsset | undefined>)
     const record = stored && !("kind" in stored) ? stored : null
     const expired = Boolean(record && isLocalAssetExpired(record.createdAt))
     if (record && (consume || expired)) store.delete(id)
-    await transactionDone(transaction)
+    await completed
     if (!record || expired) return null
     scheduleLocalAssetExpiry(record.id, record.createdAt)
     return record
@@ -220,12 +225,13 @@ export async function loadLocalAssetBatch(id: string, consume = false): Promise<
   const database = await openDatabase()
   try {
     const transaction = database.transaction(LOCAL_ASSET_STORE_NAME, "readwrite")
+    const completed = transactionDone(transaction)
     const store = transaction.objectStore(LOCAL_ASSET_STORE_NAME)
     const record = await requestResult(store.get(id) as IDBRequest<StoredLocalAsset | undefined>)
     const batch = record && "kind" in record && record.kind === "batch" ? record : null
     const expired = Boolean(batch && isLocalAssetExpired(batch.createdAt))
     if (batch && (consume || expired)) store.delete(id)
-    await transactionDone(transaction)
+    await completed
     if (!batch || expired) return null
     scheduleLocalAssetExpiry(batch.id, batch.createdAt)
     return batch
