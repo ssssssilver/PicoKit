@@ -2166,6 +2166,7 @@
   "Not AI-generated": "Yapay zekâ üretimi değil",
   "This image is AI-generated.": "Bu görsel yapay zekâ tarafından oluşturulmuştur.",
   "This image is not AI-generated.": "Bu görsel yapay zekâ tarafından oluşturulmamıştır.",
+  "The detection models disagree, so there is not enough evidence to decide.": "Algılama modelleri birbiriyle uyuşmuyor; bu nedenle karar vermek için yeterli kanıt yok.",
   "Try another image": "Başka bir görsel dene",
   "Download detection report": "Tespit raporunu indir",
   "Detailed findings and incomplete checks are available only in the downloaded report.": "Ayrıntılı bulgular ve tamamlanmamış kontroller yalnızca indirilen raporda bulunur."

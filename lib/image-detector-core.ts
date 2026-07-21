@@ -7,7 +7,8 @@ export const IMAGE_PIXEL_DETECTOR_VERSION = `${IMAGE_PIXEL_MODEL_ID}@${IMAGE_PIX
 export const IMAGE_PIXEL_SECONDARY_MODEL_ID = "onnx-community/ai-source-detector-ONNX"
 export const IMAGE_PIXEL_SECONDARY_MODEL_REVISION = "9a1c4127b96f6b76e7674c01af2642bf248e5950"
 export const IMAGE_PIXEL_SECONDARY_DETECTOR_VERSION = `${IMAGE_PIXEL_SECONDARY_MODEL_ID}@${IMAGE_PIXEL_SECONDARY_MODEL_REVISION}`
-export const IMAGE_PIXEL_CASCADE_VERSION = "tabnative/image-pixel-cascade@2"
+export const IMAGE_PIXEL_CASCADE_VERSION = "tabnative/image-pixel-cascade@3"
+export const IMAGE_PIXEL_MIN_MODEL_AGREEMENT = 0.7
 
 export type ImageClassifierLabel = { label: string; score: number }
 
@@ -167,9 +168,12 @@ export function pixelEstimateBand(pixel: PixelDetectionResult): PixelEstimateBan
   if (!secondary) return primaryBand
 
   const secondaryBand = singlePixelEstimateBand(secondary)
+  const modelAgreement = clamp(pixel.modelAgreement ?? (1 - Math.abs(models[0].score - secondary.score)))
   // The enhanced model exists to challenge a weak or negative first pass.
-  // It may promote an uncertain result, but direct higher/lower disagreement
-  // remains uncertain instead of being hidden behind an averaged score.
+  // It may promote an uncertain result only when both model scores still point
+  // in a compatible direction. Large score gaps are model conflict, even when
+  // the first score sits just inside the broad uncertainty band.
+  if (modelAgreement < IMAGE_PIXEL_MIN_MODEL_AGREEMENT) return "uncertain"
   if (secondaryBand === "uncertain") return "uncertain"
   if (primaryBand === "uncertain" || primaryBand === secondaryBand) {
     return secondaryBand
@@ -198,10 +202,11 @@ export function combinePixelModelResults(
     }
   }
 
+  const modelAgreement = clamp(1 - Math.abs(primary.score - secondary.score))
   const provisional: PixelDetectionResult = {
     ...primary,
     models: [primary, secondary],
-    modelAgreement: clamp(1 - Math.abs(primary.score - secondary.score)),
+    modelAgreement,
     cascade: {
       strategy: "challenge-negative-v1",
       secondary: secondaryState,
@@ -211,7 +216,9 @@ export function combinePixelModelResults(
   const secondaryBand = singlePixelEstimateBand(secondary)
   const combinedBand = pixelEstimateBand(provisional)
   let score = clamp(primary.score * 0.4 + secondary.score * 0.6)
-  if (primaryBand === "uncertain" && combinedBand !== "uncertain") {
+  if (modelAgreement < IMAGE_PIXEL_MIN_MODEL_AGREEMENT) {
+    score = 0.5
+  } else if (primaryBand === "uncertain" && combinedBand !== "uncertain") {
     score = secondary.score
   } else if (
     primaryBand !== "uncertain" &&
@@ -287,8 +294,10 @@ export function fuseImageDetection(pixel: PixelDetectionResult | null, inspectio
   else if (pixelHigher || pixelLower) evidenceAgreement = "pixel-only"
 
   let reliability: ImageDetectionReliability = "low"
-  if (evidenceAgreement === "agree" && (pixel?.consistency ?? 0) >= 0.65) reliability = "high"
-  else if (provenanceHigher || ((pixelHigher || pixelLower) && (pixel?.consistency ?? 0) >= 0.6)) reliability = "medium"
+  const modelAgreement = pixel?.modelAgreement ?? 1
+  const pixelSupported = modelAgreement >= IMAGE_PIXEL_MIN_MODEL_AGREEMENT
+  if (evidenceAgreement === "agree" && pixelSupported && (pixel?.consistency ?? 0) >= 0.65) reliability = "high"
+  else if (provenanceHigher || (pixelSupported && (pixelHigher || pixelLower) && (pixel?.consistency ?? 0) >= 0.6)) reliability = "medium"
   if (evidenceAgreement === "conflict" && !visibleMarks.length) reliability = "low"
 
   return {

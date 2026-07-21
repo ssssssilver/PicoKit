@@ -2166,6 +2166,7 @@
   "Not AI-generated": "AI生成ではありません",
   "This image is AI-generated.": "この画像はAIで生成されています。",
   "This image is not AI-generated.": "この画像はAIで生成されたものではありません。",
+  "The detection models disagree, so there is not enough evidence to decide.": "検出モデルの結果が一致していないため、判断するには証拠が不十分です。",
   "Try another image": "別の画像を試す",
   "Download detection report": "検出レポートをダウンロード",
   "Detailed findings and incomplete checks are available only in the downloaded report.": "詳細な検出結果と未完了のチェックは、ダウンロードしたレポートでのみ確認できます。"

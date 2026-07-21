@@ -2166,6 +2166,7 @@
   "Not AI-generated": "No generada por IA",
   "This image is AI-generated.": "Esta imagen fue generada por IA.",
   "This image is not AI-generated.": "Esta imagen no fue generada por IA.",
+  "The detection models disagree, so there is not enough evidence to decide.": "Los modelos de detección no coinciden, por lo que no hay pruebas suficientes para decidir.",
   "Try another image": "Probar otra imagen",
   "Download detection report": "Descargar informe de detección",
   "Detailed findings and incomplete checks are available only in the downloaded report.": "Los resultados detallados y las comprobaciones incompletas solo están disponibles en el informe descargado."

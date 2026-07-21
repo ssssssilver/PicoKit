@@ -120,7 +120,7 @@ describe("image source-evidence report", () => {
     ).toBe("insufficient")
   })
 
-  it("reduces the visible result to an AI or non-AI verdict while keeping reliability", () => {
+  it("uses an honest three-state verdict while keeping the visible result simple", () => {
     const aiInspection: ImageInspection = {
       ...emptyInspection,
       signals: [{
@@ -137,6 +137,7 @@ describe("image source-evidence report", () => {
       visibleMark: null,
     })).toMatchObject({
       aiGenerated: true,
+      classification: "ai-generated",
       reliability: "medium",
       aiLikelihoodPercent: 90,
     })
@@ -147,8 +148,19 @@ describe("image source-evidence report", () => {
       visibleMark: null,
     })).toMatchObject({
       aiGenerated: false,
+      classification: "not-ai-generated",
       reliability: "medium",
       aiLikelihoodPercent: 21,
+    })
+
+    expect(getSimpleImageVerdict({
+      inspection: emptyInspection,
+      pixel,
+      visibleMark: null,
+    })).toMatchObject({
+      aiGenerated: false,
+      classification: "uncertain",
+      reliability: "low",
     })
   })
 
@@ -190,7 +202,7 @@ describe("image source-evidence report", () => {
       "jimeng",
     ])
     expect(report.summary).toMatchObject({
-      classification: "ai-generated",
+      classification: "uncertain",
       reliability: "low",
       aiLikelihoodPercent: 62,
       likelihoodCalibration: "evidence-weighted-likelihood-v1",
@@ -225,6 +237,7 @@ describe("image source-evidence report", () => {
     expect(IMAGE_INSPECTOR_MAX_PIXELS).toBe(24_000_000)
     expect(source).toContain("是 AI 生成")
     expect(source).toContain("不是 AI 生成")
+    expect(source).toContain("无法确认")
     expect(source).toContain("AI 可能性")
     expect(source).toContain("换一张图片")
     expect(source).toContain("下载检测报告")

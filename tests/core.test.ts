@@ -182,9 +182,9 @@ describe("AI image detector core", () => {
     ])).toBeCloseTo(0.84)
   })
 
-  it("runs an enhanced model for weak results and can recover a false negative", () => {
+  it("runs an enhanced model for a weak AI-leaning result when both models agree", () => {
     const primary = aggregateImageViews(
-      [[{ label: "fake", score: 0.26 }, { label: "real", score: 0.74 }]],
+      [[{ label: "fake", score: 0.62 }, { label: "real", score: 0.38 }]],
       ["full"],
       "webgpu",
       "fast-model",
@@ -208,6 +208,32 @@ describe("AI image detector core", () => {
     expect(pixelEstimateBand(combined)).toBe("higher")
     expect(combined.models).toHaveLength(2)
     expect(combined.cascade?.secondary).toBe("completed")
+  })
+
+  it("keeps the reported 31/85 real-photo model conflict inconclusive", () => {
+    const primary = aggregateImageViews(
+      [[{ label: "fake", score: 0.31 }, { label: "real", score: 0.69 }]],
+      ["full"],
+      "webgpu",
+      "fast-model",
+    )
+    const secondary = aggregateImageViews(
+      [[{ label: "real", score: 0.15 }]],
+      ["full"],
+      "webgpu",
+      "enhanced-model",
+    )
+    const combined = combinePixelModelResults(primary, secondary, "completed")
+    const fused = fuseImageDetection(combined, inspection)
+
+    expect(combined.modelAgreement).toBeCloseTo(0.46)
+    expect(combined.score).toBe(0.5)
+    expect(pixelEstimateBand(combined)).toBe("uncertain")
+    expect(fused).toMatchObject({
+      band: "uncertain",
+      reliability: "low",
+      overallScore: 0.5,
+    })
   })
 
   it("keeps direct model disagreement uncertain instead of averaging it away", () => {

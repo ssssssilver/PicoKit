@@ -2166,6 +2166,7 @@
   "Not AI-generated": "Не создано ИИ",
   "This image is AI-generated.": "Это изображение создано ИИ.",
   "This image is not AI-generated.": "Это изображение не создано ИИ.",
+  "The detection models disagree, so there is not enough evidence to decide.": "Модели детекции расходятся, поэтому данных недостаточно для вывода.",
   "Try another image": "Проверить другое изображение",
   "Download detection report": "Скачать отчёт о проверке",
   "Detailed findings and incomplete checks are available only in the downloaded report.": "Подробные результаты и незавершённые проверки доступны только в скачанном отчёте."

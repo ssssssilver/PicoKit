@@ -77,7 +77,12 @@ export type EvidenceSummaryKind =
   | "statistical-estimate"
   | "insufficient"
 
-export const IMAGE_EVIDENCE_REPORT_VERSION = "1.4.0"
+export type SimpleImageClassification =
+  | "ai-generated"
+  | "not-ai-generated"
+  | "uncertain"
+
+export const IMAGE_EVIDENCE_REPORT_VERSION = "1.5.0"
 export const PROVENANCE_DETECTOR_VERSION = "exif-c2pa-inspector/3"
 export const VISIBLE_MARK_DETECTOR_VERSION = "platform-mark-matcher/2"
 export const IMAGE_INSPECTOR_MAX_BYTES = 25 * 1024 * 1024
@@ -162,10 +167,24 @@ export function getSimpleImageVerdict({
       : "low")
   const aiLikelihood = fused?.overallScore
     ?? (visibleMark ? Math.max(0.94, visibleMark.confidence) : calibratedPixelAiLikelihood(pixel))
-  const aiGenerated = aiLikelihood > 0.5
+  const classification: SimpleImageClassification = fused
+    ? fused.band === "higher-ai-signals"
+      ? "ai-generated"
+      : fused.band === "lower-ai-signals"
+        ? "not-ai-generated"
+        : "uncertain"
+    : visibleMark
+      ? "ai-generated"
+      : pixelBand === "higher"
+        ? "ai-generated"
+        : pixelBand === "lower"
+          ? "not-ai-generated"
+          : "uncertain"
+  const aiGenerated = classification === "ai-generated"
 
   return {
     aiGenerated,
+    classification,
     reliability,
     aiLikelihood,
     aiLikelihoodPercent: Math.round(aiLikelihood * 100),
@@ -214,7 +233,7 @@ export function buildImageEvidenceReport({
     } : null,
     summary: {
       ...summary,
-      classification: verdict.aiGenerated ? "ai-generated" : "not-ai-generated",
+      classification: verdict.classification,
       reliability: verdict.reliability,
       aiLikelihood: verdict.aiLikelihood,
       aiLikelihoodPercent: verdict.aiLikelihoodPercent,
@@ -296,7 +315,7 @@ export function buildReadableImageEvidenceReport({
     "",
     `## ${zh ? "结论概览" : "Evidence overview"}`,
     "",
-    `${zh ? "检测结果" : "Detection result"}: ${verdict.aiGenerated ? (zh ? "AI 生成" : "AI-generated") : (zh ? "非 AI 生成" : "Not AI-generated")}`,
+    `${zh ? "检测结果" : "Detection result"}: ${readableVerdict(verdict.classification, zh)}`,
     `${zh ? "AI 可能性" : "AI likelihood"}: ${verdict.aiLikelihoodPercent}%`,
     `${zh ? "检测可信度" : "Confidence"}: ${readableReliability(verdict.reliability, zh)}`,
     `${zh ? "主要证据级别" : "Primary evidence level"}: ${readableSummaryKind(summary.kind, zh)}`,
@@ -328,6 +347,7 @@ export function buildReadableImageEvidenceReport({
       "",
       `- ${zh ? "区域一致性" : "Region consistency"}: ${Math.round(pixel.consistency * 100)}%`,
       `- ${zh ? "区域差异" : "Regional spread"}: ${Math.round(pixel.spread * 100)} ${zh ? "个百分点" : "points"}`,
+      `- ${zh ? "模型一致性" : "Model agreement"}: ${Math.round((pixel.modelAgreement ?? 1) * 100)}%`,
       `- ${zh ? "检测层级" : "Detection stages"}: ${pixelModels.length}`,
       `- ${zh ? "综合推理后端" : "Combined inference backend"}: ${pixel.backend}`,
     )
@@ -900,6 +920,7 @@ function SourceEvidenceReport({
     : verdict.reliability === "medium"
       ? pick("中", "Medium")
       : pick("有限", "Limited")
+  const uncertain = verdict.classification === "uncertain"
 
   return (
     <div className="space-y-6">
@@ -922,7 +943,9 @@ function SourceEvidenceReport({
             <div className="flex flex-col justify-center gap-5 p-5 sm:p-7">
               <div className={verdict.aiGenerated
                 ? "rounded-xl border border-red-300 bg-red-50 p-5 text-red-950 dark:border-red-500/35 dark:bg-red-500/10 dark:text-red-100"
-                : "rounded-xl border border-emerald-300 bg-emerald-50 p-5 text-emerald-950 dark:border-emerald-500/35 dark:bg-emerald-500/10 dark:text-emerald-100"}
+                : uncertain
+                  ? "rounded-xl border border-amber-300 bg-amber-50 p-5 text-amber-950 dark:border-amber-500/35 dark:bg-amber-500/10 dark:text-amber-100"
+                  : "rounded-xl border border-emerald-300 bg-emerald-50 p-5 text-emerald-950 dark:border-emerald-500/35 dark:bg-emerald-500/10 dark:text-emerald-100"}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -934,12 +957,16 @@ function SourceEvidenceReport({
                     >
                       {verdict.aiGenerated
                         ? pick("是 AI 生成", "AI-generated")
-                        : pick("不是 AI 生成", "Not AI-generated")}
+                        : uncertain
+                          ? pick("无法确认", "Uncertain / mixed")
+                          : pick("不是 AI 生成", "Not AI-generated")}
                     </h2>
                   </div>
                   <span className={verdict.aiGenerated
                     ? "shrink-0 rounded-full bg-red-200 px-4 py-2 text-sm font-bold tabular-nums text-red-700 dark:bg-red-400/20 dark:text-red-200"
-                    : "shrink-0 rounded-full bg-emerald-200 px-4 py-2 text-sm font-bold tabular-nums text-emerald-700 dark:bg-emerald-400/20 dark:text-emerald-200"}
+                    : uncertain
+                      ? "shrink-0 rounded-full bg-amber-200 px-4 py-2 text-sm font-bold tabular-nums text-amber-800 dark:bg-amber-400/20 dark:text-amber-200"
+                      : "shrink-0 rounded-full bg-emerald-200 px-4 py-2 text-sm font-bold tabular-nums text-emerald-700 dark:bg-emerald-400/20 dark:text-emerald-200"}
                   >
                     {verdict.aiLikelihoodPercent}% AI
                   </span>
@@ -947,7 +974,9 @@ function SourceEvidenceReport({
                 <p className="mt-4 text-sm leading-6 opacity-85">
                   {verdict.aiGenerated
                     ? pick("这张图片是 AI 生成的。", "This image is AI-generated.")
-                    : pick("这张图片不是 AI 生成的。", "This image is not AI-generated.")}
+                    : uncertain
+                      ? pick("两个检测模型结果不一致，当前证据不足以判断。", "The detection models disagree, so there is not enough evidence to decide.")
+                      : pick("这张图片不是 AI 生成的。", "This image is not AI-generated.")}
                 </p>
               </div>
 
@@ -964,7 +993,11 @@ function SourceEvidenceReport({
                 />
                 <ResultMetric
                   label={pick("判定", "Classification")}
-                  value={verdict.aiGenerated ? pick("AI 生成", "AI-generated") : pick("非 AI 生成", "Not AI-generated")}
+                  value={verdict.aiGenerated
+                    ? pick("AI 生成", "AI-generated")
+                    : uncertain
+                      ? pick("无法确认", "Uncertain / mixed")
+                      : pick("非 AI 生成", "Not AI-generated")}
                   danger={verdict.aiGenerated}
                 />
               </div>
@@ -1868,6 +1901,18 @@ function readableReliability(
     low: ["有限", "Limited"],
   }
   return labels[reliability][zh ? 0 : 1]
+}
+
+function readableVerdict(
+  classification: SimpleImageClassification,
+  zh: boolean,
+) {
+  const labels = {
+    "ai-generated": ["AI 生成", "AI-generated"],
+    "not-ai-generated": ["非 AI 生成", "Not AI-generated"],
+    uncertain: ["无法确认", "Unable to determine"],
+  } as const
+  return labels[classification][zh ? 0 : 1]
 }
 
 function readableChannelStatus(status: DetectionChannelStatus, zh: boolean) {
