@@ -22,6 +22,61 @@ export type OneClickAiCleanupResult = {
   normalizationSteps: string[]
 }
 
+export const MAX_AUTOMATIC_VISIBLE_MARK_PASSES = 3
+
+type VisibleMarkCleanupPass<T> = {
+  value: T
+  mark: VisibleAiMarkDetection | null
+}
+
+export type AutomaticVisibleMarkCleanupResult<T> = {
+  value: T
+  firstMark: VisibleAiMarkDetection | null
+  remainingMark: VisibleAiMarkDetection | null
+  passes: number
+  verified: boolean
+}
+
+export async function retryVisibleMarkCleanup<T>(
+  initialValue: T,
+  repair: (value: T, target: VisibleAiMarkDetection | null) => Promise<VisibleMarkCleanupPass<T>>,
+  inspect: (value: T) => Promise<VisibleAiMarkDetection | null>,
+  maxPasses = MAX_AUTOMATIC_VISIBLE_MARK_PASSES,
+  initialTarget: VisibleAiMarkDetection | null = null,
+): Promise<AutomaticVisibleMarkCleanupResult<T>> {
+  const passLimit = Math.max(0, Math.floor(maxPasses))
+  let value = initialValue
+  let firstMark: VisibleAiMarkDetection | null = null
+  let passes = 0
+
+  if (passLimit > 0) {
+    const initial = await repair(value, initialTarget)
+    if (initial.mark) {
+      value = initial.value
+      firstMark = initial.mark
+      passes = 1
+    }
+  }
+
+  let remainingMark = await inspect(value)
+  while (remainingMark && passes < passLimit) {
+    const next = await repair(value, remainingMark)
+    if (!next.mark) break
+    value = next.value
+    firstMark ??= next.mark
+    passes += 1
+    remainingMark = await inspect(value)
+  }
+
+  return {
+    value,
+    firstMark,
+    remainingMark,
+    passes,
+    verified: remainingMark === null,
+  }
+}
+
 async function loadImage(source: Blob) {
   const url = URL.createObjectURL(source)
   try {
@@ -46,12 +101,19 @@ function imageCanvas(image: HTMLImageElement) {
   return canvas
 }
 
-async function canvasPng(canvas: HTMLCanvasElement | OffscreenCanvas) {
-  if (canvas instanceof OffscreenCanvas) return canvas.convertToBlob({ type: "image/png" })
+function canvasOutputType(type?: string) {
+  return type === "image/jpeg" || type === "image/webp" ? type : "image/png"
+}
+
+async function canvasBlob(canvas: HTMLCanvasElement | OffscreenCanvas, requestedType?: string) {
+  const type = canvasOutputType(requestedType)
+  const quality = type === "image/png" ? undefined : 0.95
+  if (canvas instanceof OffscreenCanvas) return canvas.convertToBlob({ type, quality })
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
       (blob) => blob ? resolve(blob) : reject(new Error("result-encode-failed")),
-      "image/png",
+      type,
+      quality,
     )
   })
 }
@@ -66,21 +128,34 @@ function baseName(name: string) {
   return name.replace(/\.[^.]+$/, "") || "tabnative-image"
 }
 
-async function removeSupportedVisibleMark(file: File) {
+async function removeSupportedVisibleMark(
+  file: File,
+  target: VisibleAiMarkDetection | null = null,
+  requestedOutputType?: string,
+) {
   const image = await loadImage(file)
   const canvas = imageCanvas(image)
-  const detections = await Promise.all([
-    detectTextWatermark(canvas, "doubao"),
-    detectTextWatermark(canvas, "jimeng"),
-  ])
-  const textMark = detections
-    .filter((item) => item.detected)
-    .sort((left, right) => right.confidence - left.confidence)[0]
+  if (target?.region) {
+    cloneFillRegion(canvas, target.region)
+    return {
+      blob: await canvasBlob(canvas, requestedOutputType),
+      mark: target,
+    }
+  }
+
+  const textMark = target
+    ? null
+    : (await Promise.all([
+      detectTextWatermark(canvas, "doubao"),
+      detectTextWatermark(canvas, "jimeng"),
+    ]))
+      .filter((item) => item.detected)
+      .sort((left, right) => right.confidence - left.confidence)[0]
 
   if (textMark) {
     cloneFillRegion(canvas, textMark.region)
     return {
-      blob: await canvasPng(canvas),
+      blob: await canvasBlob(canvas, requestedOutputType),
       mark: {
         provider: textMark.provider,
         confidence: textMark.confidence,
@@ -97,29 +172,67 @@ async function removeSupportedVisibleMark(file: File) {
   }
 
   return {
-    blob: await canvasPng(result.canvas as HTMLCanvasElement | OffscreenCanvas),
+    blob: await canvasBlob(result.canvas as HTMLCanvasElement | OffscreenCanvas, requestedOutputType),
     mark: {
       provider: "gemini",
       confidence: geminiDetectionConfidence(meta),
-      region: null,
+      region: meta?.position ?? null,
     } satisfies VisibleAiMarkDetection,
   }
 }
 
 export async function cleanAiImageMarks(file: File): Promise<OneClickAiCleanupResult> {
-  const visible = await removeSupportedVisibleMark(file)
-  const normalized = await normalizeForImageDelivery(visible.blob)
+  const repair = async (
+    source: Blob,
+    target: VisibleAiMarkDetection | null,
+    outputType?: string,
+  ) => {
+    const current = new File([source], file.name, { type: source.type || file.type })
+    const repaired = await removeSupportedVisibleMark(current, target, outputType)
+    return { value: repaired.blob, mark: repaired.mark }
+  }
+  const inspectVisibleMark = (source: Blob) => detectVisibleAiPlatformMark(source)
+  const visible = await retryVisibleMarkCleanup(
+    file as Blob,
+    (source, target) => repair(source, target),
+    inspectVisibleMark,
+  )
+  const normalized = await normalizeForImageDelivery(visible.value)
   const normalizedExtension = extensionFor(normalized.format)
   const workingName = `${baseName(file.name)}-delivery-normalized.${normalizedExtension}`
   const workingFile = new File([normalized.blob], workingName, { type: normalized.format })
-  const sanitized: SanitizeResult = await sanitizeImage(workingFile, "all")
+  let sanitized: SanitizeResult = await sanitizeImage(workingFile, "all")
+  let visibleMark = visible.firstMark
+  let automaticPasses = visible.passes
+  let remainingVisibleMark = await inspectVisibleMark(sanitized.blob)
+
+  if (remainingVisibleMark && automaticPasses < MAX_AUTOMATIC_VISIBLE_MARK_PASSES) {
+    const finalCleanup = await retryVisibleMarkCleanup(
+      sanitized.blob,
+      (source, target) => repair(source, target, source.type || sanitized.blob.type),
+      inspectVisibleMark,
+      MAX_AUTOMATIC_VISIBLE_MARK_PASSES - automaticPasses,
+      remainingVisibleMark,
+    )
+    automaticPasses += finalCleanup.passes
+    visibleMark ??= finalCleanup.firstMark
+    if (finalCleanup.passes > 0) {
+      const repairedFile = new File(
+        [finalCleanup.value],
+        `${baseName(file.name)}-auto-repaired.${extensionFor(finalCleanup.value.type)}`,
+        { type: finalCleanup.value.type },
+      )
+      sanitized = await sanitizeImage(repairedFile, "all")
+    }
+    remainingVisibleMark = await inspectVisibleMark(sanitized.blob)
+  }
+
   const outputName = `${baseName(file.name)}-ai-marks-cleaned.${extensionFor(sanitized.blob.type)}`
-  const remainingVisibleMark = await detectVisibleAiPlatformMark(sanitized.blob)
 
   return {
     blob: sanitized.blob,
     name: outputName,
-    visibleMark: visible.mark,
+    visibleMark,
     metadataRemoved: sanitized.removed,
     metadataResetByReencode: true,
     containerVerified: sanitized.pixelsPreserved,

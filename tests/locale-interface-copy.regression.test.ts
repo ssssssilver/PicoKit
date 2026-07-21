@@ -10,12 +10,12 @@ describe("localized interface copy", () => {
   it("localizes the two signature workspace names in every supported locale", () => {
     for (const locale of ["ar", "de", "es", "fr", "id", "ja", "ko", "pl", "pt", "ru", "tr"]) {
       const messages = readLocale(locale)
-      expect(messages["Image Delivery Pipeline"]).toBeTruthy()
-      expect(messages["Image Delivery Pipeline"]).not.toBe("Image Delivery Pipeline")
-      expect(messages["PDF Page Assembly"]).toBeTruthy()
-      expect(messages["PDF Page Assembly"]).not.toBe("PDF Page Assembly")
-      expect(messages["Open Image Delivery Pipeline"]).toBeTruthy()
-      expect(messages["Open PDF Page Assembly"]).toBeTruthy()
+      expect(messages["Batch Image Processing"]).toBeTruthy()
+      expect(messages["Batch Image Processing"]).not.toBe("Batch Image Processing")
+      expect(messages["Batch PDF Processing"]).toBeTruthy()
+      expect(messages["Batch PDF Processing"]).not.toBe("Batch PDF Processing")
+      expect(messages["Open Batch Image Processing"]).toBeTruthy()
+      expect(messages["Open Batch PDF Processing"]).toBeTruthy()
     }
   })
 

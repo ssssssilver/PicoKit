@@ -218,7 +218,7 @@ export function ImagesToPdfStudio({ onContinueToWorkspace }: { onContinueToWorks
   return <div className="space-y-6">
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2"><Images className="size-5 text-cyan-500" />{pick("图片转 PDF 工作台", "Images to PDF workspace")}</CardTitle>
+        <CardTitle className="flex items-center gap-2"><Images className="size-5 text-cyan-500" />{pick("图片转 PDF", "Images to PDF")}</CardTitle>
         <p className="text-sm leading-6 text-muted-foreground">{pick("添加、预览并排序图片，再统一设置纸张、方向、边距和填充方式。", "Add, preview, and reorder images, then apply one page size, orientation, margin, and fit rule.")}</p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -276,7 +276,7 @@ export function ImagesToPdfStudio({ onContinueToWorkspace }: { onContinueToWorks
         </div>
         <label className="block max-w-xl space-y-2 text-sm"><span>{pick("输出文件名", "Output filename")}</span><Input value={outputName} maxLength={120} onChange={(event) => setOutputName(event.target.value)} /></label>
         {running || progress ? <div className="space-y-2 rounded-xl border border-cyan-500/25 bg-cyan-500/[.06] p-4"><div className="flex justify-between text-sm"><span>{running ? pick("正在本地生成 PDF", "Creating the PDF locally") : pick("PDF 已生成", "PDF created")}</span><span>{progress}%</span></div><Progress value={progress} /></div> : null}
-        {generatedPdf && onContinueToWorkspace ? <Alert className="border-emerald-500/30 bg-emerald-500/[.07] text-emerald-950 dark:text-emerald-100"><FileCheck2 /><AlertTitle>{pick("PDF 已准备好", "PDF is ready")}</AlertTitle><AlertDescription><p>{pick("可直接送入页面工作台继续合并、排序、拆分或压缩，无需重新上传。", "Send it directly to the page workspace to merge, reorder, split, or compress without uploading again.")}</p><Button size="sm" variant="outline" className="mt-3" onClick={() => onContinueToWorkspace(generatedPdf)}>{pick("继续到页面工作台", "Continue to page workspace")}<ArrowRight /></Button></AlertDescription></Alert> : null}
+        {generatedPdf && onContinueToWorkspace ? <Alert className="border-emerald-500/30 bg-emerald-500/[.07] text-emerald-950 dark:text-emerald-100"><FileCheck2 /><AlertTitle>{pick("PDF 已准备好", "PDF is ready")}</AlertTitle><AlertDescription><p>{pick("可直接继续合并、排序、拆分或压缩，无需重新上传。", "Send it directly to the page workspace to merge, reorder, split, or compress without uploading again.")}</p><Button size="sm" variant="outline" className="mt-3" onClick={() => onContinueToWorkspace(generatedPdf)}>{pick("继续批量处理 PDF", "Batch PDF Processing")}<ArrowRight /></Button></AlertDescription></Alert> : null}
         <div className="flex flex-wrap gap-2"><Button disabled={running} onClick={() => void exportPdf()}>{running ? <LoaderCircle className="animate-spin" /> : <Download />}{pick("生成并下载 PDF", "Create and download PDF")}</Button>{running ? <Button variant="outline" onClick={() => { cancelledRef.current = true }}><X />{pick("取消", "Cancel")}</Button> : null}</div>
       </CardContent>
     </Card> : null}
@@ -720,7 +720,7 @@ export function PdfToImagesStudio({ incomingPdf }: { incomingPdf?: PdfFileHandof
 
   return <div className="space-y-6">
     <Card>
-      <CardHeader><CardTitle className="flex items-center gap-2"><FileImage className="size-5 text-cyan-500" />{pick("PDF 转图片工作台", "PDF to images workspace")}</CardTitle><p className="text-sm leading-6 text-muted-foreground">{pick("预览后直接点选需要导出的页面，再转换为 PNG、JPG 或 WebP；多页自动打包为 ZIP。", "Preview and click the pages you want to export as PNG, JPG, or WebP; multiple pages are bundled in a ZIP.")}</p></CardHeader>
+      <CardHeader><CardTitle className="flex items-center gap-2"><FileImage className="size-5 text-cyan-500" />{pick("PDF 转图片", "PDF to images")}</CardTitle><p className="text-sm leading-6 text-muted-foreground">{pick("预览后直接点选需要导出的页面，再转换为 PNG、JPG 或 WebP；多页自动打包为 ZIP。", "Preview and click the pages you want to export as PNG, JPG, or WebP; multiple pages are bundled in a ZIP.")}</p></CardHeader>
       <CardContent className="space-y-4">
         <button type="button" disabled={loading || running} aria-busy={loading} onClick={() => inputRef.current?.click()} className="flex min-h-28 w-full flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 px-5 text-center hover:border-cyan-500/50">
           {loading ? <LoaderCircle className="size-7 animate-spin text-cyan-500" /> : <FilePlus2 className="size-7 text-cyan-500" />}

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 
+import { retryVisibleMarkCleanup } from "@/lib/one-click-ai-cleaner"
 import {
   clampRect,
   findBestCloneSource,
@@ -11,7 +12,48 @@ import {
   visibleMarkAnalysisSize,
 } from "@/lib/visible-watermark"
 
+const residualMark = {
+  provider: "gemini" as const,
+  confidence: 0.96,
+  region: { x: 880, y: 620, width: 72, height: 72 },
+}
+
 describe("visible watermark geometry", () => {
+  it("feeds a failed verification back into automatic targeted cleanup", async () => {
+    const targets: string[] = []
+    const result = await retryVisibleMarkCleanup(
+      "source",
+      async (source, target) => {
+        targets.push(target?.provider ?? "initial")
+        return {
+          value: `${source}-${target ? "targeted" : "initial"}`,
+          mark: target ?? residualMark,
+        }
+      },
+      async (source) => source.endsWith("-targeted") ? null : residualMark,
+    )
+
+    expect(targets).toEqual(["initial", "gemini"])
+    expect(result.value).toBe("source-initial-targeted")
+    expect(result.firstMark).toEqual(residualMark)
+    expect(result.passes).toBe(2)
+    expect(result.remainingMark).toBeNull()
+    expect(result.verified).toBe(true)
+  })
+
+  it("stops automatic cleanup at the retry limit when verification keeps failing", async () => {
+    const result = await retryVisibleMarkCleanup(
+      "source",
+      async (source, target) => ({ value: `${source}-pass`, mark: target ?? residualMark }),
+      async () => residualMark,
+      3,
+    )
+
+    expect(result.passes).toBe(3)
+    expect(result.remainingMark).toEqual(residualMark)
+    expect(result.verified).toBe(false)
+  })
+
   it("anchors Doubao and Jimeng profiles inside the bottom-right corner", () => {
     const doubao = locateProviderRegion("doubao", 2048, 2048)
     const jimeng = locateProviderRegion("jimeng", 2048, 2048)

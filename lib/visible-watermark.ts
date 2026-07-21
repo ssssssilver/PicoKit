@@ -476,10 +476,16 @@ export async function detectVisibleAiPlatformMark(
     throwIfVisibleMarkAborted(options.signal)
     const meta = result.meta as GeminiDetectionMeta | null
     if (!isConservativeGeminiDetection(meta, canvas.width, canvas.height)) return null
+    const position = meta?.position
+    if (!position) return null
     return {
       provider: "gemini",
       confidence: geminiDetectionConfidence(meta),
-      region: null,
+      region: scaleDetectionRegion(
+        position,
+        actualSourceWidth / canvas.width,
+        actualSourceHeight / canvas.height,
+      ),
     }
   } catch (error) {
     if (options.signal?.aborted || (error instanceof Error && error.name === "AbortError")) {

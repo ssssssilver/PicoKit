@@ -9,7 +9,7 @@ import { SiteHeader } from "@/components/site-header"
 import { siteConfig } from "@/lib/site"
 
 export const metadata: Metadata = {
-  title: "TabNative — 图片交付流水线与 PDF 页面装配台",
+  title: "TabNative — 批量图片处理与 PDF 批量处理",
   description: siteConfig.description,
 }
 
@@ -42,9 +42,9 @@ export default function Home() {
         <section className="border-t border-white/10 bg-[#0d0d0d]">
           <div className="mx-auto grid max-w-[1280px] gap-10 px-5 py-16 sm:px-8 lg:grid-cols-[.85fr_1.15fr] lg:py-20">
             <div>
-              <p className="font-mono text-[11px] uppercase tracking-[.2em] text-cyan-300"><Localized zh="图片交付流水线" en="Image Delivery Pipeline" /></p>
+              <p className="font-mono text-[11px] uppercase tracking-[.2em] text-cyan-300"><Localized zh="批量图片处理" en="Batch Image Processing" /></p>
               <h2 className="mt-4 max-w-lg text-3xl font-bold tracking-[-.04em] text-white sm:text-4xl"><Localized zh="上传一次，在本地完成整条交付流程" en="One input, one local path to a finished asset" /></h2>
-              <p className="mt-5 max-w-xl text-sm leading-7 text-zinc-400"><Localized zh="图片交付流水线让同一批文件连续完成去背景、修边、快速修图与最终优化；PDF 页面装配台则把多个文档拆成可查看、可重组的页面后统一交付。两条流程都在当前设备运行。" en="The Image Delivery Pipeline carries one batch through background removal, edge refinement, quick editing, and final optimization. PDF Page Assembly turns multiple documents into inspectable, rebuildable pages for consistent delivery. Both run on this device." /></p>
+              <p className="mt-5 max-w-xl text-sm leading-7 text-zinc-400"><Localized zh="批量图片处理支持去背景、修边、逐张修图以及格式、尺寸和文件大小优化；PDF 批量处理支持逐页预览、排序、旋转、删除、提取、合并、拆分与压缩。所有文件都在当前设备处理。" en="Batch Image Processing covers background removal, edge refinement, per-image editing, and format, dimension, and file-size optimization. Batch PDF Processing covers page previews, reordering, rotation, removal, extraction, merging, splitting, and compression. All files are processed on this device." /></p>
             </div>
             <div className="divide-y divide-white/10 border-y border-white/10">
               <ProofRow title="无需账号" titleEn="No account" body="打开即可使用，不设置登录墙或按次付费。" bodyEn="Open a tool and use it. No login wall or pay-per-use gate." />

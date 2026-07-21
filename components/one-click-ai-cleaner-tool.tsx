@@ -15,7 +15,6 @@ import Image from "next/image"
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 
 import { FileDropzone, formatBytes } from "@/components/file-dropzone"
-import { ImageCompare } from "@/components/image-compare"
 import { useLanguage } from "@/components/language-provider"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -156,8 +155,8 @@ export function OneClickAiCleanerTool() {
         )
         : message === "visible-mark-verification-failed"
           ? pick(
-            "清理后的可见标记复检没有通过，因此没有提供下载。请改用 AI 可见水印工具手动框选后再试。",
-            "The cleaned image did not pass visible-mark verification, so no download was created. Use the Visible AI Watermark Tool to select the mark manually, then try again.",
+            "已自动尝试多次清理，但结果仍未通过本地复检，因此没有提供下载。请换用更清晰、未经截图或重压缩的原图重试。",
+            "Automatic cleanup retried several times, but the result still did not pass the local check, so no download was created. Try a clearer source image that has not been screenshotted or heavily recompressed.",
           )
           : pick(
           "本地清理未能完成。请确认图片有效，刷新后重试或使用单项清理工具。",
@@ -262,16 +261,18 @@ export function OneClickAiCleanerTool() {
         </div>
       </Card> : null}
 
-      {result && resultUrl && sourceUrl ? <Card className="border-emerald-400/20 bg-emerald-400/[.035] shadow-none">
+      {result && resultUrl ? <Card className="border-emerald-400/20 bg-emerald-400/[.035] shadow-none">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base text-emerald-200"><CheckCircle2 className="size-5" />{pick("一键清理完成", "One-click cleanup complete")}</CardTitle>
           <p className="text-sm leading-6 text-zinc-400">{pick(
-            "请放大比较修复区域并保留需要的原文件。你也可以把结果送回检测工具复检。",
-            "Zoom in to review repaired areas and keep the source if needed. You can also send the result back to the detector for another check.",
+            "结果已完成自动清理与复检，可以直接下载或送回检测工具复检。",
+            "The result has completed automatic cleanup and verification. Download it directly or send it back to the detector for another check.",
           )}</p>
         </CardHeader>
         <CardContent className="space-y-5">
-          <ImageCompare before={sourceUrl} after={resultUrl} />
+          <div className="relative min-h-[320px] overflow-hidden rounded-xl border border-white/10 bg-black/30 sm:min-h-[440px]">
+            <Image src={resultUrl} alt={pick("清理结果", "Cleaned result")} fill unoptimized className="object-contain p-4" />
+          </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <Info label={pick("可见角标", "Visible mark")} value={result.visibleMark ? `${providerName(result.visibleMark)} · ${pick("已处理", "Removed")}` : pick("未发现", "Not found")} />
             <Info label={pick("文件来源字段", "Provenance fields")} value={result.metadataResetByReencode || result.metadataRemoved.length ? pick("已清理", "Cleaned") : pick("未发现", "Not found")} />

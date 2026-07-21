@@ -7,15 +7,15 @@ import { ToolAside } from "@/components/tool-aside"
 import { ToolShell } from "@/components/tool-shell"
 
 export const metadata: Metadata = {
-  title: "本地图片交付流水线：批量去背景、修图与优化",
+  title: "批量图片处理：去背景、修图、压缩与转换",
   description: "一次导入最多 30 张图片，在浏览器本地连续完成批量去背景与修边、快速修图、格式尺寸优化和打包交付。",
 }
 
 export default function Page() {
   return <ToolShell
-    title={{ zh: "图片交付流水线：批量去背景", en: "Image Delivery Pipeline: Background Removal" }}
-    description={{ zh: "这是图片交付流水线的第一步：一次加入多张图片，在设备端按队列生成透明背景并逐项修边；完成后整批接力到快速修图和最终优化，无需重新上传。", en: "This is the first stage of the Image Delivery Pipeline: add a batch, remove backgrounds and refine edges on your device, then pass every completed image to quick editing and final optimization without uploading again." }}
-    eyebrow="Local Image Delivery Pipeline"
+    title={{ zh: "批量图片处理", en: "Batch Image Processing" }}
+    description={{ zh: "一次加入最多 30 张图片，批量去除背景并逐张修边；随后可直接继续修图，再统一调整格式、尺寸和文件大小，无需重新选择图片。", en: "Add up to 30 images, remove backgrounds in a batch, and refine each result. Continue directly to image editing, then adjust format, dimensions, and file size together without selecting the images again." }}
+    eyebrow="ON-DEVICE BATCH IMAGE PROCESSING"
     icon={Workflow}
     aside={<ToolAside notes={[
       { zh: "自动识别主要主体，无需选择处理模式", en: "Automatically detects the main subject with no processing mode to choose" },

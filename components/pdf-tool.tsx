@@ -52,7 +52,7 @@ export function PdfTool() {
     <div className="min-w-0 space-y-6">
       <Card>
         <CardHeader className="pb-4">
-          <CardTitle>{pick("PDF 页面装配台", "PDF Page Assembly")}</CardTitle>
+          <CardTitle>{pick("PDF 批量处理", "Batch PDF Processing")}</CardTitle>
           <p className="text-sm leading-6 text-muted-foreground">{pick("汇入多个 PDF，逐页查看和重组，再按统一规则导出；也可在图片与 PDF 之间进行可预览、可配置的本地转换。", "Bring multiple PDFs into one assembly, inspect and rebuild them page by page, then export under consistent rules. Previewable image conversions remain available.")}</p>
         </CardHeader>
         <CardContent>

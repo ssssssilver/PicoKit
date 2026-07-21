@@ -6,20 +6,18 @@ import {
   CheckCircle2,
   CircleHelp,
   Download,
-  Eraser,
   Eye,
   FileCheck2,
   FileText,
   FileSearch,
   Fingerprint,
   LoaderCircle,
-  Play,
   RotateCcw,
   ScanSearch,
   ShieldQuestion,
 } from "lucide-react"
 import Image from "next/image"
-import { useEffect, useRef, useState, type RefObject } from "react"
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 
 import { FileDropzone, formatBytes } from "@/components/file-dropzone"
 import { useLanguage } from "@/components/language-provider"
@@ -50,7 +48,7 @@ import { validateImageFile } from "@/lib/file-validation"
 import { inspectImage } from "@/lib/image-inspector"
 import { localizedImageSignalLabel } from "@/lib/image-signal-label"
 import type { ImageInspection, ImageSignal } from "@/lib/image-types"
-import { loadLocalAsset, localAssetFile, saveLocalAsset } from "@/lib/local-asset-transfer"
+import { loadLocalAsset, localAssetFile } from "@/lib/local-asset-transfer"
 import {
   detectVisibleAiPlatformMark,
   type VisibleAiMarkDetection,
@@ -416,7 +414,6 @@ export function ImageInspectorTool() {
   const [inspectedAt, setInspectedAt] = useState<string | null>(null)
   const [handoffLoading, setHandoffLoading] = useState(false)
   const [reportExporting, setReportExporting] = useState(false)
-  const [cleanupHandoff, setCleanupHandoff] = useState(false)
   const workerRef = useRef<Worker | null>(null)
   const pixelCancelRef = useRef<(() => void) | null>(null)
   const analysisAbortRef = useRef<AbortController | null>(null)
@@ -424,6 +421,28 @@ export function ImageInspectorTool() {
   const runRef = useRef(0)
   const handoffAttemptedRef = useRef(false)
   const reportHeadingRef = useRef<HTMLHeadingElement>(null)
+  const analyzeRef = useRef<(source: File | null) => Promise<void>>(async () => {})
+
+  const handleFile = useCallback((next: File | null) => {
+    runRef.current += 1
+    analysisAbortRef.current?.abort()
+    analysisAbortRef.current = null
+    pixelCancelRef.current?.()
+    if (previewRef.current) URL.revokeObjectURL(previewRef.current)
+    previewRef.current = next ? URL.createObjectURL(next) : ""
+    setPreviewUrl(previewRef.current)
+    setFile(next)
+    setInspection(null)
+    setPixel(null)
+    setVisibleMark(null)
+    setChannels(INITIAL_CHANNELS)
+    setRunning(false)
+    setProgress(0)
+    setStatus("")
+    setNotice("")
+    setInspectedAt(null)
+    if (next) void analyzeRef.current(next)
+  }, [])
 
   useEffect(
     () => () => {
@@ -490,7 +509,7 @@ export function ImageInspectorTool() {
         setHandoffLoading(false)
       }
     })()
-  }, [file, format, pick])
+  }, [file, format, handleFile, pick])
 
   const hasReport = Object.values(channels).some(
     (channel) => channel === "available",
@@ -502,28 +521,8 @@ export function ImageInspectorTool() {
     return () => window.cancelAnimationFrame(frame)
   }, [hasReport, running])
 
-  function handleFile(next: File | null) {
-    runRef.current += 1
-    analysisAbortRef.current?.abort()
-    analysisAbortRef.current = null
-    pixelCancelRef.current?.()
-    if (previewRef.current) URL.revokeObjectURL(previewRef.current)
-    previewRef.current = next ? URL.createObjectURL(next) : ""
-    setPreviewUrl(previewRef.current)
-    setFile(next)
-    setInspection(null)
-    setPixel(null)
-    setVisibleMark(null)
-    setChannels(INITIAL_CHANNELS)
-    setRunning(false)
-    setProgress(0)
-    setStatus("")
-    setNotice("")
-    setInspectedAt(null)
-  }
-
-  async function analyze() {
-    if (!file) return
+  async function analyze(source: File | null = file) {
+    if (!source) return
     analysisAbortRef.current?.abort()
     pixelCancelRef.current?.()
     const abortController = new AbortController()
@@ -547,7 +546,7 @@ export function ImageInspectorTool() {
 
     // Keep peak memory predictable: each heavy channel releases its decoded
     // image before the next channel starts.
-    const inspectionOutcome = await settleChannel(inspectImage(file, {
+    const inspectionOutcome = await settleChannel(inspectImage(source, {
       signal: abortController.signal,
     }))
     if (runRef.current !== runId || abortController.signal.aborted) return
@@ -557,7 +556,7 @@ export function ImageInspectorTool() {
       : null
     setProgress(28)
     setStatus(pick("可见平台标记", "Visible platform marks"))
-    const visibleMarkOutcome = await settleChannel(detectVisibleAiPlatformMark(file, {
+    const visibleMarkOutcome = await settleChannel(detectVisibleAiPlatformMark(source, {
       sourceWidth: baseInspection?.width,
       sourceHeight: baseInspection?.height,
       signal: abortController.signal,
@@ -574,7 +573,7 @@ export function ImageInspectorTool() {
     setProgress(52)
     setStatus(pick("像素统计", "Pixel statistics"))
     const pixelOutcome = await settleChannel(
-      runPixelDetection(file, abortController.signal, !hasExplicitAiEvidence),
+      runPixelDetection(source, abortController.signal, !hasExplicitAiEvidence),
     )
     if (runRef.current !== runId || abortController.signal.aborted) return
     const nextInspection = baseInspection
@@ -741,6 +740,10 @@ export function ImageInspectorTool() {
     })
   }
 
+  useEffect(() => {
+    analyzeRef.current = analyze
+  })
+
   function cancel() {
     runRef.current += 1
     analysisAbortRef.current?.abort()
@@ -803,22 +806,6 @@ export function ImageInspectorTool() {
     }
   }
 
-  async function openOneClickCleaner() {
-    if (!file || cleanupHandoff) return
-    setCleanupHandoff(true)
-    setNotice("")
-    try {
-      const assetId = await saveLocalAsset(file, file.name, "ai-detector")
-      window.location.assign(`/one-click-ai-cleaner?asset=${encodeURIComponent(assetId)}`)
-    } catch (reason) {
-      setNotice(reason instanceof Error ? reason.message : pick(
-        "无法把图片发送到一键清理工具。",
-        "Unable to send the image to the one-click cleanup tool.",
-      ))
-      setCleanupHandoff(false)
-    }
-  }
-
   return (
     <div className="space-y-6" aria-busy={running}>
       <Card className={hasReport ? "hidden" : "border-white/10 bg-[#0d0d0d] shadow-sm"}>
@@ -868,18 +855,14 @@ export function ImageInspectorTool() {
                 <p className="mt-1 text-xs text-zinc-500">
                   {formatBytes(file.size)} · {file.type}
                 </p>
-                <div className="mt-4 flex flex-wrap gap-3">
-                  <Button size="lg" onClick={analyze} disabled={running}>
-                    <Play />
-                    {pick("开始检测", "Start local detection")}
-                  </Button>
-                  {running ? (
+                {running ? (
+                  <div className="mt-4 flex flex-wrap gap-3">
                     <Button variant="outline" size="lg" onClick={cancel}>
                       <RotateCcw />
                       {pick("取消", "Cancel")}
                     </Button>
-                  ) : null}
-                </div>
+                  </div>
+                ) : null}
               </div>
             </div>
           ) : null}
@@ -918,8 +901,6 @@ export function ImageInspectorTool() {
           onExport={exportReport}
           onExportReadable={exportReadableReport}
           reportExporting={reportExporting}
-          onOpenCleaner={openOneClickCleaner}
-          cleanupHandoff={cleanupHandoff}
           onTryAnother={() => handleFile(null)}
           headingRef={reportHeadingRef}
           previewUrl={previewUrl}
@@ -938,8 +919,6 @@ function SourceEvidenceReport({
   onExport,
   onExportReadable,
   reportExporting,
-  onOpenCleaner,
-  cleanupHandoff,
   onTryAnother,
   headingRef,
   previewUrl,
@@ -952,8 +931,6 @@ function SourceEvidenceReport({
   onExport: () => void
   onExportReadable: () => void | Promise<void>
   reportExporting: boolean
-  onOpenCleaner: () => void | Promise<void>
-  cleanupHandoff: boolean
   onTryAnother: () => void
   headingRef: RefObject<HTMLHeadingElement | null>
   previewUrl: string
@@ -1051,12 +1028,6 @@ function SourceEvidenceReport({
               </div>
 
               <div className="mt-auto grid gap-3">
-                {verdict.aiGenerated ? <Button size="lg" onClick={onOpenCleaner} disabled={cleanupHandoff} className="bg-cyan-500 text-white hover:bg-cyan-600 dark:bg-cyan-300 dark:text-black dark:hover:bg-cyan-200">
-                  {cleanupHandoff ? <LoaderCircle className="animate-spin" /> : <Eraser />}
-                  {cleanupHandoff
-                    ? pick("正在打开一键清理", "Opening one-click cleanup")
-                    : pick("一键去 AI 痕迹", "Clean AI traces in one click")}
-                </Button> : null}
                 <Button size="lg" onClick={onTryAnother}>
                   <RotateCcw />
                   {pick("换一张图片", "Try another image")}

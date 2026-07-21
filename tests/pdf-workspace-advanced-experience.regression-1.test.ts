@@ -10,7 +10,7 @@ describe("advanced PDF workspace experience", () => {
     ])
     expect(tool).toContain("workspaceHandoff")
     expect(tool).toContain("imageHandoff")
-    expect(studios).toContain("继续到页面工作台")
+    expect(studios).toContain("继续批量处理 PDF")
     expect(workspace).toContain("继续转图片")
   })
 
