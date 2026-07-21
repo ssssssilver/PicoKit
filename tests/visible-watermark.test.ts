@@ -5,6 +5,7 @@ import {
   findBestCloneSource,
   geminiDetectionConfidence,
   isConservativeGeminiDetection,
+  isGeminiRemovalCandidate,
   locateProviderRegion,
   normalizeDragRect,
   visibleMarkAnalysisSize,
@@ -109,7 +110,7 @@ describe("visible watermark geometry", () => {
     expect(geminiDetectionConfidence(validated)).toBe(0.99)
   })
 
-  it("accepts a validated Gemini mark even when removal-quality metrics are weak", () => {
+  it("keeps a weak validated candidate available for cleanup without treating it as evidence", () => {
     const validated = {
       applied: true,
       source: "standard+located-aggressive",
@@ -124,9 +125,14 @@ describe("visible watermark geometry", () => {
       },
     }
 
-    expect(isConservativeGeminiDetection(validated, 1200, 896)).toBe(true)
+    expect(isConservativeGeminiDetection(validated, 1200, 896)).toBe(false)
+    expect(isGeminiRemovalCandidate(validated, 1200, 896)).toBe(true)
     expect(geminiDetectionConfidence(validated)).toBe(0.94)
     expect(isConservativeGeminiDetection({
+      ...validated,
+      position: { x: 120, y: 120, width: 96, height: 96 },
+    }, 1200, 896)).toBe(false)
+    expect(isGeminiRemovalCandidate({
       ...validated,
       position: { x: 120, y: 120, width: 96, height: 96 },
     }, 1200, 896)).toBe(false)

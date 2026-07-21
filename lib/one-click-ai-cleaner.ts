@@ -1,10 +1,12 @@
 import { sanitizeImage } from "@/lib/image-sanitizer"
 import type { SanitizeResult } from "@/lib/image-types"
+import { normalizeForImageDelivery } from "@/lib/browser-camera-normalizer"
 import {
   cloneFillRegion,
+  detectVisibleAiPlatformMark,
   detectTextWatermark,
   geminiDetectionConfidence,
-  isConservativeGeminiDetection,
+  isGeminiRemovalCandidate,
   type GeminiDetectionMeta,
   type VisibleAiMarkDetection,
 } from "@/lib/visible-watermark"
@@ -16,6 +18,8 @@ export type OneClickAiCleanupResult = {
   metadataRemoved: string[]
   metadataResetByReencode: boolean
   containerVerified: boolean
+  visibleMarkVerified: boolean
+  normalizationSteps: string[]
 }
 
 async function loadImage(source: Blob) {
@@ -88,7 +92,7 @@ async function removeSupportedVisibleMark(file: File) {
   const { removeWatermarkFromImage } = await import("@pilio/gemini-watermark-remover/browser")
   const result = await removeWatermarkFromImage(image, { adaptiveMode: "auto" })
   const meta = result.meta as GeminiDetectionMeta | null
-  if (!isConservativeGeminiDetection(meta, image.naturalWidth, image.naturalHeight)) {
+  if (!isGeminiRemovalCandidate(meta, image.naturalWidth, image.naturalHeight)) {
     return { blob: file as Blob, mark: null }
   }
 
@@ -104,18 +108,22 @@ async function removeSupportedVisibleMark(file: File) {
 
 export async function cleanAiImageMarks(file: File): Promise<OneClickAiCleanupResult> {
   const visible = await removeSupportedVisibleMark(file)
-  const workingType = visible.mark ? "image/png" : file.type
-  const workingName = visible.mark ? `${baseName(file.name)}-visible-mark-cleaned.png` : file.name
-  const workingFile = new File([visible.blob], workingName, { type: workingType })
+  const normalized = await normalizeForImageDelivery(visible.blob)
+  const normalizedExtension = extensionFor(normalized.format)
+  const workingName = `${baseName(file.name)}-delivery-normalized.${normalizedExtension}`
+  const workingFile = new File([normalized.blob], workingName, { type: normalized.format })
   const sanitized: SanitizeResult = await sanitizeImage(workingFile, "all")
   const outputName = `${baseName(file.name)}-ai-marks-cleaned.${extensionFor(sanitized.blob.type)}`
+  const remainingVisibleMark = await detectVisibleAiPlatformMark(sanitized.blob)
 
   return {
     blob: sanitized.blob,
     name: outputName,
     visibleMark: visible.mark,
     metadataRemoved: sanitized.removed,
-    metadataResetByReencode: Boolean(visible.mark),
+    metadataResetByReencode: true,
     containerVerified: sanitized.pixelsPreserved,
+    visibleMarkVerified: remainingVisibleMark === null,
+    normalizationSteps: normalized.steps,
   }
 }

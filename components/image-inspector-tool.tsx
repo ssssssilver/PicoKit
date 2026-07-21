@@ -1055,7 +1055,7 @@ function SourceEvidenceReport({
                   {cleanupHandoff ? <LoaderCircle className="animate-spin" /> : <Eraser />}
                   {cleanupHandoff
                     ? pick("正在打开一键清理", "Opening one-click cleanup")
-                    : pick("一键去 AI 标记", "Clean AI marks in one click")}
+                    : pick("一键去 AI 痕迹", "Clean AI traces in one click")}
                 </Button> : null}
                 <Button size="lg" onClick={onTryAnother}>
                   <RotateCcw />

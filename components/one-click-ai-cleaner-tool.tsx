@@ -139,6 +139,7 @@ export function OneClickAiCleanerTool() {
     try {
       const cleaned = await cleanAiImageMarks(file)
       if (!cleaned.containerVerified) throw new Error("container-verification-failed")
+      if (!cleaned.visibleMarkVerified) throw new Error("visible-mark-verification-failed")
       const cleanedFile = new File([cleaned.blob], cleaned.name, { type: cleaned.blob.type })
       const checked = await inspectImage(cleanedFile)
       const nextUrl = URL.createObjectURL(cleaned.blob)
@@ -153,7 +154,12 @@ export function OneClickAiCleanerTool() {
           "输出文件校验没有通过，结果未提供下载。请保留原图并重试。",
           "The output verification failed, so no download was created. Keep the source and try again.",
         )
-        : pick(
+        : message === "visible-mark-verification-failed"
+          ? pick(
+            "清理后的可见标记复检没有通过，因此没有提供下载。请改用 AI 可见水印工具手动框选后再试。",
+            "The cleaned image did not pass visible-mark verification, so no download was created. Use the Visible AI Watermark Tool to select the mark manually, then try again.",
+          )
+          : pick(
           "本地清理未能完成。请确认图片有效，刷新后重试或使用单项清理工具。",
           "Local cleanup could not finish. Confirm the image is valid, refresh, or use the individual cleanup tools.",
         ))
@@ -190,8 +196,8 @@ export function OneClickAiCleanerTool() {
             {pick("选择要清理的图片", "Choose an image to clean")}
           </CardTitle>
           <p className="text-sm leading-6 text-zinc-500">{pick(
-            "一次完成支持的可见 AI 角标与文件来源标记清理。",
-            "Clean supported visible AI marks and removable provenance fields in one local workflow.",
+            "清理支持的 AI 角标与来源字段，并进行轻量图像交付优化。",
+            "Clean supported AI marks and provenance fields, then apply a light image-delivery normalization.",
           )}</p>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -221,11 +227,12 @@ export function OneClickAiCleanerTool() {
           <div className="space-y-5 p-5 sm:p-6">
             <div>
               <Badge variant="outline" className="border-cyan-300/25 text-cyan-200">{pick("一键清理范围", "One-click cleanup scope")}</Badge>
-              <h2 className="mt-3 text-xl font-semibold text-zinc-100">{pick("清理可见标记与文件来源字段", "Clean visible marks and provenance fields")}</h2>
+              <h2 className="mt-3 text-xl font-semibold text-zinc-100">{pick("清理 AI 痕迹并优化图像交付", "Clean AI traces and normalize image delivery")}</h2>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-3">
               <ScopeItem icon={<Sparkles />} title={pick("可见 AI 角标", "Visible AI marks")} description={pick("Gemini、豆包、即梦", "Gemini, Doubao, and Jimeng")} />
               <ScopeItem icon={<FileCheck2 />} title={pick("文件来源标记", "File provenance fields")} description={pick("AI 元数据、C2PA、Made with AI", "AI metadata, C2PA, and Made with AI")} />
+              <ScopeItem icon={<ScanSearch />} title={pick("图像交付优化", "Image delivery normalization")} description={pick("重采样、轻量传感器噪声、重新编码", "Resampling, subtle sensor grain, and re-encoding")} />
             </div>
             {inspection ? <div className="grid grid-cols-3 gap-3">
               <Info label={pick("格式", "Format")} value={inspection.format} />
@@ -236,8 +243,8 @@ export function OneClickAiCleanerTool() {
               <AlertTriangle className="text-amber-300" />
               <AlertTitle className="text-zinc-100">{pick("处理边界", "Processing boundary")}</AlertTitle>
               <AlertDescription>{pick(
-                "不会移除 SynthID 等不可见水印，也不保证像素模型不再把图片识别为 AI。清理标记不会改变图片的真实来源。",
-                "This does not remove invisible watermarks such as SynthID or guarantee that pixel classifiers stop recognizing the image as AI-generated. Cleaning marks does not change the image's real origin.",
+                "不会伪造相机 EXIF，也不会改变图片的真实来源。交付优化已针对本站检测器复检，但不同平台和模型仍可能得出不同结论。",
+                "This does not fabricate camera EXIF or change the image's real origin. The output is verified against this site's visible-mark check, but other platforms and models may still reach different conclusions.",
               )}</AlertDescription>
             </Alert>
             <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-white/[.02] p-4 text-sm leading-6 text-zinc-300">
@@ -249,7 +256,7 @@ export function OneClickAiCleanerTool() {
             </label>
             <Button size="lg" onClick={clean} disabled={!confirmed || running || !inspection} className="w-full bg-cyan-300 text-black hover:bg-cyan-200 sm:w-auto">
               {running ? <LoaderCircle className="animate-spin" /> : <Eraser />}
-              {running ? pick("正在清理可见标记与文件信息", "Cleaning visible marks and file information") : pick("一键清理 AI 标记", "Clean AI marks in one click")}
+              {running ? pick("正在清理并优化图像交付", "Cleaning and normalizing image delivery") : pick("一键清理 AI 痕迹", "Clean AI traces in one click")}
             </Button>
           </div>
         </div>
@@ -265,9 +272,10 @@ export function OneClickAiCleanerTool() {
         </CardHeader>
         <CardContent className="space-y-5">
           <ImageCompare before={sourceUrl} after={resultUrl} />
-          <div className="grid gap-3 sm:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <Info label={pick("可见角标", "Visible mark")} value={result.visibleMark ? `${providerName(result.visibleMark)} · ${pick("已处理", "Removed")}` : pick("未发现", "Not found")} />
             <Info label={pick("文件来源字段", "Provenance fields")} value={result.metadataResetByReencode || result.metadataRemoved.length ? pick("已清理", "Cleaned") : pick("未发现", "Not found")} />
+            <Info label={pick("可见标记复检", "Visible-mark verification")} value={result.visibleMarkVerified ? pick("已通过", "Passed") : pick("未通过", "Failed")} />
             <Info label={pick("复检信号", "Signals after check")} value={`${remainingSignalCount}`} />
             <Info label={pick("结果大小", "Result size")} value={formatBytes(result.blob.size)} />
           </div>

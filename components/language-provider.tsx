@@ -99,7 +99,7 @@ function titleFor(pathname: string, language: Language, translations?: Translati
     "/blog": ["工具使用教程", "Tool Guides and Tutorials"],
     "/ai-text-detector": ["免费 AI 文本检测", "Free AI Text Detector"],
     "/ai-image-detector": ["AI 图片来源证据检查", "AI Image Provenance Check"],
-    "/one-click-ai-cleaner": ["一键去 AI 标记", "One-click AI Mark Cleaner"],
+    "/one-click-ai-cleaner": ["一键去 AI 痕迹", "One-click AI Trace Cleaner"],
     "/image-metadata-checker": ["AI 图片来源与 C2PA 检查", "AI Image Provenance and C2PA Check"],
     "/gemini-watermark-remover": ["AI 可见水印处理", "Visible AI Watermark Tool"],
     "/ai-watermark-remover": ["AI 可见水印处理", "Visible AI Watermark Tool"],

@@ -156,15 +156,21 @@ export function isConservativeGeminiDetection(
     && markSize <= Math.min(imageWidth, imageHeight) * 0.25
   if (!isBottomRight) return false
 
-  // Current SDK releases expose a production validation tier even when the
-  // optional adaptive-confidence field is null. That tier is a stronger
-  // signal than removal-quality metrics, which describe the output image and
-  // previously caused genuine Gemini marks to be discarded.
+  // A validated SDK candidate is useful for deciding whether cleanup should
+  // be attempted, but it is not conclusive evidence by itself. Dark repaired
+  // corners can still produce a weak validated match after the mark is gone.
   const sdkValidated = meta.decisionTier === "validated-match"
     && typeof meta.source === "string"
     && meta.source !== "skipped"
     && [confidence, spatial, gradient, suppressionGain].some(Number.isFinite)
-  if (sdkValidated) return true
+  if (sdkValidated) {
+    return (Number.isFinite(confidence) && Number(confidence) >= GEMINI_MIN_CONFIDENCE)
+      || (Number.isFinite(spatial) && Number(spatial) >= 0.55)
+      || ([spatial, gradient, suppressionGain].every(Number.isFinite)
+        && Number(spatial) >= 0.34
+        && Number(gradient) >= 0.08
+        && Number(suppressionGain) >= GEMINI_MIN_SUPPRESSION_GAIN)
+  }
 
   // Preserve the stricter legacy path for older SDK metadata that does not
   // expose decisionTier.
@@ -174,6 +180,46 @@ export function isConservativeGeminiDetection(
     && Number(gradient) >= GEMINI_MIN_GRADIENT_SCORE
     && Number(processedSpatial) <= GEMINI_MAX_PROCESSED_SPATIAL_SCORE
     && Number(suppressionGain) >= GEMINI_MIN_SUPPRESSION_GAIN
+}
+
+/**
+ * Cleanup may safely try a wider SDK candidate set than the detector may use
+ * as provenance evidence. A false cleanup candidate only causes a local
+ * repair attempt; a false detector match changes the user's verdict.
+ */
+export function isGeminiRemovalCandidate(
+  meta: GeminiDetectionMeta | null | undefined,
+  imageWidth: number,
+  imageHeight: number,
+) {
+  if (isConservativeGeminiDetection(meta, imageWidth, imageHeight)) return true
+  if (!meta?.applied || !meta.position) return false
+  const position = meta.position
+  const rightGap = imageWidth - (position.x + position.width)
+  const bottomGap = imageHeight - (position.y + position.height)
+  const markSize = Math.max(position.width, position.height)
+  const squareTolerance = Math.max(3, markSize * 0.15)
+  const candidateGeometry = position.x >= imageWidth * 0.5
+    && position.y >= imageHeight * 0.5
+    && rightGap >= -1
+    && bottomGap >= -1
+    && rightGap <= Math.max(128, position.width * 2)
+    && bottomGap <= Math.max(128, position.height * 2)
+    && Math.abs(position.width - position.height) <= squareTolerance
+    && markSize >= 24
+    && markSize <= Math.min(imageWidth, imageHeight) * 0.25
+  if (!candidateGeometry) return false
+
+  const detection = meta.detection
+  return meta.decisionTier === "validated-match"
+    && typeof meta.source === "string"
+    && meta.source !== "skipped"
+    && [
+      detection?.adaptiveConfidence,
+      detection?.originalSpatialScore,
+      detection?.originalGradientScore,
+      detection?.suppressionGain,
+    ].some(Number.isFinite)
 }
 
 export function geminiDetectionConfidence(meta: GeminiDetectionMeta | null | undefined) {
