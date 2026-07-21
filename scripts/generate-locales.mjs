@@ -14,7 +14,10 @@ for (const value of [
   "Local image workflows, AI provenance checks, and PDF tools",
   "AI Image Provenance Check",
   "Batch Image Optimization and Delivery",
+  "Batch image optimizer",
   "Private PDF Organization and Conversion",
+  "Private PDF Organizer",
+  "Organize, Merge, and Convert PDFs",
   "Private tools, native to your browser. Work with images, PDFs, text, audio, video, and 3D models, or check AI-generated signals without signing in.",
   "Private tools in your browser",
   "AI Tools Directory by Task",
@@ -112,9 +115,83 @@ function applyOverrides(output, language) {
     batchPipelineOverrides[language] ?? {},
     workflowContinuityOverrides[language] ?? {},
     refinementZoomOverrides[language] ?? {},
+    legacyRegressionOverrides[language] ?? {},
+    aiCleanerOverrides[language] ?? {},
     pdfWorkspaceOverrides[language] ?? {},
     pdfConversionOverrides[language] ?? {},
   )
+}
+
+const legacyRegressionOverrides = {
+  ja: { "Batch image optimizer": "画像一括最適化", "Private PDF Organizer": "プライベート PDF 整理ツール" },
+  ko: { "Batch image optimizer": "일괄 이미지 최적화", "Private PDF Organizer": "비공개 PDF 정리 도구", "Organize, Merge, and Convert PDFs": "PDF 정리, 병합 및 변환" },
+  es: { "Batch image optimizer": "Optimizador de imágenes", "Private PDF Organizer": "Organizador privado de PDF" },
+  pt: { "Batch image optimizer": "Otimizador de imagens", "Private PDF Organizer": "Organizador PDF privado" },
+  id: { "Batch image optimizer": "Pengoptimal gambar", "Private PDF Organizer": "Pengelola PDF Privat" },
+  de: { "Batch image optimizer": "Stapel-Bildoptimierer", "Private PDF Organizer": "Privater PDF-Organizer" },
+  pl: { "Batch image optimizer": "Optymalizacja obrazów", "Private PDF Organizer": "Prywatny organizer PDF" },
+  ru: { "Batch image optimizer": "Пакетная оптимизация", "Private PDF Organizer": "Локальный органайзер PDF" },
+  fr: { "Batch image optimizer": "Optimiseur d’images", "Private PDF Organizer": "Organisateur privé de PDF" },
+  ar: { "Batch image optimizer": "محسّن الصور الدفعي", "Private PDF Organizer": "منظم PDF خاص" },
+  tr: { "Batch image optimizer": "Toplu görsel iyileştirme", "Private PDF Organizer": "Özel PDF Düzenleyici" },
+}
+
+const aiCleanerOverrides = {
+  ja: {
+    "One-click AI Mark Cleaner": "ワンクリックAIマーククリーナー",
+    "Clean AI marks in one click": "AIマークをワンクリックでクリーニング",
+    "Continue from detection": "検出結果から続ける",
+  },
+  ko: {
+    "One-click AI Mark Cleaner": "원클릭 AI 표시 정리",
+    "Clean AI marks in one click": "AI 표시를 한 번에 정리",
+    "Continue from detection": "검사 결과에서 계속",
+  },
+  es: {
+    "One-click AI Mark Cleaner": "Limpiador de marcas de IA en un clic",
+    "Clean AI marks in one click": "Limpiar marcas de IA en un clic",
+    "Continue from detection": "Continuar desde el resultado de detección",
+  },
+  pt: {
+    "One-click AI Mark Cleaner": "Limpador de marcas de IA num clique",
+    "Clean AI marks in one click": "Limpar marcas de IA num clique",
+    "Continue from detection": "Continuar a partir do resultado da deteção",
+  },
+  id: {
+    "One-click AI Mark Cleaner": "Pembersih Tanda AI Sekali Klik",
+    "Clean AI marks in one click": "Bersihkan tanda AI sekali klik",
+    "Continue from detection": "Lanjutkan dari hasil deteksi",
+  },
+  de: {
+    "One-click AI Mark Cleaner": "KI-Kennzeichnungen mit einem Klick bereinigen",
+    "Clean AI marks in one click": "KI-Kennzeichnungen mit einem Klick bereinigen",
+    "Continue from detection": "Vom Erkennungsergebnis fortfahren",
+  },
+  pl: {
+    "One-click AI Mark Cleaner": "Usuwanie oznaczeń AI jednym kliknięciem",
+    "Clean AI marks in one click": "Usuń oznaczenia AI jednym kliknięciem",
+    "Continue from detection": "Kontynuuj od wyniku wykrywania",
+  },
+  ru: {
+    "One-click AI Mark Cleaner": "Удаление меток ИИ одним нажатием",
+    "Clean AI marks in one click": "Удалить метки ИИ одним нажатием",
+    "Continue from detection": "Продолжить после проверки",
+  },
+  fr: {
+    "One-click AI Mark Cleaner": "Nettoyage des marques IA en un clic",
+    "Clean AI marks in one click": "Nettoyer les marques IA en un clic",
+    "Continue from detection": "Continuer depuis le résultat de détection",
+  },
+  ar: {
+    "One-click AI Mark Cleaner": "تنظيف علامات الذكاء الاصطناعي بنقرة واحدة",
+    "Clean AI marks in one click": "تنظيف علامات الذكاء الاصطناعي بنقرة واحدة",
+    "Continue from detection": "المتابعة من نتيجة الكشف",
+  },
+  tr: {
+    "One-click AI Mark Cleaner": "Tek Tıkla AI İşareti Temizleme",
+    "Clean AI marks in one click": "AI işaretlerini tek tıkla temizle",
+    "Continue from detection": "Tespit sonucundan devam et",
+  },
 }
 
 function writeLocale(outputPath, output) {

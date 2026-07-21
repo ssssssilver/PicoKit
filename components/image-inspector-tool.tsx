@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   CircleHelp,
   Download,
+  Eraser,
   Eye,
   FileCheck2,
   FileText,
@@ -49,7 +50,7 @@ import { validateImageFile } from "@/lib/file-validation"
 import { inspectImage } from "@/lib/image-inspector"
 import { localizedImageSignalLabel } from "@/lib/image-signal-label"
 import type { ImageInspection, ImageSignal } from "@/lib/image-types"
-import { loadLocalAsset, localAssetFile } from "@/lib/local-asset-transfer"
+import { loadLocalAsset, localAssetFile, saveLocalAsset } from "@/lib/local-asset-transfer"
 import {
   detectVisibleAiPlatformMark,
   type VisibleAiMarkDetection,
@@ -415,6 +416,7 @@ export function ImageInspectorTool() {
   const [inspectedAt, setInspectedAt] = useState<string | null>(null)
   const [handoffLoading, setHandoffLoading] = useState(false)
   const [reportExporting, setReportExporting] = useState(false)
+  const [cleanupHandoff, setCleanupHandoff] = useState(false)
   const workerRef = useRef<Worker | null>(null)
   const pixelCancelRef = useRef<(() => void) | null>(null)
   const analysisAbortRef = useRef<AbortController | null>(null)
@@ -808,6 +810,22 @@ export function ImageInspectorTool() {
     }
   }
 
+  async function openOneClickCleaner() {
+    if (!file || cleanupHandoff) return
+    setCleanupHandoff(true)
+    setNotice("")
+    try {
+      const assetId = await saveLocalAsset(file, file.name, "ai-detector")
+      window.location.assign(`/one-click-ai-cleaner?asset=${encodeURIComponent(assetId)}`)
+    } catch (reason) {
+      setNotice(reason instanceof Error ? reason.message : pick(
+        "无法把图片发送到一键清理工具。",
+        "Unable to send the image to the one-click cleanup tool.",
+      ))
+      setCleanupHandoff(false)
+    }
+  }
+
   return (
     <div className="space-y-6" aria-busy={running}>
       <Card className={hasReport ? "hidden" : "border-white/10 bg-[#0d0d0d] shadow-sm"}>
@@ -907,6 +925,8 @@ export function ImageInspectorTool() {
           onExport={exportReport}
           onExportReadable={exportReadableReport}
           reportExporting={reportExporting}
+          onOpenCleaner={openOneClickCleaner}
+          cleanupHandoff={cleanupHandoff}
           onTryAnother={() => handleFile(null)}
           headingRef={reportHeadingRef}
           previewUrl={previewUrl}
@@ -925,6 +945,8 @@ function SourceEvidenceReport({
   onExport,
   onExportReadable,
   reportExporting,
+  onOpenCleaner,
+  cleanupHandoff,
   onTryAnother,
   headingRef,
   previewUrl,
@@ -937,6 +959,8 @@ function SourceEvidenceReport({
   onExport: () => void
   onExportReadable: () => void | Promise<void>
   reportExporting: boolean
+  onOpenCleaner: () => void | Promise<void>
+  cleanupHandoff: boolean
   onTryAnother: () => void
   headingRef: RefObject<HTMLHeadingElement | null>
   previewUrl: string
@@ -1034,6 +1058,12 @@ function SourceEvidenceReport({
               </div>
 
               <div className="mt-auto grid gap-3">
+                {verdict.aiGenerated ? <Button size="lg" onClick={onOpenCleaner} disabled={cleanupHandoff} className="bg-cyan-500 text-white hover:bg-cyan-600 dark:bg-cyan-300 dark:text-black dark:hover:bg-cyan-200">
+                  {cleanupHandoff ? <LoaderCircle className="animate-spin" /> : <Eraser />}
+                  {cleanupHandoff
+                    ? pick("正在打开一键清理", "Opening one-click cleanup")
+                    : pick("一键去 AI 标记", "Clean AI marks in one click")}
+                </Button> : null}
                 <Button size="lg" onClick={onTryAnother}>
                   <RotateCcw />
                   {pick("换一张图片", "Try another image")}

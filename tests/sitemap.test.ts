@@ -9,5 +9,6 @@ describe("sitemap canonical routes", () => {
     expect(urls.some((url) => url.endsWith("/ai-watermark-remover"))).toBe(false)
     expect(urls.some((url) => url.endsWith("/remove-ai-metadata-from-image"))).toBe(true)
     expect(urls.some((url) => url.endsWith("/gemini-watermark-remover"))).toBe(true)
+    expect(urls.some((url) => url.endsWith("/one-click-ai-cleaner"))).toBe(true)
   })
 })

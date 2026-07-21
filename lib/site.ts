@@ -29,6 +29,7 @@ import {
   Smile,
   Sparkles,
   Timer,
+  WandSparkles,
   Waves,
 } from "lucide-react"
 
@@ -86,6 +87,17 @@ export const primaryTools: SiteTool[] = [
     icon: ScanSearch,
     category: "ai",
     runtime: "BROWSER WORKER",
+    featured: true,
+  },
+  {
+    href: "/one-click-ai-cleaner",
+    title: "一键去 AI 标记",
+    titleEn: "One-click AI Mark Cleaner",
+    description: "一次清理支持的可见 AI 角标、AI 元数据、C2PA 与 Made with AI 文件标记。",
+    descriptionEn: "Clean supported visible AI marks, AI metadata, C2PA, and Made with AI fields in one local workflow.",
+    icon: WandSparkles,
+    category: "privacy",
+    runtime: "CANVAS / BROWSER",
     featured: true,
   },
   {

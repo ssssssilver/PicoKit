@@ -14,7 +14,7 @@ describe("tool navigation priority", () => {
 
   it("leaves non-common tools available through the expanded directory", () => {
     const commonHrefs = new Set(commonToolHrefs)
-    expect(allTools.filter((tool) => !commonHrefs.has(tool.href as typeof commonToolHrefs[number]))).toHaveLength(24)
+    expect(allTools.filter((tool) => !commonHrefs.has(tool.href as typeof commonToolHrefs[number]))).toHaveLength(25)
   })
 
   it("keeps the rotating homepage banner complete and navigable", () => {

@@ -10,6 +10,7 @@ const routes = [
   ...toolGuides.map((guide) => `/blog/${guide.slug}`),
   "/ai-text-detector",
   "/ai-image-detector",
+  "/one-click-ai-cleaner",
   "/gemini-watermark-remover",
   "/remove-ai-metadata-from-image",
   "/remove-c2pa-content-credentials",

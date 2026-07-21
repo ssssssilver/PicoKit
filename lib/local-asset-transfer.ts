@@ -5,7 +5,7 @@ export const IMAGE_PIPELINE_BATCH_MAX_ITEMS = 30
 export const LOCAL_ASSET_BATCH_MAX_ITEMS = IMAGE_PIPELINE_BATCH_MAX_ITEMS
 export const LOCAL_ASSET_BATCH_MAX_BYTES = 250 * 1024 * 1024
 
-export type LocalAssetSource = "background-remover" | "image-editor" | "image-optimizer" | "unknown"
+export type LocalAssetSource = "background-remover" | "image-editor" | "image-optimizer" | "ai-detector" | "ai-cleaner" | "unknown"
 
 export type LocalAssetRecord = {
   id: string

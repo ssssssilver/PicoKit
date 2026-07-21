@@ -59,6 +59,7 @@ test("server-renders the TabNative homepage and security headers", async () => {
 })
 
 for (const [pathname, marker] of [
+  ["/one-click-ai-cleaner", "ONE-CLICK AI MARK CLEANUP"],
   ["/ai-text-detector", "AI 文本检测"],
   ["/ai-image-detector", "AI 图片检测"],
   ["/remove-ai-metadata-from-image", "清理图片 AI 元数据"],
