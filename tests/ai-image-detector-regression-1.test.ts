@@ -140,7 +140,7 @@ describe("AI image detector quality regressions", () => {
       visibleMark: null,
       channels,
     })
-    expect(json.version).toBe("1.6.0")
+    expect(json.version).toBe("1.7.0")
     expect(json.summary.aiLikelihoodPercent).toBeGreaterThanOrEqual(68)
     expect(json.summary.likelihoodCalibration).toBe("evidence-weighted-likelihood-v1")
     expect(json.channels.pixelStatistics.result?.aggregation).toBe("robust-full-region-v2")

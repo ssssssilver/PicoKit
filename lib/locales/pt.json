@@ -2171,5 +2171,10 @@
   "Download detection report": "Transferir relatório de deteção",
   "Detailed findings and incomplete checks are available only in the downloaded report.": "Os resultados detalhados e as verificações incompletas estão disponíveis apenas no relatório transferido.",
   "Preparing final check": "A preparar a verificação final",
-  "Running final check": "A executar a verificação final"
+  "Running final check": "A executar a verificação final",
+  "Screenshots, chat forwards, and social-media recompression are more likely to be misclassified; prefer the camera original or an unedited source file": "Capturas de ecrã, imagens reenviadas em conversas e recomprimidas nas redes sociais têm maior probabilidade de classificação incorreta; prefira o original da câmara ou um ficheiro de origem não editado",
+  "Unable to create the PDF detection report. Please try again.": "Não foi possível criar o relatório de deteção em PDF. Tente novamente.",
+  "Creating PDF": "A criar PDF",
+  "Download PDF report": "Transferir relatório PDF",
+  "Export PDF summary": "Exportar resumo em PDF"
 }

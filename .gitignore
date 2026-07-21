@@ -41,6 +41,7 @@ next-env.d.ts
 /.wrangler/
 /outputs/
 /work/
+/tmp/
 /public/c2pa.wasm
 /public/pdfjs/
 .gstack/

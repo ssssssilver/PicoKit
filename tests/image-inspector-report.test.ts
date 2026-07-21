@@ -123,7 +123,7 @@ describe("image source-evidence report", () => {
     ).toBe("insufficient")
   })
 
-  it("uses an honest three-state verdict while keeping the visible result simple", () => {
+  it("uses a binary verdict and treats non-AI consensus as not AI-generated", () => {
     const aiInspection: ImageInspection = {
       ...emptyInspection,
       signals: [{
@@ -162,8 +162,9 @@ describe("image source-evidence report", () => {
       visibleMark: null,
     })).toMatchObject({
       aiGenerated: false,
-      classification: "uncertain",
+      classification: "not-ai-generated",
       reliability: "low",
+      aiLikelihoodPercent: 49,
     })
   })
 
@@ -210,9 +211,9 @@ describe("image source-evidence report", () => {
       "jimeng",
     ])
     expect(report.summary).toMatchObject({
-      classification: "uncertain",
+      classification: "not-ai-generated",
       reliability: "low",
-      aiLikelihoodPercent: 62,
+      aiLikelihoodPercent: 49,
       likelihoodCalibration: "evidence-weighted-likelihood-v1",
     })
     expect(report.limitations).toHaveLength(4)
@@ -245,10 +246,14 @@ describe("image source-evidence report", () => {
     expect(IMAGE_INSPECTOR_MAX_PIXELS).toBe(24_000_000)
     expect(source).toContain("是 AI 生成")
     expect(source).toContain("不是 AI 生成")
-    expect(source).toContain("无法确认")
+    expect(source).not.toContain("无法确认")
     expect(source).toContain("AI 可能性")
     expect(source).toContain("换一张图片")
-    expect(source).toContain("下载检测报告")
+    expect(source).toContain("下载 PDF 检测报告")
+    expect(source).toContain('type: "application/pdf"')
+    expect(source).toContain("buildImageEvidencePdf")
+    expect(source).toContain(".pdf`")
+    expect(source).not.toContain('type: "text/markdown;charset=utf-8"')
     expect(source).toContain("const SHOW_INLINE_TECHNICAL_REPORT = false")
     expect(source).toContain("allowCascade")
     expect(source).toContain("正在准备增强检测")

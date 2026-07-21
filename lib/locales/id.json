@@ -2171,5 +2171,10 @@
   "Download detection report": "Unduh laporan deteksi",
   "Detailed findings and incomplete checks are available only in the downloaded report.": "Temuan terperinci dan pemeriksaan yang belum selesai hanya tersedia dalam laporan yang diunduh.",
   "Preparing final check": "Menyiapkan pemeriksaan akhir",
-  "Running final check": "Menjalankan pemeriksaan akhir"
+  "Running final check": "Menjalankan pemeriksaan akhir",
+  "Screenshots, chat forwards, and social-media recompression are more likely to be misclassified; prefer the camera original or an unedited source file": "Tangkapan layar, gambar yang diteruskan melalui chat, dan gambar yang dikompresi ulang oleh media sosial lebih mudah salah diklasifikasikan; utamakan foto asli kamera atau berkas sumber yang belum diedit",
+  "Unable to create the PDF detection report. Please try again.": "Laporan deteksi PDF tidak dapat dibuat. Silakan coba lagi.",
+  "Creating PDF": "Membuat PDF",
+  "Download PDF report": "Unduh laporan PDF",
+  "Export PDF summary": "Ekspor ringkasan PDF"
 }

@@ -83,9 +83,8 @@ export type EvidenceSummaryKind =
 export type SimpleImageClassification =
   | "ai-generated"
   | "not-ai-generated"
-  | "uncertain"
 
-export const IMAGE_EVIDENCE_REPORT_VERSION = "1.6.0"
+export const IMAGE_EVIDENCE_REPORT_VERSION = "1.7.0"
 export const PROVENANCE_DETECTOR_VERSION = "exif-c2pa-inspector/3"
 export const VISIBLE_MARK_DETECTOR_VERSION = "platform-mark-matcher/2"
 export const IMAGE_INSPECTOR_MAX_BYTES = 25 * 1024 * 1024
@@ -168,22 +167,22 @@ export function getSimpleImageVerdict({
     ?? (visibleMark || (pixelBand !== null && pixelBand !== "uncertain" && (pixel?.consistency ?? 0) >= 0.6)
       ? "medium"
       : "low")
-  const aiLikelihood = fused?.overallScore
+  const rawAiLikelihood = fused?.overallScore
     ?? (visibleMark ? Math.max(0.94, visibleMark.confidence) : calibratedPixelAiLikelihood(pixel))
   const classification: SimpleImageClassification = fused
     ? fused.band === "higher-ai-signals"
       ? "ai-generated"
-      : fused.band === "lower-ai-signals"
-        ? "not-ai-generated"
-        : "uncertain"
+      : "not-ai-generated"
     : visibleMark
       ? "ai-generated"
       : pixelBand === "higher"
         ? "ai-generated"
-        : pixelBand === "lower"
-          ? "not-ai-generated"
-          : "uncertain"
+        : "not-ai-generated"
   const aiGenerated = classification === "ai-generated"
+  // The product verdict is intentionally binary. When the evidence does not
+  // cross the AI threshold, keep the user-facing likelihood below 50% while
+  // preserving every raw model score and disagreement in the download report.
+  const aiLikelihood = aiGenerated ? rawAiLikelihood : Math.min(rawAiLikelihood, 0.49)
 
   return {
     aiGenerated,
@@ -412,6 +411,7 @@ export function ImageInspectorTool() {
   const [notice, setNotice] = useState("")
   const [inspectedAt, setInspectedAt] = useState<string | null>(null)
   const [handoffLoading, setHandoffLoading] = useState(false)
+  const [reportExporting, setReportExporting] = useState(false)
   const workerRef = useRef<Worker | null>(null)
   const pixelCancelRef = useRef<(() => void) | null>(null)
   const analysisAbortRef = useRef<AbortController | null>(null)
@@ -776,23 +776,33 @@ export function ImageInspectorTool() {
     window.setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
 
-  function exportReadableReport() {
-    if (!hasReport) return
-    const content = buildReadableImageEvidenceReport({
-      language,
-      file,
-      inspection,
-      pixel,
-      visibleMark,
-      channels,
-    })
-    const blob = new Blob([content], { type: "text/markdown;charset=utf-8" })
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement("a")
-    anchor.href = url
-    anchor.download = `tabnative-image-evidence-${Date.now()}.md`
-    anchor.click()
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+  async function exportReadableReport() {
+    if (!hasReport || reportExporting) return
+    setReportExporting(true)
+    try {
+      const content = buildReadableImageEvidenceReport({
+        language,
+        file,
+        inspection,
+        pixel,
+        visibleMark,
+        channels,
+      })
+      const { buildImageEvidencePdf } = await import("@/lib/image-evidence-pdf")
+      const bytes = await buildImageEvidencePdf(content, language)
+      const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer
+      const blob = new Blob([buffer], { type: "application/pdf" })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement("a")
+      anchor.href = url
+      anchor.download = `tabnative-image-evidence-${Date.now()}.pdf`
+      anchor.click()
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch {
+      setNotice(pick("无法生成 PDF 检测报告，请重试。", "Unable to create the PDF detection report. Please try again."))
+    } finally {
+      setReportExporting(false)
+    }
   }
 
   return (
@@ -893,6 +903,7 @@ export function ImageInspectorTool() {
           channels={channels}
           onExport={exportReport}
           onExportReadable={exportReadableReport}
+          reportExporting={reportExporting}
           onTryAnother={() => handleFile(null)}
           headingRef={reportHeadingRef}
           previewUrl={previewUrl}
@@ -910,6 +921,7 @@ function SourceEvidenceReport({
   channels,
   onExport,
   onExportReadable,
+  reportExporting,
   onTryAnother,
   headingRef,
   previewUrl,
@@ -920,7 +932,8 @@ function SourceEvidenceReport({
   visibleMark: VisibleAiMarkDetection | null
   channels: DetectionChannelAvailability
   onExport: () => void
-  onExportReadable: () => void
+  onExportReadable: () => void | Promise<void>
+  reportExporting: boolean
   onTryAnother: () => void
   headingRef: RefObject<HTMLHeadingElement | null>
   previewUrl: string
@@ -947,8 +960,6 @@ function SourceEvidenceReport({
     : verdict.reliability === "medium"
       ? pick("中", "Medium")
       : pick("有限", "Limited")
-  const uncertain = verdict.classification === "uncertain"
-
   return (
     <div className="space-y-6">
       <Card className="overflow-hidden border-border bg-card shadow-sm">
@@ -970,9 +981,7 @@ function SourceEvidenceReport({
             <div className="flex flex-col justify-center gap-5 p-5 sm:p-7">
               <div className={verdict.aiGenerated
                 ? "rounded-xl border border-red-300 bg-red-50 p-5 text-red-950 dark:border-red-500/35 dark:bg-red-500/10 dark:text-red-100"
-                : uncertain
-                  ? "rounded-xl border border-amber-300 bg-amber-50 p-5 text-amber-950 dark:border-amber-500/35 dark:bg-amber-500/10 dark:text-amber-100"
-                  : "rounded-xl border border-emerald-300 bg-emerald-50 p-5 text-emerald-950 dark:border-emerald-500/35 dark:bg-emerald-500/10 dark:text-emerald-100"}
+                : "rounded-xl border border-emerald-300 bg-emerald-50 p-5 text-emerald-950 dark:border-emerald-500/35 dark:bg-emerald-500/10 dark:text-emerald-100"}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -984,16 +993,12 @@ function SourceEvidenceReport({
                     >
                       {verdict.aiGenerated
                         ? pick("是 AI 生成", "AI-generated")
-                        : uncertain
-                          ? pick("无法确认", "Uncertain / mixed")
-                          : pick("不是 AI 生成", "Not AI-generated")}
+                        : pick("不是 AI 生成", "Not AI-generated")}
                     </h2>
                   </div>
                   <span className={verdict.aiGenerated
                     ? "shrink-0 rounded-full bg-red-200 px-4 py-2 text-sm font-bold tabular-nums text-red-700 dark:bg-red-400/20 dark:text-red-200"
-                    : uncertain
-                      ? "shrink-0 rounded-full bg-amber-200 px-4 py-2 text-sm font-bold tabular-nums text-amber-800 dark:bg-amber-400/20 dark:text-amber-200"
-                      : "shrink-0 rounded-full bg-emerald-200 px-4 py-2 text-sm font-bold tabular-nums text-emerald-700 dark:bg-emerald-400/20 dark:text-emerald-200"}
+                    : "shrink-0 rounded-full bg-emerald-200 px-4 py-2 text-sm font-bold tabular-nums text-emerald-700 dark:bg-emerald-400/20 dark:text-emerald-200"}
                   >
                     {verdict.aiLikelihoodPercent}% AI
                   </span>
@@ -1001,9 +1006,7 @@ function SourceEvidenceReport({
                 <p className="mt-4 text-sm leading-6 opacity-85">
                   {verdict.aiGenerated
                     ? pick("这张图片是 AI 生成的。", "This image is AI-generated.")
-                    : uncertain
-                      ? pick("两个检测模型结果不一致，当前证据不足以判断。", "The detection models disagree, so there is not enough evidence to decide.")
-                      : pick("这张图片不是 AI 生成的。", "This image is not AI-generated.")}
+                    : pick("这张图片不是 AI 生成的。", "This image is not AI-generated.")}
                 </p>
               </div>
 
@@ -1022,9 +1025,7 @@ function SourceEvidenceReport({
                   label={pick("判定", "Classification")}
                   value={verdict.aiGenerated
                     ? pick("AI 生成", "AI-generated")
-                    : uncertain
-                      ? pick("无法确认", "Uncertain / mixed")
-                      : pick("非 AI 生成", "Not AI-generated")}
+                    : pick("非 AI 生成", "Not AI-generated")}
                   danger={verdict.aiGenerated}
                 />
               </div>
@@ -1034,9 +1035,11 @@ function SourceEvidenceReport({
                   <RotateCcw />
                   {pick("换一张图片", "Try another image")}
                 </Button>
-                <Button size="lg" variant="outline" onClick={onExportReadable}>
-                  <Download />
-                  {pick("下载检测报告", "Download detection report")}
+                <Button size="lg" variant="outline" onClick={onExportReadable} disabled={reportExporting}>
+                  {reportExporting ? <LoaderCircle className="animate-spin" /> : <Download />}
+                  {reportExporting
+                    ? pick("正在生成 PDF", "Creating PDF")
+                    : pick("下载 PDF 检测报告", "Download PDF report")}
                 </Button>
                 <p className="text-center text-xs leading-5 text-muted-foreground">
                   {pick("详细检测信息与未完成项仅保留在下载报告中。", "Detailed findings and incomplete checks are available only in the downloaded report.")}
@@ -1076,9 +1079,11 @@ function SourceEvidenceReport({
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="secondary" onClick={onExportReadable}>
-                <FileText />
-                {pick("导出可读摘要", "Export readable summary")}
+              <Button variant="secondary" onClick={onExportReadable} disabled={reportExporting}>
+                {reportExporting ? <LoaderCircle className="animate-spin" /> : <FileText />}
+                {reportExporting
+                  ? pick("正在生成 PDF", "Creating PDF")
+                  : pick("导出 PDF 摘要", "Export PDF summary")}
               </Button>
               <Button variant="outline" onClick={onExport}>
                 <Download />
@@ -1836,7 +1841,7 @@ function getPixelBandCopy(
 ) {
   if (band === "higher") return { label: pick("较高的 AI 类像素信号", "Higher AI-like pixel signals") }
   if (band === "lower") return { label: pick("较低的 AI 类像素信号", "Lower AI-like pixel signals") }
-  return { label: pick("像素结果不确定", "Pixel result is uncertain") }
+  return { label: pick("未形成 AI 共识", "No AI consensus") }
 }
 
 function c2paValidationLabel(
@@ -1937,7 +1942,6 @@ function readableVerdict(
   const labels = {
     "ai-generated": ["AI 生成", "AI-generated"],
     "not-ai-generated": ["非 AI 生成", "Not AI-generated"],
-    uncertain: ["无法确认", "Unable to determine"],
   } as const
   return labels[classification][zh ? 0 : 1]
 }
@@ -1957,7 +1961,7 @@ function readablePixelBand(
 ) {
   const labels = {
     higher: ["较高的 AI 类像素信号", "Higher AI-like pixel signals"],
-    uncertain: ["像素结果不确定", "Pixel result is uncertain"],
+    uncertain: ["未形成 AI 共识", "No AI consensus"],
     lower: ["较低的 AI 类像素信号", "Lower AI-like pixel signals"],
   } as const
   return labels[band][zh ? 0 : 1]

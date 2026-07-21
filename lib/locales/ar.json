@@ -2171,5 +2171,10 @@
   "Download detection report": "تنزيل تقرير الكشف",
   "Detailed findings and incomplete checks are available only in the downloaded report.": "لا تتوفر النتائج التفصيلية والفحوصات غير المكتملة إلا في التقرير الذي تم تنزيله.",
   "Preparing final check": "جارٍ إعداد الفحص النهائي",
-  "Running final check": "جارٍ إجراء الفحص النهائي"
+  "Running final check": "جارٍ إجراء الفحص النهائي",
+  "Screenshots, chat forwards, and social-media recompression are more likely to be misclassified; prefer the camera original or an unedited source file": "لقطات الشاشة والصور المعاد توجيهها في المحادثات والصور التي أعادت منصات التواصل ضغطها أكثر عرضة للتصنيف الخاطئ؛ يُفضّل استخدام الصورة الأصلية من الكاميرا أو ملف مصدر غير محرر",
+  "Unable to create the PDF detection report. Please try again.": "تعذر إنشاء تقرير الكشف بصيغة PDF. يُرجى المحاولة مرة أخرى.",
+  "Creating PDF": "جارٍ إنشاء ملف PDF",
+  "Download PDF report": "تنزيل تقرير PDF",
+  "Export PDF summary": "تصدير ملخص PDF"
 }

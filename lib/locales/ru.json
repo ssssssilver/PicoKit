@@ -2171,5 +2171,10 @@
   "Download detection report": "Скачать отчёт о проверке",
   "Detailed findings and incomplete checks are available only in the downloaded report.": "Подробные результаты и незавершённые проверки доступны только в скачанном отчёте.",
   "Preparing final check": "Подготовка финальной проверки",
-  "Running final check": "Выполняется финальная проверка"
+  "Running final check": "Выполняется финальная проверка",
+  "Screenshots, chat forwards, and social-media recompression are more likely to be misclassified; prefer the camera original or an unedited source file": "Скриншоты, изображения, пересланные в чатах, и файлы, повторно сжатые соцсетями, чаще классифицируются ошибочно; по возможности используйте оригинал с камеры или неизменённый исходный файл",
+  "Unable to create the PDF detection report. Please try again.": "Не удалось создать PDF-отчёт о проверке. Повторите попытку.",
+  "Creating PDF": "Создание PDF",
+  "Download PDF report": "Скачать PDF-отчёт",
+  "Export PDF summary": "Экспортировать сводку в PDF"
 }

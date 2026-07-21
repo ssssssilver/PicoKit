@@ -2171,5 +2171,10 @@
   "Download detection report": "Pobierz raport wykrywania",
   "Detailed findings and incomplete checks are available only in the downloaded report.": "Szczegółowe wyniki i nieukończone kontrole są dostępne tylko w pobranym raporcie.",
   "Preparing final check": "Przygotowywanie końcowej weryfikacji",
-  "Running final check": "Trwa końcowa weryfikacja"
+  "Running final check": "Trwa końcowa weryfikacja",
+  "Screenshots, chat forwards, and social-media recompression are more likely to be misclassified; prefer the camera original or an unedited source file": "Zrzuty ekranu, obrazy przesłane przez komunikatory i ponownie skompresowane w mediach społecznościowych są częściej błędnie klasyfikowane; najlepiej użyć oryginału z aparatu lub nieedytowanego pliku źródłowego",
+  "Unable to create the PDF detection report. Please try again.": "Nie udało się utworzyć raportu wykrywania w formacie PDF. Spróbuj ponownie.",
+  "Creating PDF": "Tworzenie pliku PDF",
+  "Download PDF report": "Pobierz raport PDF",
+  "Export PDF summary": "Eksportuj podsumowanie PDF"
 }

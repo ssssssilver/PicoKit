@@ -2171,5 +2171,10 @@
   "Download detection report": "Prüfbericht herunterladen",
   "Detailed findings and incomplete checks are available only in the downloaded report.": "Detaillierte Ergebnisse und nicht abgeschlossene Prüfungen stehen nur im heruntergeladenen Bericht.",
   "Preparing final check": "Abschließende Prüfung wird vorbereitet",
-  "Running final check": "Abschließende Prüfung läuft"
+  "Running final check": "Abschließende Prüfung läuft",
+  "Screenshots, chat forwards, and social-media recompression are more likely to be misclassified; prefer the camera original or an unedited source file": "Screenshots, im Chat weitergeleitete Bilder und durch soziale Medien erneut komprimierte Bilder werden häufiger falsch eingestuft; verwenden Sie möglichst das Kameraoriginal oder eine unbearbeitete Quelldatei",
+  "Unable to create the PDF detection report. Please try again.": "Der PDF-Erkennungsbericht konnte nicht erstellt werden. Bitte versuchen Sie es erneut.",
+  "Creating PDF": "PDF wird erstellt",
+  "Download PDF report": "PDF-Bericht herunterladen",
+  "Export PDF summary": "PDF-Zusammenfassung exportieren"
 }
