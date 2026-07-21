@@ -153,7 +153,10 @@ export async function saveLocalAsset(blob: Blob, name: string, source: LocalAsse
     database.close()
   }
 
-  void cleanExpiredLocalAssets(createdAt).catch(() => undefined)
+  // Finish cleanup before the caller navigates away. A fire-and-forget
+  // IndexedDB request can be orphaned during page unload and keep the next
+  // tool waiting on the same database.
+  await cleanExpiredLocalAssets(createdAt).catch(() => undefined)
   scheduleLocalAssetExpiry(id, createdAt)
   return id
 }
@@ -193,7 +196,7 @@ export async function saveLocalAssetBatch(
     database.close()
   }
 
-  void cleanExpiredLocalAssets(createdAt).catch(() => undefined)
+  await cleanExpiredLocalAssets(createdAt).catch(() => undefined)
   scheduleLocalAssetExpiry(id, createdAt)
   return id
 }

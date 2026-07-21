@@ -54,5 +54,7 @@ describe("local image handoff", () => {
     const source = await readFile("lib/local-asset-transfer.ts", "utf8")
     expect(source.match(/const completed = transactionDone\(transaction\)/g)).toHaveLength(6)
     expect(source).not.toContain("await transactionDone(transaction)")
+    expect(source).not.toContain("void cleanExpiredLocalAssets(createdAt)")
+    expect(source.match(/await cleanExpiredLocalAssets\(createdAt\)/g)).toHaveLength(2)
   })
 })
