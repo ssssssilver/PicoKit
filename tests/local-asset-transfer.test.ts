@@ -52,8 +52,9 @@ describe("local image handoff", () => {
 
   it("subscribes to IndexedDB completion before requests can finish", async () => {
     const source = await readFile("lib/local-asset-transfer.ts", "utf8")
-    expect(source.match(/const completed = transactionDone\(transaction\)/g)).toHaveLength(6)
+    expect(source.match(/transactionDone\(transaction\)/g)).toHaveLength(6)
     expect(source).not.toContain("await transactionDone(transaction)")
+    expect(source.match(/consume \? "readwrite" : "readonly"/g)).toHaveLength(2)
     expect(source).not.toContain("void cleanExpiredLocalAssets(createdAt)")
     expect(source.match(/await cleanExpiredLocalAssets\(createdAt\)/g)).toHaveLength(2)
   })
