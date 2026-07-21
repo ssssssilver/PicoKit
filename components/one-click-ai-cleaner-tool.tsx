@@ -86,11 +86,9 @@ export function OneClickAiCleanerTool() {
     handoffAttemptedRef.current = true
     const assetId = new URLSearchParams(window.location.search).get("asset")
     if (!assetId) return
-    let cancelled = false
-    const timer = window.setTimeout(() => {
+    queueMicrotask(() => {
       setLoadingHandoff(true)
       void loadLocalAsset(assetId).then((record) => {
-        if (cancelled) return
         if (!record) throw new Error(pick(
           "临时图片已过期，请从 AI 图片检测结果重新发送。",
           "The temporary image has expired. Send it again from the AI image result.",
@@ -101,15 +99,14 @@ export function OneClickAiCleanerTool() {
           "The image from the detector is ready. Review the cleanup scope, then start.",
         ))
       }).catch((reason) => {
-        if (!cancelled) setError(reason instanceof Error ? reason.message : pick(
+        setError(reason instanceof Error ? reason.message : pick(
           "无法读取检测页面传来的图片。",
           "Unable to load the image from the detector.",
         ))
       }).finally(() => {
-        if (!cancelled) setLoadingHandoff(false)
+        setLoadingHandoff(false)
       })
-    }, 0)
-    return () => { cancelled = true; window.clearTimeout(timer) }
+    })
   }, [file, handleFile, pick])
 
   useEffect(() => {

@@ -441,8 +441,7 @@ export function ImageInspectorTool() {
     handoffAttemptedRef.current = true
     const assetId = new URLSearchParams(window.location.search).get("asset")
     if (!assetId) return
-    let cancelled = false
-    const timer = window.setTimeout(async () => {
+    void (async () => {
       setHandoffLoading(true)
       setNotice("")
       try {
@@ -477,11 +476,9 @@ export function ImageInspectorTool() {
             ),
           )
         }
-        if (cancelled) return
         setHandoffLoading(false)
         handleFile(validated.file)
       } catch (reason) {
-        if (cancelled) return
         setNotice(
           reason instanceof Error
             ? reason.message
@@ -492,11 +489,7 @@ export function ImageInspectorTool() {
         )
         setHandoffLoading(false)
       }
-    }, 0)
-    return () => {
-      cancelled = true
-      window.clearTimeout(timer)
-    }
+    })()
   }, [file, format, pick])
 
   const hasReport = Object.values(channels).some(
