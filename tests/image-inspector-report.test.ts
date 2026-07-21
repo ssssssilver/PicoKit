@@ -168,6 +168,23 @@ describe("image source-evidence report", () => {
     })
   })
 
+  it("treats a detected Gemini watermark as AI regardless of a low pixel score", () => {
+    expect(getSimpleImageVerdict({
+      inspection: emptyInspection,
+      pixel: { ...pixel, score: 0.08 },
+      visibleMark: {
+        provider: "gemini",
+        confidence: 0.94,
+        region: null,
+      },
+    })).toMatchObject({
+      aiGenerated: true,
+      classification: "ai-generated",
+      reliability: "medium",
+      aiLikelihoodPercent: 94,
+    })
+  })
+
   it("exports detector versions, channel availability, and limitations without a combined score", () => {
     const report = buildImageEvidenceReport({
       createdAt: "2026-07-15T00:00:00.000Z",

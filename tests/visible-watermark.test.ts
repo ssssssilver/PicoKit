@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   clampRect,
   findBestCloneSource,
+  geminiDetectionConfidence,
   isConservativeGeminiDetection,
   locateProviderRegion,
   normalizeDragRect,
@@ -87,5 +88,47 @@ describe("visible watermark geometry", () => {
       ...strong,
       position: { x: 20, y: 20, width: 96, height: 96 },
     }, 960, 640)).toBe(false)
+  })
+
+  it("accepts real SDK-validated Gemini marks when adaptive confidence is absent", () => {
+    const validated = {
+      applied: true,
+      source: "standard",
+      decisionTier: "validated-match",
+      position: { x: 1632, y: 544, width: 48, height: 48 },
+      detection: {
+        adaptiveConfidence: null,
+        originalSpatialScore: 0.9999249808928564,
+        originalGradientScore: 0.9998702335504376,
+        processedSpatialScore: -0.569984680750134,
+        suppressionGain: 1.5699096616429904,
+      },
+    }
+
+    expect(isConservativeGeminiDetection(validated, 1712, 624)).toBe(true)
+    expect(geminiDetectionConfidence(validated)).toBe(0.99)
+  })
+
+  it("accepts a validated Gemini mark even when removal-quality metrics are weak", () => {
+    const validated = {
+      applied: true,
+      source: "standard+located-aggressive",
+      decisionTier: "validated-match",
+      position: { x: 1040, y: 736, width: 96, height: 96 },
+      detection: {
+        adaptiveConfidence: null,
+        originalSpatialScore: 0.2701383796248219,
+        originalGradientScore: -0.0017227729472738633,
+        processedSpatialScore: -0.0022586512273915626,
+        suppressionGain: 0.27239703085221345,
+      },
+    }
+
+    expect(isConservativeGeminiDetection(validated, 1200, 896)).toBe(true)
+    expect(geminiDetectionConfidence(validated)).toBe(0.94)
+    expect(isConservativeGeminiDetection({
+      ...validated,
+      position: { x: 120, y: 120, width: 96, height: 96 },
+    }, 1200, 896)).toBe(false)
   })
 })

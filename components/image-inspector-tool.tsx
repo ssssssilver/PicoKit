@@ -86,7 +86,7 @@ export type SimpleImageClassification =
 
 export const IMAGE_EVIDENCE_REPORT_VERSION = "1.7.0"
 export const PROVENANCE_DETECTOR_VERSION = "exif-c2pa-inspector/3"
-export const VISIBLE_MARK_DETECTOR_VERSION = "platform-mark-matcher/2"
+export const VISIBLE_MARK_DETECTOR_VERSION = "platform-mark-matcher/3"
 export const IMAGE_INSPECTOR_MAX_BYTES = 25 * 1024 * 1024
 export const IMAGE_INSPECTOR_MAX_PIXELS = 24_000_000
 
@@ -163,21 +163,24 @@ export function getSimpleImageVerdict({
 }) {
   const fused = inspection ? fuseImageDetection(pixel, inspection) : null
   const pixelBand = pixel ? pixelEstimateBand(pixel) : null
-  const reliability = fused?.reliability
-    ?? (visibleMark || (pixelBand !== null && pixelBand !== "uncertain" && (pixel?.consistency ?? 0) >= 0.6)
-      ? "medium"
-      : "low")
-  const rawAiLikelihood = fused?.overallScore
-    ?? (visibleMark ? Math.max(0.94, visibleMark.confidence) : calibratedPixelAiLikelihood(pixel))
-  const classification: SimpleImageClassification = fused
-    ? fused.band === "higher-ai-signals"
-      ? "ai-generated"
-      : "not-ai-generated"
-    : visibleMark
-      ? "ai-generated"
-      : pixelBand === "higher"
+  const reliability = visibleMark
+    ? (fused?.reliability === "high" ? "high" : "medium")
+    : (fused?.reliability
+      ?? ((pixelBand !== null && pixelBand !== "uncertain" && (pixel?.consistency ?? 0) >= 0.6)
+        ? "medium"
+        : "low"))
+  const rawAiLikelihood = visibleMark
+    ? Math.max(0.94, visibleMark.confidence, fused?.overallScore ?? 0)
+    : fused?.overallScore ?? calibratedPixelAiLikelihood(pixel)
+  const classification: SimpleImageClassification = visibleMark
+    ? "ai-generated"
+    : fused
+      ? fused.band === "higher-ai-signals"
         ? "ai-generated"
         : "not-ai-generated"
+      : pixelBand === "higher"
+          ? "ai-generated"
+          : "not-ai-generated"
   const aiGenerated = classification === "ai-generated"
   // The product verdict is intentionally binary. When the evidence does not
   // cross the AI threshold, keep the user-facing likelihood below 50% while

@@ -30,6 +30,8 @@ export type VisibleMarkAnalysisOptions = {
 export type GeminiDetectionMeta = {
   applied?: boolean
   position?: PixelRect | null
+  source?: string | null
+  decisionTier?: string | null
   detection?: {
     adaptiveConfidence?: number | null
     originalSpatialScore?: number | null
@@ -138,19 +140,49 @@ export function isConservativeGeminiDetection(
   const gradient = detection?.originalGradientScore
   const processedSpatial = detection?.processedSpatialScore
   const suppressionGain = detection?.suppressionGain
-  if (![confidence, spatial, gradient, processedSpatial, suppressionGain].every(Number.isFinite)) return false
-
   const position = meta.position
+  const rightGap = imageWidth - (position.x + position.width)
+  const bottomGap = imageHeight - (position.y + position.height)
+  const markSize = Math.max(position.width, position.height)
+  const squareTolerance = Math.max(3, markSize * 0.15)
   const isBottomRight = position.x >= imageWidth * 0.5
     && position.y >= imageHeight * 0.5
-    && position.x + position.width <= imageWidth + 1
-    && position.y + position.height <= imageHeight + 1
-  return isBottomRight
+    && rightGap >= -1
+    && bottomGap >= -1
+    && rightGap <= Math.max(128, position.width * 2)
+    && bottomGap <= Math.max(128, position.height * 2)
+    && Math.abs(position.width - position.height) <= squareTolerance
+    && markSize >= 24
+    && markSize <= Math.min(imageWidth, imageHeight) * 0.25
+  if (!isBottomRight) return false
+
+  // Current SDK releases expose a production validation tier even when the
+  // optional adaptive-confidence field is null. That tier is a stronger
+  // signal than removal-quality metrics, which describe the output image and
+  // previously caused genuine Gemini marks to be discarded.
+  const sdkValidated = meta.decisionTier === "validated-match"
+    && typeof meta.source === "string"
+    && meta.source !== "skipped"
+    && [confidence, spatial, gradient, suppressionGain].some(Number.isFinite)
+  if (sdkValidated) return true
+
+  // Preserve the stricter legacy path for older SDK metadata that does not
+  // expose decisionTier.
+  return [confidence, spatial, gradient, processedSpatial, suppressionGain].every(Number.isFinite)
     && Number(confidence) >= GEMINI_MIN_CONFIDENCE
     && Number(spatial) >= GEMINI_MIN_SPATIAL_SCORE
     && Number(gradient) >= GEMINI_MIN_GRADIENT_SCORE
     && Number(processedSpatial) <= GEMINI_MAX_PROCESSED_SPATIAL_SCORE
     && Number(suppressionGain) >= GEMINI_MIN_SUPPRESSION_GAIN
+}
+
+export function geminiDetectionConfidence(meta: GeminiDetectionMeta | null | undefined) {
+  const adaptive = Number(meta?.detection?.adaptiveConfidence)
+  const spatial = Number(meta?.detection?.originalSpatialScore)
+  const candidates = [adaptive, spatial].filter((value) => Number.isFinite(value) && value > 0)
+  const measured = candidates.length ? Math.max(...candidates) : 0
+  const floor = meta?.decisionTier === "validated-match" ? 0.94 : 0.9
+  return Math.min(0.99, Math.max(floor, measured))
 }
 
 export function locateProviderRegion(provider: VisibleWatermarkProvider, imageWidth: number, imageHeight: number): PixelRect {
@@ -400,7 +432,7 @@ export async function detectVisibleAiPlatformMark(
     if (!isConservativeGeminiDetection(meta, canvas.width, canvas.height)) return null
     return {
       provider: "gemini",
-      confidence: Number(meta?.detection?.adaptiveConfidence),
+      confidence: geminiDetectionConfidence(meta),
       region: null,
     }
   } catch (error) {
