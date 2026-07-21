@@ -2169,5 +2169,7 @@
   "The detection models disagree, so there is not enough evidence to decide.": "Модели детекции расходятся, поэтому данных недостаточно для вывода.",
   "Try another image": "Проверить другое изображение",
   "Download detection report": "Скачать отчёт о проверке",
-  "Detailed findings and incomplete checks are available only in the downloaded report.": "Подробные результаты и незавершённые проверки доступны только в скачанном отчёте."
+  "Detailed findings and incomplete checks are available only in the downloaded report.": "Подробные результаты и незавершённые проверки доступны только в скачанном отчёте.",
+  "Preparing final check": "Подготовка финальной проверки",
+  "Running final check": "Выполняется финальная проверка"
 }

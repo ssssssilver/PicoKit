@@ -38,6 +38,9 @@ import {
   IMAGE_PIXEL_SECONDARY_DETECTOR_VERSION,
   IMAGE_PIXEL_SECONDARY_MODEL_ID,
   IMAGE_PIXEL_SECONDARY_MODEL_REVISION,
+  IMAGE_PIXEL_TERTIARY_DETECTOR_VERSION,
+  IMAGE_PIXEL_TERTIARY_MODEL_ID,
+  IMAGE_PIXEL_TERTIARY_MODEL_REVISION,
   pixelEstimateBand,
   type FusedImageDetection,
   type PixelDetectionResult,
@@ -54,7 +57,7 @@ import {
 
 type WorkerMessage = {
   type: "progress" | "status" | "result" | "error"
-  tier?: "primary" | "secondary"
+  tier?: "primary" | "secondary" | "tertiary"
   progress?: number
   file?: string
   stage?: string
@@ -82,7 +85,7 @@ export type SimpleImageClassification =
   | "not-ai-generated"
   | "uncertain"
 
-export const IMAGE_EVIDENCE_REPORT_VERSION = "1.5.0"
+export const IMAGE_EVIDENCE_REPORT_VERSION = "1.6.0"
 export const PROVENANCE_DETECTOR_VERSION = "exif-c2pa-inspector/3"
 export const VISIBLE_MARK_DETECTOR_VERSION = "platform-mark-matcher/2"
 export const IMAGE_INSPECTOR_MAX_BYTES = 25 * 1024 * 1024
@@ -268,6 +271,11 @@ export function buildImageEvidenceReport({
             model: IMAGE_PIXEL_SECONDARY_MODEL_ID,
             revision: IMAGE_PIXEL_SECONDARY_MODEL_REVISION,
           },
+          tertiary: {
+            identifier: IMAGE_PIXEL_TERTIARY_DETECTOR_VERSION,
+            model: IMAGE_PIXEL_TERTIARY_MODEL_ID,
+            revision: IMAGE_PIXEL_TERTIARY_MODEL_REVISION,
+          },
           cascade: pixel?.cascade ?? null,
           models: pixel?.models?.map((model) => ({
             identifier: model.model,
@@ -352,12 +360,20 @@ export function buildReadableImageEvidenceReport({
       `- ${zh ? "综合推理后端" : "Combined inference backend"}: ${pixel.backend}`,
     )
     pixelModels.forEach((model, index) => {
+      const stageName = [
+        zh ? "快速检测" : "Fast check",
+        zh ? "增强检测" : "Enhanced check",
+        zh ? "最终复核" : "Final verification",
+      ][index] ?? (zh ? `检测 ${index + 1}` : `Check ${index + 1}`)
       lines.push(
-        `- ${index === 0 ? (zh ? "快速检测" : "Fast check") : (zh ? "增强检测" : "Enhanced check")}: ${readablePixelBand(pixelEstimateBand(model), zh)} · ${zh ? "原始输出" : "raw output"} ${Math.round(model.score * 100)}% · ${model.backend}`,
+        `- ${stageName}: ${readablePixelBand(pixelEstimateBand(model), zh)} · ${zh ? "原始输出" : "raw output"} ${Math.round(model.score * 100)}% · ${model.backend}`,
       )
     })
     if (pixel.cascade?.secondary === "unavailable") {
       lines.push(`- ${zh ? "增强检测状态" : "Enhanced-check status"}: ${zh ? "本次不可用，已保留快速检测结果" : "Unavailable this run; the fast-check result was preserved"}`)
+    }
+    if (pixel.cascade?.tertiary === "unavailable") {
+      lines.push(`- ${zh ? "最终复核状态" : "Final-verification status"}: ${zh ? "本次不可用，已保留前两次检测结果" : "Unavailable this run; the first two check results were preserved"}`)
     }
   }
   lines.push(
@@ -609,7 +625,7 @@ export function ImageInspectorTool() {
   function runPixelDetection(
     source: File,
     signal?: AbortSignal,
-    allowSecondary = true,
+    allowCascade = true,
   ) {
     pixelCancelRef.current?.()
     return new Promise<PixelDetectionResult>((resolve, reject) => {
@@ -658,11 +674,14 @@ export function ImageInspectorTool() {
             0,
             Math.min(100, Number(message.progress) || 0),
           )
-          if (message.tier === "secondary") {
-            setProgress((current) => Math.max(current, 80 + modelProgress * 0.12))
+          if (message.tier === "tertiary") {
+            setProgress((current) => Math.max(current, 88 + modelProgress * 0.1))
+            setStatus(pick("正在准备最终复核", "Preparing final check"))
+          } else if (message.tier === "secondary") {
+            setProgress((current) => Math.max(current, 74 + modelProgress * 0.12))
             setStatus(pick("正在准备增强检测", "Preparing enhanced check"))
           } else {
-            setProgress((current) => Math.max(current, 52 + modelProgress * 0.2))
+            setProgress((current) => Math.max(current, 52 + modelProgress * 0.18))
             setStatus(pick("正在准备快速检测", "Preparing fast check"))
           }
         }
@@ -682,12 +701,20 @@ export function ImageInspectorTool() {
             )
           }
           if (message.stage === "preparing-model" && message.tier === "secondary") {
-            setProgress((value) => Math.max(value, 80))
+            setProgress((value) => Math.max(value, 74))
             setStatus(pick("正在准备增强检测", "Preparing enhanced check"))
           }
           if (message.stage === "analyzing-secondary") {
-            setProgress((value) => Math.max(value, 94))
+            setProgress((value) => Math.max(value, 86))
             setStatus(pick("正在进行增强检测", "Running enhanced check"))
+          }
+          if (message.stage === "preparing-model" && message.tier === "tertiary") {
+            setProgress((value) => Math.max(value, 88))
+            setStatus(pick("正在准备最终复核", "Preparing final check"))
+          }
+          if (message.stage === "analyzing-tertiary") {
+            setProgress((value) => Math.max(value, 98))
+            setStatus(pick("正在进行最终复核", "Running final check"))
           }
         }
         if (message.type === "result" && message.result) finish({ value: message.result })
@@ -706,7 +733,7 @@ export function ImageInspectorTool() {
             buffer,
             mime: source.type,
             preferWebGpu: Boolean(nav.gpu),
-            allowSecondary,
+            allowCascade,
           },
           [buffer],
         )

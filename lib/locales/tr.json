@@ -2169,5 +2169,7 @@
   "The detection models disagree, so there is not enough evidence to decide.": "Algılama modelleri birbiriyle uyuşmuyor; bu nedenle karar vermek için yeterli kanıt yok.",
   "Try another image": "Başka bir görsel dene",
   "Download detection report": "Tespit raporunu indir",
-  "Detailed findings and incomplete checks are available only in the downloaded report.": "Ayrıntılı bulgular ve tamamlanmamış kontroller yalnızca indirilen raporda bulunur."
+  "Detailed findings and incomplete checks are available only in the downloaded report.": "Ayrıntılı bulgular ve tamamlanmamış kontroller yalnızca indirilen raporda bulunur.",
+  "Preparing final check": "Son kontrol hazırlanıyor",
+  "Running final check": "Son kontrol yapılıyor"
 }

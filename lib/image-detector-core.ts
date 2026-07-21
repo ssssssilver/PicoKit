@@ -7,7 +7,10 @@ export const IMAGE_PIXEL_DETECTOR_VERSION = `${IMAGE_PIXEL_MODEL_ID}@${IMAGE_PIX
 export const IMAGE_PIXEL_SECONDARY_MODEL_ID = "onnx-community/ai-source-detector-ONNX"
 export const IMAGE_PIXEL_SECONDARY_MODEL_REVISION = "9a1c4127b96f6b76e7674c01af2642bf248e5950"
 export const IMAGE_PIXEL_SECONDARY_DETECTOR_VERSION = `${IMAGE_PIXEL_SECONDARY_MODEL_ID}@${IMAGE_PIXEL_SECONDARY_MODEL_REVISION}`
-export const IMAGE_PIXEL_CASCADE_VERSION = "tabnative/image-pixel-cascade@3"
+export const IMAGE_PIXEL_TERTIARY_MODEL_ID = "onnx-community/CommunityForensics-DeepfakeDet-ViT-ONNX"
+export const IMAGE_PIXEL_TERTIARY_MODEL_REVISION = "f9fc6516b37cd7d1bec3b94847b3682ce97249f0"
+export const IMAGE_PIXEL_TERTIARY_DETECTOR_VERSION = `${IMAGE_PIXEL_TERTIARY_MODEL_ID}@${IMAGE_PIXEL_TERTIARY_MODEL_REVISION}`
+export const IMAGE_PIXEL_CASCADE_VERSION = "tabnative/image-pixel-cascade@4"
 export const IMAGE_PIXEL_MIN_MODEL_AGREEMENT = 0.7
 
 export type ImageClassifierLabel = { label: string; score: number }
@@ -25,7 +28,7 @@ export type PixelModelResult = {
   model: string
   views: ImageViewScore[]
   aggregation?: "robust-full-region-v2"
-  calibration?: "conservative-backend-v1" | "conservative-cascade-v1"
+  calibration?: "conservative-backend-v1" | "conservative-cascade-v1" | "conservative-cascade-v2"
 }
 
 export type PixelCascadeState = "not-needed" | "completed" | "unavailable" | "skipped"
@@ -34,8 +37,9 @@ export type PixelDetectionResult = PixelModelResult & {
   models?: PixelModelResult[]
   modelAgreement?: number
   cascade?: {
-    strategy: "challenge-negative-v1"
+    strategy: "challenge-negative-v1" | "consensus-escalation-v2"
     secondary: PixelCascadeState
+    tertiary: PixelCascadeState
   }
 }
 
@@ -70,6 +74,21 @@ export function aiImageScore(labels: ImageClassifierLabel[]) {
   const real = labels.find((item) => REAL_LABEL.test(item.label))
   if (real) return clamp(1 - real.score)
   return clamp(labels[0]?.score ?? 0.5)
+}
+
+/**
+ * Community Forensics exports logits in the fixed order [real, fake]. Its
+ * model metadata does not currently expose those labels to Transformers.js,
+ * so relying on the generic classification pipeline would invert the result.
+ */
+export function communityForensicsAiScore(logits: ArrayLike<number>) {
+  const values = Array.from(logits, (value) => Number(value)).filter(Number.isFinite)
+  if (!values.length) return 0.5
+  if (values.length === 1) return clamp(1 / (1 + Math.exp(-values[0])))
+  const peak = Math.max(...values)
+  const probabilities = values.map((value) => Math.exp(value - peak))
+  const total = probabilities.reduce((sum, value) => sum + value, 0)
+  return total > 0 ? clamp(probabilities[1] / total) : 0.5
 }
 
 export function buildImageViewPlan(width: number, height: number): ImageViewPlan[] {
@@ -163,6 +182,14 @@ function singlePixelEstimateBand(pixel: PixelModelResult): PixelEstimateBand {
 
 export function pixelEstimateBand(pixel: PixelDetectionResult): PixelEstimateBand {
   const models = pixel.models?.length ? pixel.models : [pixel]
+  if (models.length >= 3) {
+    const votes = models.slice(0, 3).map(consensusVote)
+    const higherVotes = votes.filter((vote) => vote === "higher").length
+    const lowerVotes = votes.filter((vote) => vote === "lower").length
+    if (higherVotes >= 2) return "higher"
+    if (lowerVotes >= 2) return "lower"
+    return "uncertain"
+  }
   const primaryBand = singlePixelEstimateBand(models[0])
   const secondary = models[1]
   if (!secondary) return primaryBand
@@ -181,8 +208,11 @@ export function pixelEstimateBand(pixel: PixelDetectionResult): PixelEstimateBan
   return "uncertain"
 }
 
-export function shouldRunSecondaryPixelModel(primary: PixelModelResult) {
-  return singlePixelEstimateBand(primary) !== "higher"
+function consensusVote(model: PixelModelResult): PixelEstimateBand {
+  if (model.consistency < 0.55 || model.spread > 0.22) return "uncertain"
+  if (model.score >= 0.6) return "higher"
+  if (model.score <= 0.4) return "lower"
+  return "uncertain"
 }
 
 export function combinePixelModelResults(
@@ -196,8 +226,9 @@ export function combinePixelModelResults(
       models: [primary],
       modelAgreement: 1,
       cascade: {
-        strategy: "challenge-negative-v1",
+        strategy: "consensus-escalation-v2",
         secondary: secondaryState,
+        tertiary: secondaryState === "skipped" ? "skipped" : "not-needed",
       },
     }
   }
@@ -208,8 +239,9 @@ export function combinePixelModelResults(
     models: [primary, secondary],
     modelAgreement,
     cascade: {
-      strategy: "challenge-negative-v1",
+      strategy: "consensus-escalation-v2",
       secondary: secondaryState,
+      tertiary: "not-needed",
     },
   }
   const primaryBand = singlePixelEstimateBand(primary)
@@ -236,6 +268,40 @@ export function combinePixelModelResults(
     backend: Array.from(new Set([primary.backend, secondary.backend])).join(" + "),
     model: IMAGE_PIXEL_CASCADE_VERSION,
     calibration: "conservative-cascade-v1",
+  }
+}
+
+export function combineTertiaryPixelModelResult(
+  firstTwo: PixelDetectionResult,
+  tertiary: PixelModelResult | null,
+  tertiaryState: PixelCascadeState,
+): PixelDetectionResult {
+  const existingModels = firstTwo.models?.length ? firstTwo.models : [firstTwo]
+  const cascade = {
+    strategy: "consensus-escalation-v2" as const,
+    secondary: firstTwo.cascade?.secondary ?? "unavailable",
+    tertiary: tertiaryState,
+  }
+  if (!tertiary) return { ...firstTwo, cascade }
+
+  const models = [...existingModels.slice(0, 2), tertiary]
+  const score = median(models.map((model) => model.score))
+  const absoluteDeviations = models.map((model) => Math.abs(model.score - score))
+  // Exponential similarity keeps the agreement robust to one outlier while
+  // still penalising broad three-way disagreement.
+  const modelAgreement = clamp(Math.exp(-median(absoluteDeviations)))
+
+  return {
+    ...firstTwo,
+    score,
+    consistency: median(models.map((model) => model.consistency)),
+    spread: median(models.map((model) => model.spread)),
+    backend: Array.from(new Set(models.map((model) => model.backend))).join(" + "),
+    model: IMAGE_PIXEL_CASCADE_VERSION,
+    models,
+    modelAgreement,
+    cascade,
+    calibration: "conservative-cascade-v2",
   }
 }
 

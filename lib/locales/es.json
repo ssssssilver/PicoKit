@@ -2169,5 +2169,7 @@
   "The detection models disagree, so there is not enough evidence to decide.": "Los modelos de detección no coinciden, por lo que no hay pruebas suficientes para decidir.",
   "Try another image": "Probar otra imagen",
   "Download detection report": "Descargar informe de detección",
-  "Detailed findings and incomplete checks are available only in the downloaded report.": "Los resultados detallados y las comprobaciones incompletas solo están disponibles en el informe descargado."
+  "Detailed findings and incomplete checks are available only in the downloaded report.": "Los resultados detallados y las comprobaciones incompletas solo están disponibles en el informe descargado.",
+  "Preparing final check": "Preparando la comprobación final",
+  "Running final check": "Realizando la comprobación final"
 }

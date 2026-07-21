@@ -16,6 +16,7 @@ const dependencies = [
   ["TMR AI text detector ONNX", "Hugging Face", "MIT", "https://huggingface.co/onnx-community/tmr-ai-text-detector-ONNX"],
   ["AI image detect distilled ONNX", "14.6M ViT", "MIT", "https://huggingface.co/onnx-community/ai-image-detect-distilled-ONNX"],
   ["AI source detector ONNX", "ViT-Base @ 9a1c4127", "Apache-2.0", "https://huggingface.co/onnx-community/ai-source-detector-ONNX"],
+  ["Community Forensics deepfake detector ONNX", "ViT-Small @ f9fc6516", "MIT", "https://huggingface.co/onnx-community/CommunityForensics-DeepfakeDet-ViT-ONNX"],
   ["U²-NetP foreground segmentation", "Heliosoph/u2net-onnx @ 7fc34dee", "Apache-2.0", "https://huggingface.co/Heliosoph/u2net-onnx"],
   ["@contentauth/c2pa-web", "0.12.1", "MIT", "https://github.com/contentauth/c2pa-js"],
   ["exifr", "7.1.3", "MIT", "https://github.com/MikeKovarik/exifr"],

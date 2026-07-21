@@ -2169,5 +2169,7 @@
   "The detection models disagree, so there is not enough evidence to decide.": "Model deteksi memberikan hasil yang berbeda, sehingga buktinya belum cukup untuk mengambil kesimpulan.",
   "Try another image": "Coba gambar lain",
   "Download detection report": "Unduh laporan deteksi",
-  "Detailed findings and incomplete checks are available only in the downloaded report.": "Temuan terperinci dan pemeriksaan yang belum selesai hanya tersedia dalam laporan yang diunduh."
+  "Detailed findings and incomplete checks are available only in the downloaded report.": "Temuan terperinci dan pemeriksaan yang belum selesai hanya tersedia dalam laporan yang diunduh.",
+  "Preparing final check": "Menyiapkan pemeriksaan akhir",
+  "Running final check": "Menjalankan pemeriksaan akhir"
 }

@@ -2169,5 +2169,7 @@
   "The detection models disagree, so there is not enough evidence to decide.": "تختلف نتائج نماذج الكشف، لذلك لا توجد أدلة كافية للحسم.",
   "Try another image": "جرّب صورة أخرى",
   "Download detection report": "تنزيل تقرير الكشف",
-  "Detailed findings and incomplete checks are available only in the downloaded report.": "لا تتوفر النتائج التفصيلية والفحوصات غير المكتملة إلا في التقرير الذي تم تنزيله."
+  "Detailed findings and incomplete checks are available only in the downloaded report.": "لا تتوفر النتائج التفصيلية والفحوصات غير المكتملة إلا في التقرير الذي تم تنزيله.",
+  "Preparing final check": "جارٍ إعداد الفحص النهائي",
+  "Running final check": "جارٍ إجراء الفحص النهائي"
 }

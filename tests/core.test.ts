@@ -13,9 +13,10 @@ import {
   buildImageViewPlan,
   calibratedPixelAiLikelihood,
   combinePixelModelResults,
+  combineTertiaryPixelModelResult,
+  communityForensicsAiScore,
   fuseImageDetection,
   pixelEstimateBand,
-  shouldRunSecondaryPixelModel,
 } from "@/lib/image-detector-core"
 import type { ImageInspection } from "@/lib/image-types"
 import { isModelProxyRequest, resolveModelProxyTarget, toModelProxyUrl } from "@/lib/model-proxy"
@@ -119,6 +120,7 @@ describe("model download fallback", () => {
     "onnx-community/tmr-ai-text-detector-ONNX",
     "onnx-community/ai-image-detect-distilled-ONNX",
     "onnx-community/ai-source-detector-ONNX",
+    "onnx-community/CommunityForensics-DeepfakeDet-ViT-ONNX",
     "Heliosoph/u2net-onnx",
   ]
 
@@ -146,6 +148,15 @@ describe("model download fallback", () => {
       expect(source).toContain("cache: request.cache")
       expect(source).not.toContain("return await nativeFetch(request.url, requestInit)")
     }
+  })
+
+  it("runs Community Forensics with its required 384px crop and explicit fake-logit mapping", async () => {
+    const workerSource = await readFile("workers/image-detector.worker.ts", "utf8")
+    expect(workerSource).toContain("AutoImageProcessor")
+    expect(workerSource).toContain("AutoModelForImageClassification")
+    expect(workerSource).toContain("processor.do_center_crop = true")
+    expect(workerSource).toContain("processor.crop_size = 384")
+    expect(workerSource).toContain("communityForensicsAiScore")
   })
 
   it("prevents one-byte model metadata probes from poisoning the browser cache", async () => {
@@ -182,7 +193,14 @@ describe("AI image detector core", () => {
     ])).toBeCloseTo(0.84)
   })
 
-  it("runs an enhanced model for a weak AI-leaning result when both models agree", () => {
+  it("reads Community Forensics logits as [real, fake]", () => {
+    expect(communityForensicsAiScore([2, 0])).toBeCloseTo(0.1192, 3)
+    expect(communityForensicsAiScore([0, 2])).toBeCloseTo(0.8808, 3)
+    expect(communityForensicsAiScore([2])).toBeCloseTo(0.8808, 3)
+    expect(communityForensicsAiScore([])).toBe(0.5)
+  })
+
+  it("combines the first two checks when both models agree", () => {
     const primary = aggregateImageViews(
       [[{ label: "fake", score: 0.62 }, { label: "real", score: 0.38 }]],
       ["full"],
@@ -202,7 +220,6 @@ describe("AI image detector core", () => {
       "enhanced-model",
     )
 
-    expect(shouldRunSecondaryPixelModel(primary)).toBe(true)
     const combined = combinePixelModelResults(primary, secondary, "completed")
     expect(combined.score).toBeCloseTo(0.84)
     expect(pixelEstimateBand(combined)).toBe("higher")
@@ -236,6 +253,55 @@ describe("AI image detector core", () => {
     })
   })
 
+  it("lets a Community Forensics majority resolve the reported real-photo conflict", () => {
+    const primary = aggregateImageViews(
+      [[{ label: "fake", score: 0.31 }, { label: "real", score: 0.69 }]],
+      ["full"],
+      "webgpu",
+      "fast-model",
+    )
+    const secondary = aggregateImageViews(
+      [[{ label: "real", score: 0.15 }]],
+      ["full"],
+      "webgpu",
+      "enhanced-model",
+    )
+    const tertiary = aggregateImageViews(
+      [[{ label: "real", score: 0.9 }, { label: "fake", score: 0.1 }]],
+      ["full"],
+      "webgpu",
+      "community-forensics",
+    )
+    const firstTwo = combinePixelModelResults(primary, secondary, "completed")
+    const combined = combineTertiaryPixelModelResult(firstTwo, tertiary, "completed")
+
+    expect(combined.models).toHaveLength(3)
+    expect(combined.score).toBeCloseTo(0.31)
+    expect(combined.modelAgreement).toBeGreaterThanOrEqual(0.8)
+    expect(combined.cascade).toMatchObject({ secondary: "completed", tertiary: "completed" })
+    expect(pixelEstimateBand(combined)).toBe("lower")
+    expect(fuseImageDetection(combined, inspection)).toMatchObject({
+      band: "lower-ai-signals",
+      reliability: "medium",
+    })
+  })
+
+  it("uses two-of-three consensus for AI and keeps a split vote uncertain", () => {
+    const primary = aggregateImageViews([[{ label: "fake", score: 0.2 }]], ["full"], "webgpu", "fast-model")
+    const secondary = aggregateImageViews([[{ label: "fake", score: 0.85 }]], ["full"], "webgpu", "enhanced-model")
+    const firstTwo = combinePixelModelResults(primary, secondary, "completed")
+    const aiTiebreaker = aggregateImageViews([[{ label: "fake", score: 0.9 }]], ["full"], "webgpu", "community-forensics")
+    const abstainingTiebreaker = aggregateImageViews([[{ label: "fake", score: 0.5 }]], ["full"], "webgpu", "community-forensics")
+
+    const aiConsensus = combineTertiaryPixelModelResult(firstTwo, aiTiebreaker, "completed")
+    expect(aiConsensus.score).toBeCloseTo(0.85)
+    expect(pixelEstimateBand(aiConsensus)).toBe("higher")
+
+    const split = combineTertiaryPixelModelResult(firstTwo, abstainingTiebreaker, "completed")
+    expect(split.score).toBe(0.5)
+    expect(pixelEstimateBand(split)).toBe("uncertain")
+  })
+
   it("keeps direct model disagreement uncertain instead of averaging it away", () => {
     const primary = aggregateImageViews(
       [[{ label: "fake", score: 0.1 }]],
@@ -255,19 +321,17 @@ describe("AI image detector core", () => {
     expect(pixelEstimateBand(combined)).toBe("uncertain")
   })
 
-  it("skips unnecessary enhanced work and degrades to the fast result", () => {
+  it("preserves the fast result when the validation cascade is disabled", () => {
     const high = aggregateImageViews(
       [[{ label: "fake", score: 0.9 }]],
       ["full"],
       "webgpu",
       "fast-model",
     )
-    expect(shouldRunSecondaryPixelModel(high)).toBe(false)
-
-    const degraded = combinePixelModelResults(high, null, "unavailable")
+    const degraded = combinePixelModelResults(high, null, "skipped")
     expect(degraded.score).toBe(high.score)
     expect(degraded.models).toEqual([high])
-    expect(degraded.cascade?.secondary).toBe("unavailable")
+    expect(degraded.cascade).toMatchObject({ secondary: "skipped", tertiary: "skipped" })
   })
 
   it("aggregates multiple image regions and measures their consistency", () => {

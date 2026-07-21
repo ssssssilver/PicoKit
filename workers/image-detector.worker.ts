@@ -4,13 +4,17 @@ import {
   aggregateImageViews,
   buildImageViewPlan,
   combinePixelModelResults,
+  combineTertiaryPixelModelResult,
+  communityForensicsAiScore,
   IMAGE_PIXEL_DETECTOR_VERSION,
   IMAGE_PIXEL_MODEL_ID,
   IMAGE_PIXEL_MODEL_REVISION,
   IMAGE_PIXEL_SECONDARY_DETECTOR_VERSION,
   IMAGE_PIXEL_SECONDARY_MODEL_ID,
   IMAGE_PIXEL_SECONDARY_MODEL_REVISION,
-  shouldRunSecondaryPixelModel,
+  IMAGE_PIXEL_TERTIARY_DETECTOR_VERSION,
+  IMAGE_PIXEL_TERTIARY_MODEL_ID,
+  IMAGE_PIXEL_TERTIARY_MODEL_REVISION,
   type ImageClassifierLabel,
 } from "@/lib/image-detector-core"
 import { toModelProxyUrl } from "@/lib/model-proxy"
@@ -31,12 +35,33 @@ type LoadedClassifier = {
   backend: "webgpu" | "wasm"
 }
 
+type CommunityForensicsProcessor = ((input: RawImageLike) => Promise<Record<string, unknown>>) & {
+  do_center_crop: boolean
+  crop_size: number
+}
+
+type CommunityForensicsModel = (
+  inputs: Record<string, unknown>,
+) => Promise<{ logits?: { data?: ArrayLike<number> } }>
+
+type LoadedCommunityForensics = {
+  processor: CommunityForensicsProcessor
+  model: CommunityForensicsModel
+  backend: "webgpu" | "wasm"
+}
+
 let primaryClassifier: LoadedClassifier | null = null
 let secondaryClassifier: LoadedClassifier | null = null
+let tertiaryClassifier: LoadedCommunityForensics | null = null
 let runtimeConfigured = false
 
 async function prepareRuntime() {
-  const { env, pipeline } = await import("@huggingface/transformers")
+  const {
+    AutoImageProcessor,
+    AutoModelForImageClassification,
+    env,
+    pipeline,
+  } = await import("@huggingface/transformers")
   if (!runtimeConfigured) {
     env.allowLocalModels = false
     env.useBrowserCache = true
@@ -58,10 +83,10 @@ async function prepareRuntime() {
     }
     runtimeConfigured = true
   }
-  return { pipeline }
+  return { AutoImageProcessor, AutoModelForImageClassification, pipeline }
 }
 
-function modelProgress(tier: "primary" | "secondary") {
+function modelProgress(tier: "primary" | "secondary" | "tertiary") {
   return (progress: { status?: string; progress?: number; file?: string }) => {
     self.postMessage({
       type: "progress",
@@ -71,6 +96,50 @@ function modelProgress(tier: "primary" | "secondary") {
       file: progress.file,
     })
   }
+}
+
+async function loadTertiaryClassifier(preferWebGpu: boolean) {
+  if (tertiaryClassifier) return tertiaryClassifier
+  const { AutoImageProcessor, AutoModelForImageClassification } = await prepareRuntime()
+  const progress_callback = modelProgress("tertiary")
+  const processor = await AutoImageProcessor.from_pretrained(
+    IMAGE_PIXEL_TERTIARY_MODEL_ID,
+    {
+      progress_callback,
+      revision: IMAGE_PIXEL_TERTIARY_MODEL_REVISION,
+    },
+  ) as unknown as CommunityForensicsProcessor
+  // The published preprocessor metadata specifies resize=440 and crop=384,
+  // but omits this flag. Without the override the ViT receives 440px tokens
+  // and fails because its positional embeddings are fixed to 384px.
+  processor.do_center_crop = true
+  processor.crop_size = 384
+
+  async function loadModel(
+    backend: "webgpu" | "wasm",
+    dtype: "q4f16" | "q8",
+  ) {
+    const model = await AutoModelForImageClassification.from_pretrained(
+      IMAGE_PIXEL_TERTIARY_MODEL_ID,
+      {
+        device: backend,
+        dtype,
+        progress_callback,
+        revision: IMAGE_PIXEL_TERTIARY_MODEL_REVISION,
+      },
+    ) as unknown as CommunityForensicsModel
+    tertiaryClassifier = { processor, model, backend }
+    return tertiaryClassifier
+  }
+
+  if (preferWebGpu && "gpu" in navigator) {
+    try {
+      return await loadModel("webgpu", "q4f16")
+    } catch {
+      tertiaryClassifier = null
+    }
+  }
+  return loadModel("wasm", "q8")
 }
 
 async function loadPrimaryClassifier(preferWebGpu: boolean) {
@@ -149,7 +218,7 @@ self.onmessage = async (event: MessageEvent<{
   buffer: ArrayBuffer
   mime: string
   preferWebGpu: boolean
-  allowSecondary: boolean
+  allowCascade: boolean
 }>) => {
   if (event.data.type !== "analyze") return
   try {
@@ -178,18 +247,16 @@ self.onmessage = async (event: MessageEvent<{
       IMAGE_PIXEL_DETECTOR_VERSION,
     )
 
-    if (!event.data.allowSecondary || !shouldRunSecondaryPixelModel(primaryResult)) {
+    if (!event.data.allowCascade) {
       self.postMessage({
         type: "result",
-        result: combinePixelModelResults(
-          primaryResult,
-          null,
-          event.data.allowSecondary ? "not-needed" : "skipped",
-        ),
+        result: combinePixelModelResults(primaryResult, null, "skipped"),
       })
       return
     }
 
+    let secondaryResult = null
+    let secondaryState: "completed" | "unavailable" = "unavailable"
     try {
       self.postMessage({ type: "status", tier: "secondary", stage: "preparing-model" })
       const secondary = await loadSecondaryClassifier(event.data.preferWebGpu)
@@ -203,20 +270,51 @@ self.onmessage = async (event: MessageEvent<{
       const secondaryOutputs = Array.isArray(secondaryRaw[0])
         ? secondaryRaw as ImageClassifierLabel[][]
         : [secondaryRaw as ImageClassifierLabel[]]
-      const secondaryResult = aggregateImageViews(
+      secondaryResult = aggregateImageViews(
         secondaryOutputs,
         ["full"],
         secondary.backend,
         IMAGE_PIXEL_SECONDARY_DETECTOR_VERSION,
       )
+      secondaryState = "completed"
+    } catch {
+      secondaryResult = null
+    }
+
+    const firstTwo = combinePixelModelResults(
+      primaryResult,
+      secondaryResult,
+      secondaryState,
+    )
+    try {
+      self.postMessage({ type: "status", tier: "tertiary", stage: "preparing-model" })
+      const tertiary = await loadTertiaryClassifier(event.data.preferWebGpu)
+      self.postMessage({
+        type: "status",
+        tier: "tertiary",
+        stage: "analyzing-tertiary",
+        views: 1,
+      })
+      const inputs = await tertiary.processor(image)
+      const output = await tertiary.model(inputs)
+      const score = communityForensicsAiScore(output.logits?.data ?? [])
+      const tertiaryResult = aggregateImageViews(
+        [[
+          { label: "real", score: 1 - score },
+          { label: "fake", score },
+        ]],
+        ["full"],
+        tertiary.backend,
+        IMAGE_PIXEL_TERTIARY_DETECTOR_VERSION,
+      )
       self.postMessage({
         type: "result",
-        result: combinePixelModelResults(primaryResult, secondaryResult, "completed"),
+        result: combineTertiaryPixelModelResult(firstTwo, tertiaryResult, "completed"),
       })
     } catch {
       self.postMessage({
         type: "result",
-        result: combinePixelModelResults(primaryResult, null, "unavailable"),
+        result: combineTertiaryPixelModelResult(firstTwo, null, "unavailable"),
       })
     }
   } catch (error) {

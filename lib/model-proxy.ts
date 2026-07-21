@@ -5,6 +5,7 @@ const ALLOWED_MODELS = [
   "onnx-community/tmr-ai-text-detector-ONNX",
   "onnx-community/ai-image-detect-distilled-ONNX",
   "onnx-community/ai-source-detector-ONNX",
+  "onnx-community/CommunityForensics-DeepfakeDet-ViT-ONNX",
   "Heliosoph/u2net-onnx",
 ] as const
 

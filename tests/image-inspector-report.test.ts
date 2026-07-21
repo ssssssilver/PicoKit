@@ -17,6 +17,9 @@ import {
   IMAGE_PIXEL_SECONDARY_DETECTOR_VERSION,
   IMAGE_PIXEL_SECONDARY_MODEL_ID,
   IMAGE_PIXEL_SECONDARY_MODEL_REVISION,
+  IMAGE_PIXEL_TERTIARY_DETECTOR_VERSION,
+  IMAGE_PIXEL_TERTIARY_MODEL_ID,
+  IMAGE_PIXEL_TERTIARY_MODEL_REVISION,
   type PixelDetectionResult,
 } from "@/lib/image-detector-core"
 import type { ImageInspection } from "@/lib/image-types"
@@ -194,6 +197,11 @@ describe("image source-evidence report", () => {
           model: IMAGE_PIXEL_SECONDARY_MODEL_ID,
           revision: IMAGE_PIXEL_SECONDARY_MODEL_REVISION,
         },
+        tertiary: {
+          identifier: IMAGE_PIXEL_TERTIARY_DETECTOR_VERSION,
+          model: IMAGE_PIXEL_TERTIARY_MODEL_ID,
+          revision: IMAGE_PIXEL_TERTIARY_MODEL_REVISION,
+        },
       },
     })
     expect(report.channels.visiblePlatformMarks.supportedProviders).toEqual([
@@ -242,8 +250,9 @@ describe("image source-evidence report", () => {
     expect(source).toContain("换一张图片")
     expect(source).toContain("下载检测报告")
     expect(source).toContain("const SHOW_INLINE_TECHNICAL_REPORT = false")
-    expect(source).toContain("allowSecondary")
+    expect(source).toContain("allowCascade")
     expect(source).toContain("正在准备增强检测")
+    expect(source).toContain("正在准备最终复核")
     expect(source).toContain("useState<File | null>(null)")
     expect(source).not.toContain("loadSample")
     expect(source).not.toContain("带 AI 来源记录的样例")
