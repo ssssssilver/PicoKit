@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { flushSync } from "react-dom"
 
+import { BackgroundFinishEditor } from "@/components/background-finish-editor"
 import { BackgroundMaskEditor } from "@/components/background-mask-editor"
 import { useImageWorkflowMemory } from "@/components/image-workflow-memory"
 import { useLanguage } from "@/components/language-provider"
@@ -13,6 +14,13 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  backgroundFinishOutputName,
+  composeBackgroundFinish,
+  type BackgroundFinishOutput,
+  type BackgroundFinishSettings,
+} from "@/lib/background-finish"
 import { downloadBlob, waitForBrowserPaint } from "@/lib/browser-files"
 import { validateImageFile } from "@/lib/file-validation"
 import { backgroundRemovalOutputName, canRefineBackground } from "@/lib/background-removal"
@@ -20,14 +28,26 @@ import { IMAGE_EDITOR_MAX_PIXELS } from "@/lib/image-editor"
 import { IMAGE_PIPELINE_BATCH_MAX_ITEMS, saveLocalAssetBatch } from "@/lib/local-asset-transfer"
 
 type QueueStatus = "queued" | "processing" | "done" | "error"
-type RemovalResult = { blob: Blob; url: string; width: number; height: number; backend: string }
+type FinishedResult = BackgroundFinishOutput & { url: string }
+type RemovalResult = { blob: Blob; url: string; width: number; height: number; backend: string; finish?: FinishedResult }
 type QueueItem = { id: string; file: File; previewUrl: string; width: number; height: number; status: QueueStatus; result?: RemovalResult; error?: string }
-type StoredQueueItem = Omit<QueueItem, "previewUrl" | "result"> & { result?: Omit<RemovalResult, "url"> }
+type StoredRemovalResult = Omit<RemovalResult, "url" | "finish"> & { finish?: Omit<FinishedResult, "url"> }
+type StoredQueueItem = Omit<QueueItem, "previewUrl" | "result"> & { result?: StoredRemovalResult }
 type BackgroundQueueSnapshot = { items: StoredQueueItem[] }
 type WorkerMessage = { type: "progress" | "status" | "result" | "error"; stage?: string; progress?: number; buffer?: ArrayBuffer; width?: number; height?: number; backend?: string; code?: string }
 
 const MAX_TOTAL_BYTES = 150 * 1024 * 1024
 const MAX_FILE_BYTES = 15 * 1024 * 1024
+
+function deliveryResult(result: RemovalResult) {
+  return result.finish ?? result
+}
+
+function deliveryName(fileName: string, result: RemovalResult) {
+  return result.finish
+    ? backgroundFinishOutputName(fileName, result.finish.settings.outputType)
+    : backgroundRemovalOutputName(fileName)
+}
 
 export function BackgroundRemovalBatchStudio() {
   const { pick, format } = useLanguage()
@@ -35,6 +55,7 @@ export function BackgroundRemovalBatchStudio() {
   const workflowMemory = useImageWorkflowMemory()
   const inputRef = useRef<HTMLInputElement>(null)
   const refinementRef = useRef<HTMLElement>(null)
+  const pickRef = useRef(pick)
   const workerRef = useRef<Worker | null>(null)
   const queueRef = useRef<QueueItem[]>([])
   const stopRef = useRef(false)
@@ -53,6 +74,10 @@ export function BackgroundRemovalBatchStudio() {
   const [handingOff, setHandingOff] = useState(false)
 
   useEffect(() => {
+    pickRef.current = pick
+  }, [pick])
+
+  useEffect(() => {
     let cancelled = false
     mountedRef.current = true
     const saved = workflowMemory.get<BackgroundQueueSnapshot>("remove-background")
@@ -63,12 +88,16 @@ export function BackgroundRemovalBatchStudio() {
           ...item,
           status: item.status === "processing" ? "queued" : item.status,
           previewUrl: URL.createObjectURL(item.file),
-          result: item.result ? { ...item.result, url: URL.createObjectURL(item.result.blob) } : undefined,
+          result: item.result ? {
+            ...item.result,
+            url: URL.createObjectURL(item.result.blob),
+            finish: item.result.finish ? { ...item.result.finish, url: URL.createObjectURL(item.result.finish.blob) } : undefined,
+          } : undefined,
         }))
         queueRef.current = restored
         setQueue(restored)
         setProcessed(restored.filter((item) => item.status === "done" || item.status === "error").length)
-        setNotice(pick("已恢复刚才的去背景队列。", "Your recent background-removal queue was restored."))
+          setNotice(pickRef.current("已恢复刚才的去背景队列。", "Your recent background-removal queue was restored."))
       })
     }
     return () => {
@@ -83,16 +112,30 @@ export function BackgroundRemovalBatchStudio() {
         height: item.height,
         status: item.status === "processing" ? "queued" : item.status,
         error: item.error,
-        result: item.result ? { blob: item.result.blob, width: item.result.width, height: item.result.height, backend: item.result.backend } : undefined,
+        result: item.result ? {
+          blob: item.result.blob,
+          width: item.result.width,
+          height: item.result.height,
+          backend: item.result.backend,
+          finish: item.result.finish ? {
+            blob: item.result.finish.blob,
+            width: item.result.finish.width,
+            height: item.result.finish.height,
+            settings: item.result.finish.settings,
+          } : undefined,
+        } : undefined,
       }))
       if (storedItems.length) workflowMemory.set<BackgroundQueueSnapshot>("remove-background", { items: storedItems })
       else workflowMemory.delete("remove-background")
       for (const item of queueRef.current) {
         URL.revokeObjectURL(item.previewUrl)
-        if (item.result) URL.revokeObjectURL(item.result.url)
+        if (item.result) {
+          URL.revokeObjectURL(item.result.url)
+          if (item.result.finish) URL.revokeObjectURL(item.result.finish.url)
+        }
       }
     }
-  }, [pick, workflowMemory])
+  }, [workflowMemory])
 
   const replaceQueue = useCallback((update: (current: QueueItem[]) => QueueItem[]) => {
     setQueue((current) => {
@@ -217,7 +260,10 @@ export function BackgroundRemovalBatchStudio() {
     for (const item of snapshot) {
       if (stopRef.current || !mountedRef.current) break
       updateItem(item.id, (current) => {
-        if (current.result) URL.revokeObjectURL(current.result.url)
+        if (current.result) {
+          URL.revokeObjectURL(current.result.url)
+          if (current.result.finish) URL.revokeObjectURL(current.result.finish.url)
+        }
         return { ...current, status: "processing", result: undefined, error: undefined }
       })
       setItemProgress(1)
@@ -244,13 +290,25 @@ export function BackgroundRemovalBatchStudio() {
 
   function removeItem(id: string) {
     const item = queueRef.current.find((candidate) => candidate.id === id)
-    if (item) { URL.revokeObjectURL(item.previewUrl); if (item.result) URL.revokeObjectURL(item.result.url) }
+    if (item) {
+      URL.revokeObjectURL(item.previewUrl)
+      if (item.result) {
+        URL.revokeObjectURL(item.result.url)
+        if (item.result.finish) URL.revokeObjectURL(item.result.finish.url)
+      }
+    }
     replaceQueue((items) => items.filter((candidate) => candidate.id !== id))
     if (selectedId === id) setSelectedId("")
   }
 
   function clearQueue() {
-    for (const item of queueRef.current) { URL.revokeObjectURL(item.previewUrl); if (item.result) URL.revokeObjectURL(item.result.url) }
+    for (const item of queueRef.current) {
+      URL.revokeObjectURL(item.previewUrl)
+      if (item.result) {
+        URL.revokeObjectURL(item.result.url)
+        if (item.result.finish) URL.revokeObjectURL(item.result.finish.url)
+      }
+    }
     replaceQueue(() => [])
     workflowMemory.delete("remove-background")
     setProcessed(0); setNotice(""); setError(""); setSelectedId("")
@@ -265,17 +323,65 @@ export function BackgroundRemovalBatchStudio() {
     return () => cancelAnimationFrame(frame)
   }, [selectedId])
 
-  function applyRefinement(id: string, blob: Blob) {
+  async function applyRefinement(id: string, blob: Blob) {
+    const item = queueRef.current.find((candidate) => candidate.id === id)
+    if (!item?.result) return
     const url = URL.createObjectURL(blob)
+    let finish: FinishedResult | undefined
+    if (item.result.finish) {
+      try {
+        const output = await composeBackgroundFinish(item.file, blob, item.result.finish.settings)
+        finish = { ...output, url: URL.createObjectURL(output.blob) }
+      } catch {
+        setNotice(pick("边缘修正已保存；原有成品设置需要重新应用。", "Edge refinements were saved. Reapply the previous finished-image settings."))
+      }
+    }
     updateItem(id, (current) => {
       if (!current.result) {
         URL.revokeObjectURL(url)
+        if (finish) URL.revokeObjectURL(finish.url)
         return current
       }
       URL.revokeObjectURL(current.result.url)
-      return { ...current, result: { ...current.result, blob, url } }
+      if (current.result.finish) URL.revokeObjectURL(current.result.finish.url)
+      return { ...current, result: { ...current.result, blob, url, finish } }
     })
-    setNotice(pick("边缘修正已保存到当前队列项。", "Edge refinements were saved to this queue item."))
+    if (!item.result.finish || finish) setNotice(pick("边缘修正已保存，成品预览与下载已同步更新。", "Edge refinements were saved and the finished preview and downloads were updated."))
+  }
+
+  function applyFinishedResult(id: string, output: BackgroundFinishOutput) {
+    const finish: FinishedResult = { ...output, url: URL.createObjectURL(output.blob) }
+    updateItem(id, (current) => {
+      if (!current.result) {
+        URL.revokeObjectURL(finish.url)
+        return current
+      }
+      if (current.result.finish) URL.revokeObjectURL(current.result.finish.url)
+      return { ...current, result: { ...current.result, finish } }
+    })
+    setNotice(pick("成品设置已应用到当前图片，下载与后续修图将优先使用这个版本。", "Finished-image settings were applied. Downloads and the next editing step will use this version."))
+  }
+
+  async function applyFinishedResultToBatch(settings: BackgroundFinishSettings) {
+    const snapshot = queueRef.current.filter((item): item is QueueItem & { result: RemovalResult } => Boolean(item.result && item.status === "done"))
+    let applied = 0
+    for (const item of snapshot) {
+      const output = await composeBackgroundFinish(item.file, item.result.blob, settings)
+      if (!mountedRef.current) return
+      const finish: FinishedResult = { ...output, url: URL.createObjectURL(output.blob) }
+      updateItem(item.id, (current) => {
+        if (!current.result) {
+          URL.revokeObjectURL(finish.url)
+          return current
+        }
+        if (current.result.finish) URL.revokeObjectURL(current.result.finish.url)
+        return { ...current, result: { ...current.result, finish } }
+      })
+      applied += 1
+      setNotice(format("正在应用成品设置：{done}/{count}", "Applying finished-image settings: {done}/{count}", { done: applied, count: snapshot.length }))
+      await waitForBrowserPaint()
+    }
+    setNotice(format("成品设置已应用到 {count} 张图片。", "Finished-image settings were applied to {count} images.", { count: applied }))
   }
 
   async function downloadZip() {
@@ -284,7 +390,10 @@ export function BackgroundRemovalBatchStudio() {
     try {
       const { default: JSZip } = await import("jszip")
       const zip = new JSZip()
-      for (const item of completed) zip.file(backgroundRemovalOutputName(item.file.name), item.result.blob)
+      for (const item of completed) {
+        const output = deliveryResult(item.result)
+        zip.file(deliveryName(item.file.name, item.result), output.blob)
+      }
       downloadBlob(await zip.generateAsync({ type: "blob", compression: "STORE", streamFiles: true }), `tabnative-remove-background-${new Date().toISOString().slice(0, 10)}.zip`)
     } catch { setError(pick("ZIP 打包失败，请逐张下载。", "ZIP creation failed. Download images individually.")) }
     finally { setZipping(false) }
@@ -296,8 +405,8 @@ export function BackgroundRemovalBatchStudio() {
     setError("")
     try {
       const batchId = await saveLocalAssetBatch(completed.map((item) => ({
-        blob: item.result.blob,
-        name: backgroundRemovalOutputName(item.file.name),
+        blob: deliveryResult(item.result).blob,
+        name: deliveryName(item.file.name, item.result),
       })), "background-remover")
       router.push(`/image-editor?batch=${encodeURIComponent(batchId)}`)
     } catch {
@@ -331,24 +440,45 @@ export function BackgroundRemovalBatchStudio() {
     </Card>
 
     {queue.length ? <Card className="border-white/10 bg-[#111] shadow-none"><CardHeader className="flex-row items-start justify-between gap-3"><div><CardTitle className="text-base">{pick("处理队列", "Processing queue")}</CardTitle><p className="mt-1 text-xs text-zinc-500">{format("{count} 张图片，{done} 张已完成", "{count} images, {done} complete", { count: queue.length, done: completed.length })}</p></div><Button size="sm" variant="ghost" disabled={running} onClick={clearQueue}><Trash2 />{pick("清空", "Clear")}</Button></CardHeader><CardContent className="space-y-4">
-      {completed.length && !selectedItem ? <div role="status" className="flex flex-col gap-4 rounded-xl border border-cyan-300/35 bg-cyan-300/[.08] p-4 shadow-[0_0_28px_rgba(34,211,238,.06)] sm:flex-row sm:items-center sm:justify-between"><div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-cyan-300 text-cyan-950"><MousePointerClick className="size-5" /></span><div><p className="font-semibold text-zinc-100">{pick("处理完成后还可以手动修正边缘", "You can refine edges after background removal")}</p><p className="mt-1 max-w-2xl text-sm leading-6 text-zinc-400">{pick("点击下方任意一张透明结果，或使用“修正边缘”按钮，即可补回主体、擦除残留背景并柔化边缘。修正会同步到下载文件和 ZIP。", "Select any transparent result below, or use its Refine edges button, to restore the subject, erase leftover background, and soften edges. Changes are included in downloads and the ZIP.")}</p></div></div><Button className="shrink-0" onClick={() => setSelectedId(completed[0].id)}><Pencil />{pick("从第一张开始修边", "Refine the first result")}</Button></div> : null}
-      <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{queue.map((item) => <li key={item.id} className={`overflow-hidden rounded-xl border bg-white/[.02] transition ${item.id === selectedId ? "border-cyan-300/70 ring-1 ring-cyan-300/20" : "border-white/10"}`}>
-        <div className="grid grid-cols-2 gap-px bg-white/10">
-          <Preview url={item.previewUrl} alt={format("{name} 原图", "Original {name}", { name: item.file.name })} label={pick("原图", "Original")} />
-          {item.result ? <button type="button" onClick={() => setSelectedId(item.id)} className="group relative text-left outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-inset" aria-label={format("修正 {name} 的背景边缘", "Refine background edges for {name}", { name: item.file.name })}><Preview url={item.result.url} alt={format("{name} 透明结果", "Transparent result for {name}", { name: item.file.name })} label={pick("点击结果修正边缘", "Select result to refine edges")} checker action /><span className="workflow-preview-pencil pointer-events-none absolute right-2 top-2 grid size-8 place-items-center rounded-full opacity-90 shadow-sm transition group-hover:scale-105 group-hover:opacity-100"><Pencil className="size-4" /></span></button> : <div className="grid aspect-square place-items-center bg-[#0a0a0a] text-xs text-zinc-600">{item.status === "processing" ? <LoaderCircle className="animate-spin text-cyan-300" /> : pick("等待结果", "Awaiting result")}</div>}
-        </div>
-        <div className="space-y-2 p-3"><p className="truncate text-sm font-medium text-zinc-200">{item.file.name}</p><div className="flex items-center justify-between gap-2"><Status status={item.status} /><span className="text-[10px] text-zinc-600">{item.width} × {item.height}</span></div>{item.error ? <p className="text-xs text-red-400">{item.error}</p> : null}<div className="flex flex-wrap gap-2">{item.result ? <><Button size="sm" onClick={() => setSelectedId(item.id)}><Pencil />{pick("修正边缘", "Refine edges")}</Button><Button size="sm" variant="outline" onClick={() => downloadBlob(item.result!.blob, backgroundRemovalOutputName(item.file.name))}><Download />{pick("下载", "Download")}</Button></> : null}<Button size="icon-sm" variant="ghost" disabled={running} onClick={() => removeItem(item.id)} aria-label={pick("移除", "Remove")}><Trash2 /></Button></div></div>
-      </li>)}</ol>
+      {completed.length && !selectedItem ? <div role="status" className="flex flex-col gap-4 rounded-xl border border-cyan-300/35 bg-cyan-300/[.08] p-4 shadow-[0_0_28px_rgba(34,211,238,.06)] sm:flex-row sm:items-center sm:justify-between"><div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-cyan-300 text-cyan-950"><MousePointerClick className="size-5" /></span><div><p className="font-semibold text-zinc-100">{pick("去背后可继续修边并制作成品", "Refine the cutout and finish the image")}</p><p className="mt-1 max-w-2xl text-sm leading-6 text-zinc-400">{pick("点击任意结果，可补回主体或擦除残留背景，也可换成纯色、渐变、自定义图片或模糊背景，并调整画布、主体位置和阴影。", "Select any result to restore or erase mask areas, replace the background with a color, gradient, custom image, or blur, and adjust the canvas, subject position, and shadow.")}</p></div></div><Button className="shrink-0" onClick={() => setSelectedId(completed[0].id)}><Pencil />{pick("编辑第一张结果", "Edit the first result")}</Button></div> : null}
+      <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{queue.map((item) => {
+        const output = item.result ? deliveryResult(item.result) : null
+        return <li key={item.id} className={`overflow-hidden rounded-xl border bg-white/[.02] transition ${item.id === selectedId ? "border-cyan-300/70 ring-1 ring-cyan-300/20" : "border-white/10"}`}>
+          <div className="grid grid-cols-2 gap-px bg-white/10">
+            <Preview url={item.previewUrl} alt={format("{name} 原图", "Original {name}", { name: item.file.name })} label={pick("原图", "Original")} />
+            {item.result && output ? <button type="button" onClick={() => setSelectedId(item.id)} className="group relative text-left outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-inset" aria-label={format("编辑 {name} 的去背结果", "Edit the background-removed result for {name}", { name: item.file.name })}><Preview url={output.url} alt={format("{name} 处理结果", "Processed result for {name}", { name: item.file.name })} label={item.result.finish ? pick("成品 · 点击继续编辑", "Finished · Select to edit") : pick("透明结果 · 点击继续编辑", "Transparent · Select to edit")} checker={!item.result.finish} action /><span className="workflow-preview-pencil pointer-events-none absolute right-2 top-2 grid size-8 place-items-center rounded-full opacity-90 shadow-sm transition group-hover:scale-105 group-hover:opacity-100"><Pencil className="size-4" /></span></button> : <div className="grid aspect-square place-items-center bg-[#0a0a0a] text-xs text-zinc-600">{item.status === "processing" ? <LoaderCircle className="animate-spin text-cyan-300" /> : pick("等待结果", "Awaiting result")}</div>}
+          </div>
+          <div className="space-y-2 p-3"><p className="truncate text-sm font-medium text-zinc-200">{item.file.name}</p><div className="flex items-center justify-between gap-2"><Status status={item.status} /><span className="text-[10px] text-zinc-600">{output ? `${output.width} × ${output.height}` : `${item.width} × ${item.height}`}</span></div>{item.error ? <p className="text-xs text-red-400">{item.error}</p> : null}<div className="flex flex-wrap gap-2">{item.result && output ? <><Button size="sm" onClick={() => setSelectedId(item.id)}><Pencil />{pick("继续编辑", "Continue editing")}</Button><Button size="sm" variant="outline" onClick={() => downloadBlob(output.blob, deliveryName(item.file.name, item.result!))}><Download />{pick("下载", "Download")}</Button></> : null}<Button size="icon-sm" variant="ghost" disabled={running} onClick={() => removeItem(item.id)} aria-label={pick("移除", "Remove")}><Trash2 /></Button></div></div>
+        </li>
+      })}</ol>
       {running ? <div className="space-y-2"><div className="flex justify-between text-xs text-zinc-500"><span>{processed + 1} / {queue.length}</span><span>{itemProgress}%</span></div><Progress value={itemProgress} /></div> : null}
       {notice ? <p role="status" className="text-sm text-zinc-500">{notice}</p> : null}{error ? <Alert variant="destructive"><OctagonX /><AlertTitle>{pick("部分操作未完成", "Some actions did not finish")}</AlertTitle><AlertDescription>{error}</AlertDescription></Alert> : null}
       <div className="flex flex-wrap gap-3 border-t border-white/10 pt-4"><Button size="lg" disabled={running || zipping || handingOff} onClick={() => void processQueue()}><Play />{pick("开始批量去背景", "Start batch removal")}</Button>{running ? <Button size="lg" variant="outline" onClick={() => { stopRef.current = true }}><Square />{pick("处理完当前项后停止", "Stop after current")}</Button> : null}<Button size="lg" variant="outline" disabled={!completed.length || running || zipping || handingOff} onClick={() => void downloadZip()}>{zipping ? <LoaderCircle className="animate-spin" /> : <Archive />}{format("下载 ZIP（{count} 张）", "Download ZIP ({count})", { count: completed.length })}</Button><Button size="lg" disabled={!completed.length || running || zipping || handingOff} onClick={() => void continueToBatchEditor()}>{handingOff ? <LoaderCircle className="animate-spin" /> : <ArrowRight />}{handingOff ? pick("处理中", "Processing") : format("继续批量快速修图（{count} 张）", "Continue to batch quick editing ({count})", { count: completed.length })}</Button></div>
     </CardContent></Card> : null}
 
-    {selectedItem ? <section ref={refinementRef} className="scroll-mt-24 space-y-3" aria-label={pick("当前图片边缘修正", "Edge refinement for selected image")}>
-      <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-cyan-300/20 bg-cyan-300/[.035] p-4"><div><p className="flex items-center gap-2 font-semibold text-zinc-100"><Pencil className="size-4 text-cyan-300" />{pick("修正当前图片边缘", "Refine selected image edges")}</p><p className="mt-1 text-sm text-zinc-500">{selectedItem.file.name} · {pick("应用后会更新队列预览、单张下载和 ZIP。", "Applying changes updates the queue preview, individual download, and ZIP.")}</p></div><Button size="icon-sm" variant="ghost" onClick={() => setSelectedId("")} aria-label={pick("关闭边缘修正", "Close edge refinement")}><X /></Button></div>
-      {canRefineBackground(selectedItem.result.width, selectedItem.result.height)
-        ? <BackgroundMaskEditor key={selectedItem.result.url} source={selectedItem.file} result={selectedItem.result.blob} onApply={(blob) => applyRefinement(selectedItem.id, blob)} />
-        : <Alert><OctagonX /><AlertTitle>{pick("图片尺寸过大", "Image is too large")}</AlertTitle><AlertDescription>{pick("透明结果仍可下载，但当前标签页无法同时为这张大图加载边缘修正画布。请先缩小图片尺寸。", "The transparent result is still downloadable, but this image is too large for edge refinement in the same tab. Reduce its dimensions first.")}</AlertDescription></Alert>}
+    {selectedItem ? <section ref={refinementRef} className="scroll-mt-24 space-y-3" aria-label={pick("当前去背结果编辑", "Edit selected background-removed result")}>
+      <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-cyan-300/20 bg-cyan-300/[.035] p-4"><div><p className="flex items-center gap-2 font-semibold text-zinc-100"><Pencil className="size-4 text-cyan-300" />{pick("编辑当前去背结果", "Edit selected result")}</p><p className="mt-1 text-sm text-zinc-500">{selectedItem.file.name} · {pick("修边与成品设置都会同步到队列预览、单张下载、ZIP 和下一步修图。", "Mask refinements and finished-image settings update the queue preview, downloads, ZIP, and the next editing step.")}</p></div><Button size="icon-sm" variant="ghost" onClick={() => setSelectedId("")} aria-label={pick("关闭结果编辑", "Close result editing")}><X /></Button></div>
+       <Tabs key={selectedItem.id} defaultValue="finish" className="flex-col gap-3">
+        <TabsList className="grid h-auto w-full max-w-md grid-cols-2 border border-white/10 bg-white/[.025]">
+          <TabsTrigger value="finish" className="min-h-10">{pick("成品编辑", "Finish image")}</TabsTrigger>
+          <TabsTrigger value="refine" className="min-h-10">{pick("边缘修正", "Refine edges")}</TabsTrigger>
+        </TabsList>
+        <TabsContent value="finish">
+          <BackgroundFinishEditor
+            source={selectedItem.file}
+            cutout={selectedItem.result.blob}
+            initialSettings={selectedItem.result.finish?.settings}
+            batchCount={completed.length}
+            onApply={(output) => applyFinishedResult(selectedItem.id, output)}
+            onApplyBatch={applyFinishedResultToBatch}
+          />
+        </TabsContent>
+        <TabsContent value="refine">
+          {canRefineBackground(selectedItem.result.width, selectedItem.result.height)
+            ? <BackgroundMaskEditor key={selectedItem.result.url} source={selectedItem.file} result={selectedItem.result.blob} onApply={(blob) => applyRefinement(selectedItem.id, blob)} />
+            : <Alert><OctagonX /><AlertTitle>{pick("图片尺寸过大", "Image is too large")}</AlertTitle><AlertDescription>{pick("透明结果仍可下载，但当前标签页无法同时为这张大图加载边缘修正画布。请先缩小图片尺寸。", "The transparent result is still downloadable, but this image is too large for edge refinement in the same tab. Reduce its dimensions first.")}</AlertDescription></Alert>}
+        </TabsContent>
+      </Tabs>
     </section> : null}
   </div>
 }
