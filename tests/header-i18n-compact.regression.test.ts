@@ -14,7 +14,7 @@ describe("localized desktop header regression", () => {
     expect(headerSource).toContain("on-device")
   })
 
-  it("keeps the two flagship processing tools visible in the zoomed desktop range", () => {
+  it("keeps the two flagship tools and the unstarred AI directory visible in the zoomed desktop range", () => {
     expect(headerSource).toContain("md:flex")
     expect(headerSource).toContain("lg:hidden")
     expect(headerSource).toContain("lg:max-w-none")
@@ -23,7 +23,14 @@ describe("localized desktop header regression", () => {
     expect(headerSource.indexOf('href="/remove-background"')).toBeLessThan(
       headerSource.indexOf('href="/pdf-tools"'),
     )
+    expect(headerSource.indexOf('href="/pdf-tools"')).toBeLessThan(
+      headerSource.indexOf('href="/ai-tools"'),
+    )
     expect(headerSource).not.toContain('href="/ai-image-detector"')
+    const aiDirectoryLink = headerSource.match(/<Link href="\/ai-tools"[\s\S]*?<\/Link>/)?.[0]
+    expect(aiDirectoryLink).toContain("inline-flex")
+    expect(aiDirectoryLink).not.toContain("<Star")
+    expect(aiDirectoryLink).not.toContain("xl:inline-flex")
   })
 
   it("uses concise localized labels for the longest desktop navigation languages", () => {

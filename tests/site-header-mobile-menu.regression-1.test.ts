@@ -16,15 +16,18 @@ describe("mobile header menu keyboard regression", () => {
     expect(escapeHandler).toContain("setLanguageOpen(false)")
   })
 
-  it("keeps the two processing tools starred and AI image detection out of the header", () => {
+  it("keeps the two processing tools starred and the AI directory unstarred", () => {
     for (const href of ["/remove-background", "/pdf-tools"]) {
       const link = headerSource.match(new RegExp(`<Link href="${href}"[\\s\\S]*?</Link>`))?.[0]
       expect(link).toContain("<Star")
     }
 
     expect(headerSource).not.toContain('href="/ai-image-detector"')
+    for (const link of headerSource.matchAll(/<Link href="\/ai-tools"[\s\S]*?<\/Link>/g)) {
+      expect(link[0]).not.toContain("<Star")
+      expect(link[0]).toContain("text-zinc-")
+    }
     expect(headerSource).not.toContain('pick("更多", "More")')
     expect(headerSource).not.toContain("HeaderMenuLink")
-    expect(headerSource.match(/href="\/ai-tools"[\s\S]*?AI 工具导航/)?.[0]).toContain("text-zinc-300")
   })
 })

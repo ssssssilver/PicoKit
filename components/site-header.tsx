@@ -67,8 +67,9 @@ export function SiteHeader() {
             <span className="truncate lg:hidden">{pick("PDF 处理", "Batch PDF Processing")}</span>
             <span className="hidden whitespace-nowrap lg:inline">{pick("PDF 批量处理", "Batch PDF Processing")}</span>
           </Link>
-          <Link href="/ai-tools" className="hidden whitespace-nowrap rounded-md px-2.5 py-2 text-sm font-medium text-zinc-300 transition hover:bg-white/5 hover:text-white xl:inline-flex">
-            {pick("AI 工具导航", "AI tools")}
+          <Link href="/ai-tools" title={pick("AI 工具导航", "AI tools directory")} className="inline-flex max-w-20 min-w-0 items-center rounded-md px-2 py-2 text-xs font-medium text-zinc-300 transition hover:bg-white/5 hover:text-white lg:max-w-none lg:px-2.5 lg:text-sm">
+            <span className="truncate lg:hidden">{pick("AI 导航", "AI tools")}</span>
+            <span className="hidden whitespace-nowrap lg:inline">{pick("AI 工具导航", "AI tools")}</span>
           </Link>
           <Link href="/blog" className="hidden whitespace-nowrap rounded-md px-2.5 py-2 text-sm text-zinc-300 transition hover:bg-white/5 hover:text-white xl:inline-flex">
             {pick("使用教程", "Guides")}
