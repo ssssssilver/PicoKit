@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
+  BACKGROUND_PRESETS,
   DEFAULT_BACKGROUND_FINISH_SETTINGS,
   backgroundFinishCanvasSize,
   composeBackgroundFinish,
@@ -19,6 +20,7 @@ import {
   type BackgroundFinishOutput,
   type BackgroundFinishSettings,
   type BackgroundOutputType,
+  type BackgroundPresetId,
 } from "@/lib/background-finish"
 
 const PREVIEW_MAX_WIDTH = 780
@@ -186,8 +188,8 @@ export function BackgroundFinishEditor({
     <CardHeader className="pb-3">
       <CardTitle className="flex items-center gap-2 text-base text-zinc-100"><Sparkles className="size-4 text-cyan-300" />{pick("成品编辑", "Finish image")}</CardTitle>
       <p className="text-sm leading-6 text-zinc-500">{pick(
-        "在透明主体后添加颜色、渐变、自定义图片或模糊原图，再调整画布、主体位置和阴影。透明蒙版会单独保留，之后仍可继续修边。",
-        "Add a color, gradient, custom image, or blurred original behind the cutout, then adjust the canvas, subject position, and shadow. The transparent mask stays separate so you can refine it later.",
+        "选择内置场景、颜色、渐变、自定义图片或模糊原图，再调整画布、主体位置和阴影。透明蒙版会单独保留，之后仍可继续修边。",
+        "Choose a built-in scene, color, gradient, custom image, or blurred original, then adjust the canvas, subject position, and shadow. The transparent mask stays separate so you can refine it later.",
       )}</p>
     </CardHeader>
     <CardContent className="space-y-4">
@@ -209,6 +211,21 @@ export function BackgroundFinishEditor({
               <ModeButton active={settings.fillMode === "color"} onClick={() => selectFillMode("color")} label={pick("纯色", "Solid color")} swatch={settings.color} />
               <ModeButton active={settings.fillMode === "gradient"} onClick={() => selectFillMode("gradient")} label={pick("渐变", "Gradient")} swatch={`linear-gradient(135deg,${settings.gradientStart},${settings.gradientEnd})`} />
               <ModeButton active={settings.fillMode === "blur-original"} onClick={() => selectFillMode("blur-original")} label={pick("模糊原图", "Blur original")} swatch="blur" />
+            </div>
+            <div className="space-y-2">
+              <div>
+                <p className="text-sm font-medium text-zinc-200">{pick("默认背景", "Preset backgrounds")}</p>
+                <p className="mt-1 text-xs leading-5 text-zinc-500">{pick("点选即可预览；所有场景都在当前设备即时生成。", "Select one to preview it. Every scene is generated instantly on this device.")}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-2 2xl:grid-cols-4">
+                {BACKGROUND_PRESETS.map((preset) => <PresetBackgroundButton
+                  key={preset.id}
+                  active={settings.fillMode === "preset" && settings.presetId === preset.id}
+                  label={backgroundPresetLabel(preset.id, pick)}
+                  preview={preset.preview}
+                  onClick={() => updateSettings({ fillMode: "preset", presetId: preset.id })}
+                />)}
+              </div>
             </div>
             <input ref={backgroundInputRef} className="sr-only" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" onChange={(event) => { void chooseBackground(event.target.files?.[0]); event.currentTarget.value = "" }} />
             <Button type="button" variant={settings.fillMode === "image" ? "default" : "outline"} className="w-full" onClick={() => backgroundInputRef.current?.click()}><Upload />{settings.backgroundImage ? settings.backgroundImage.name : pick("上传自定义背景", "Upload custom background")}</Button>
@@ -284,6 +301,43 @@ export function BackgroundFinishEditor({
       {error ? <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert> : null}
     </CardContent>
   </Card>
+}
+
+function backgroundPresetLabel(presetId: BackgroundPresetId, pick: (zh: string, en: string) => string) {
+  const labels: Record<BackgroundPresetId, [string, string]> = {
+    "white-studio": ["纯白影棚", "White studio"],
+    "warm-studio": ["暖米影棚", "Warm studio"],
+    "cool-studio": ["冷灰影棚", "Cool studio"],
+    "pastel-glow": ["柔和彩光", "Pastel glow"],
+    "soft-office": ["柔焦办公室", "Soft office"],
+    "warm-cafe": ["暖调咖啡馆", "Warm café"],
+    "green-nature": ["自然绿景", "Green nature"],
+    "city-dusk": ["城市暮色", "City dusk"],
+  }
+  return pick(...labels[presetId])
+}
+
+function PresetBackgroundButton({
+  active,
+  label,
+  preview,
+  onClick,
+}: {
+  active: boolean
+  label: string
+  preview: string
+  onClick: () => void
+}) {
+  return <button
+    type="button"
+    aria-pressed={active}
+    aria-label={label}
+    onClick={onClick}
+    className={`group overflow-hidden rounded-lg border text-left transition ${active ? "border-cyan-300 bg-cyan-300/[.08] ring-1 ring-cyan-300/35" : "border-white/10 bg-black/10 hover:border-white/30"}`}
+  >
+    <span className="block aspect-[4/3] w-full bg-cover bg-center transition-transform duration-200 group-hover:scale-[1.03]" style={{ backgroundImage: preview }} />
+    <span className={`block truncate border-t px-2 py-1.5 text-[11px] ${active ? "border-cyan-300/35 text-cyan-100" : "border-white/10 text-zinc-400"}`}>{label}</span>
+  </button>
 }
 
 function ModeButton({ active, onClick, label, swatch }: { active: boolean; onClick: () => void; label: string; swatch: string }) {

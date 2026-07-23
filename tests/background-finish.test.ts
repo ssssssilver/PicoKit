@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 
 import {
   BACKGROUND_FINISH_MAX_PIXELS,
+  BACKGROUND_PRESET_IDS,
+  BACKGROUND_PRESETS,
   DEFAULT_BACKGROUND_FINISH_SETTINGS,
   backgroundFinishCanvasSize,
   backgroundFinishOutputName,
@@ -17,6 +19,13 @@ describe("background finish settings", () => {
     expect(backgroundFinishCanvasSize(1600, 1200, { ...DEFAULT_BACKGROUND_FINISH_SETTINGS, canvasPreset: "marketplace" })).toEqual({ width: 2000, height: 2000 })
   })
 
+  it("provides eight unique locally generated background scenes", () => {
+    expect(BACKGROUND_PRESET_IDS).toHaveLength(8)
+    expect(new Set(BACKGROUND_PRESET_IDS).size).toBe(BACKGROUND_PRESET_IDS.length)
+    expect(BACKGROUND_PRESETS.map((preset) => preset.id)).toEqual(BACKGROUND_PRESET_IDS)
+    expect(BACKGROUND_PRESETS.every((preset) => preset.preview.includes("gradient"))).toBe(true)
+  })
+
   it("clamps custom canvases and interactive effect values", () => {
     const settings = normalizeBackgroundFinishSettings({
       canvasPreset: "custom",
@@ -28,6 +37,7 @@ describe("background finish settings", () => {
       shadowBlur: -10,
       quality: 5,
       color: "not-a-color",
+      presetId: "missing-scene" as never,
     })
     const size = backgroundFinishCanvasSize(100, 100, settings)
 
@@ -38,6 +48,7 @@ describe("background finish settings", () => {
     expect(settings.shadowBlur).toBe(0)
     expect(settings.quality).toBe(40)
     expect(settings.color).toBe("#ffffff")
+    expect(settings.presetId).toBe("white-studio")
   })
 
   it("uses an extension that matches the selected encoder", () => {
