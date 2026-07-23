@@ -31,6 +31,7 @@ import {
 type CategoryFilter = "all" | AiDirectoryCategoryId
 
 const categoryIcons: Record<AiDirectoryCategoryId, LucideIcon> = {
+  "china-agents": Bot,
   assistants: Bot,
   research: BookOpen,
   productivity: PenLine,

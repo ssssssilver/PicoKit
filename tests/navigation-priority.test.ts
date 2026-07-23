@@ -22,7 +22,7 @@ describe("tool navigation priority", () => {
     expect(new Set(homeHeroSlides.map((slide) => slide.id)).size).toBe(homeHeroSlides.length)
     expect(homeHeroSlides.every((slide) => slide.href.startsWith("/") && slide.title.zh && slide.title.en)).toBe(true)
     expect(homeHeroSlides[0]).toMatchObject({ id: "image-delivery", href: "/remove-background" })
-    expect(homeHeroSlides[0].eyebrow).toMatchObject({ zh: expect.stringContaining("批量图片处理"), en: "Batch Image Processing" })
+    expect(homeHeroSlides[0].eyebrow).toMatchObject({ zh: expect.stringContaining("图片批量处理"), en: "Batch Image Processing" })
     expect(homeHeroSlides[1]).toMatchObject({ id: "documents", href: "/pdf-tools" })
     expect(homeHeroSlides[1].eyebrow).toMatchObject({ zh: expect.stringContaining("PDF 批量处理"), en: "Batch PDF Processing" })
     expect(homeHeroSlides[2]).toMatchObject({ id: "inspection", href: "/ai-image-detector" })

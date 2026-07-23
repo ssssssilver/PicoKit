@@ -106,7 +106,7 @@ function titleFor(pathname: string, language: Language, translations?: Translati
     "/remove-ai-metadata-from-image": ["清理图片 AI 元数据", "Remove AI Metadata from Images"],
     "/remove-c2pa-content-credentials": ["清理 C2PA Content Credentials", "Remove C2PA Content Credentials"],
     "/remove-made-with-ai-label": ["清理 Made with AI 标签信号", "Remove Made with AI Label Signals"],
-    "/remove-background": ["批量图片处理", "Batch Image Processing"],
+    "/remove-background": ["图片批量处理", "Batch Image Processing"],
     "/image-compressor": ["批量图片优化与交付", "Batch Image Optimization and Delivery"],
     "/image-editor": ["批量快速修图、标注与打码", "Batch Quick Image Editing, Annotation, and Redaction"],
     "/image-wobble-maker": ["图片晃动动画", "Image Wobble Animator"],

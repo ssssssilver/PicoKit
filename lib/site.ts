@@ -87,7 +87,6 @@ export const primaryTools: SiteTool[] = [
     icon: ScanSearch,
     category: "ai",
     runtime: "BROWSER WORKER",
-    featured: true,
   },
   {
     href: "/one-click-ai-cleaner",
@@ -115,7 +114,7 @@ export const primaryTools: SiteTool[] = [
 
 export const utilityTools: SiteTool[] = [
   { href: "/3d-model-converter", title: "3D 模型转换与预览", titleEn: "3D Model Converter & Viewer", description: "本地预览 GLB、glTF、OBJ、FBX、STL、PLY，并导出常用交换格式。", descriptionEn: "Preview GLB, glTF, OBJ, FBX, STL, and PLY locally, then export common exchange formats.", icon: Box, category: "model", runtime: "WEBGL / BROWSER", featured: true },
-  { href: "/remove-background", title: "批量图片处理", titleEn: "Batch Image Processing", description: "一次导入最多 30 张图片，连续完成去背景与修边、逐张修图、格式尺寸优化和打包下载。", descriptionEn: "Import once, then move the same batch through background removal, edge refinement, quick editing, optimization, and packaged delivery.", icon: Scissors, category: "image", runtime: "ONNX / CANVAS / WORKER", featured: true },
+  { href: "/remove-background", title: "图片批量处理", titleEn: "Batch Image Processing", description: "一次导入最多 30 张图片，连续完成去背景与修边、逐张修图、格式尺寸优化和打包下载。", descriptionEn: "Import once, then move the same batch through background removal, edge refinement, quick editing, optimization, and packaged delivery.", icon: Scissors, category: "image", runtime: "ONNX / CANVAS / WORKER", featured: true },
   { href: "/remove-ai-metadata-from-image", title: "清理 AI 元数据", titleEn: "Remove AI Metadata", description: "移除命中的生成器、工作流、提示词与 AI 来源字段。", descriptionEn: "Remove matched generator, workflow, prompt, and AI provenance fields.", icon: ShieldCheck, category: "privacy" },
   { href: "/remove-c2pa-content-credentials", title: "清理 C2PA", titleEn: "Remove C2PA", description: "删除 C2PA/JUMBF 容器并验证像素载荷保持一致。", descriptionEn: "Remove C2PA/JUMBF containers and verify the pixel payload stays unchanged.", icon: FileSearch, category: "privacy" },
   { href: "/remove-made-with-ai-label", title: "清理 AI 标签信号", titleEn: "Remove AI Label Signals", description: "选择性清理 DigitalSourceType 与 Made with AI 触发字段。", descriptionEn: "Selectively remove DigitalSourceType and Made with AI metadata triggers.", icon: FileImage, category: "privacy" },

@@ -49,7 +49,7 @@ test("server-renders the TabNative homepage and security headers", async () => {
   const firstDetectorLink = html.indexOf('<a href="/ai-image-detector"')
   assert.ok(featuredRemovalStart >= 0 && featuredRemovalStart < firstDetectorLink, "the image delivery pipeline should be the first primary tool link")
   assert.match(html.slice(featuredRemovalStart, html.indexOf("</a>", featuredRemovalStart)), /lucide-star/)
-  assert.match(html, /批量图片处理/)
+  assert.match(html, /图片批量处理/)
   assert.match(html, /PDF 批量处理/)
   assert.doesNotMatch(html, /TabNative 工具首页/)
   assert.doesNotMatch(html, /方法与限制/)
@@ -70,7 +70,7 @@ for (const [pathname, marker] of [
   ["/image-editor", "快速修图、标注与打码"],
   ["/image-wobble-maker", "图片晃动动画"],
   ["/resize-image-to-kb", "把图片压缩到目标大小"],
-  ["/remove-background", "批量图片处理"],
+  ["/remove-background", "图片批量处理"],
   ["/3d-model-converter", "3D 模型格式转换与预览"],
   ["/pdf-tools", "PDF 批量处理"],
   ["/qr-code-tool", "二维码生成与识别"],
@@ -109,7 +109,7 @@ test("batch image processing exposes one mode-free removal flow", async () => {
   const response = await render("/remove-background")
   assert.equal(response.status, 200)
   const html = await response.text()
-  assert.match(html, /批量图片处理/)
+  assert.match(html, /图片批量处理/)
   assert.match(html, /随后可直接继续修图/)
   assert.match(html, /自动识别主要主体/)
   assert.match(html, /4\.6 MB/)

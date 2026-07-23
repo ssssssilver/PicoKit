@@ -19,6 +19,15 @@ describe("localized interface copy", () => {
     }
   })
 
+  it("localizes the Chinese AI agents category in every supported locale", () => {
+    for (const locale of ["ar", "de", "es", "fr", "id", "ja", "ko", "pl", "pt", "ru", "tr"]) {
+      const messages = readLocale(locale)
+      expect(messages["China AI Assistants & Agents"]).toBeTruthy()
+      expect(messages["China AI Assistants & Agents"]).not.toBe("China AI Assistants & Agents")
+      expect(messages["Mainstream Chinese assistants, agent products, and multimodal workspaces."]).toBeTruthy()
+    }
+  })
+
   it("does not translate CPU threads as topics or message threads", () => {
     const expected = {
       ar: "خيوط المعالج",

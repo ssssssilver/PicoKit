@@ -57,20 +57,15 @@ export function SiteHeader() {
         </Link>
 
         <nav className="mx-2 hidden min-w-0 flex-1 items-center justify-center gap-0.5 md:flex" aria-label={pick("主导航", "Primary navigation")}>
-          <Link href="/remove-background" title={pick("批量图片处理", "Batch Image Processing")} className="inline-flex max-w-24 min-w-0 items-center gap-1.5 rounded-md border border-cyan-300/25 bg-cyan-300/[.08] px-2 py-2 text-xs font-semibold text-cyan-200 transition hover:border-cyan-300/45 hover:bg-cyan-300/[.13] hover:text-cyan-100 lg:max-w-none lg:px-2.5 lg:text-sm">
+          <Link href="/remove-background" title={pick("图片批量处理", "Batch Image Processing")} className="inline-flex max-w-24 min-w-0 items-center gap-1.5 rounded-md border border-cyan-300/25 bg-cyan-300/[.08] px-2 py-2 text-xs font-semibold text-cyan-200 transition hover:border-cyan-300/45 hover:bg-cyan-300/[.13] hover:text-cyan-100 lg:max-w-none lg:px-2.5 lg:text-sm">
             <Star className="size-3.5 shrink-0" fill="currentColor" aria-hidden="true" />
             <span className="truncate lg:hidden">{pick("图片流水线", "Image workflow")}</span>
-            <span className="hidden whitespace-nowrap lg:inline">{pick("批量图片处理", "Batch Image Processing")}</span>
+            <span className="hidden whitespace-nowrap lg:inline">{pick("图片批量处理", "Batch Image Processing")}</span>
           </Link>
           <Link href="/pdf-tools" title={pick("PDF 批量处理", "Batch PDF Processing")} className="inline-flex max-w-24 min-w-0 items-center gap-1.5 rounded-md px-2 py-2 text-xs font-semibold text-cyan-200 transition hover:bg-cyan-300/[.06] hover:text-cyan-100 lg:max-w-none lg:px-2.5 lg:text-sm">
             <Star className="size-3.5 shrink-0" fill="currentColor" aria-hidden="true" />
             <span className="truncate lg:hidden">{pick("PDF 处理", "Batch PDF Processing")}</span>
             <span className="hidden whitespace-nowrap lg:inline">{pick("PDF 批量处理", "Batch PDF Processing")}</span>
-          </Link>
-          <Link href="/ai-image-detector" title={pick("AI 图片检测", "AI image check")} className="inline-flex max-w-24 min-w-0 items-center gap-1.5 rounded-md px-2 py-2 text-xs font-semibold text-cyan-200 transition hover:bg-cyan-300/[.06] hover:text-cyan-100 lg:max-w-none lg:px-2.5 lg:text-sm">
-            <Star className="size-3.5 shrink-0" fill="currentColor" aria-hidden="true" />
-            <span className="truncate lg:hidden">{pick("AI 图片检测", "AI image check")}</span>
-            <span className="hidden whitespace-nowrap lg:inline">{pick("AI 图片检测", "AI image check")}</span>
           </Link>
           <Link href="/ai-tools" className="hidden whitespace-nowrap rounded-md px-2.5 py-2 text-sm font-medium text-zinc-300 transition hover:bg-white/5 hover:text-white xl:inline-flex">
             {pick("AI 工具导航", "AI tools")}
@@ -150,9 +145,8 @@ export function SiteHeader() {
       {open ? (
         <nav className="border-t border-white/10 px-4 py-4 xl:hidden" aria-label={pick("移动端导航", "Mobile navigation")}>
           <div className="mx-auto grid max-w-[1280px] gap-1 sm:grid-cols-2">
-            <Link href="/remove-background" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg border border-cyan-300/20 bg-cyan-300/[.07] px-3 py-3 text-sm font-semibold text-cyan-200 hover:bg-cyan-300/[.12]"><Star className="size-4" fill="currentColor" />{pick("批量图片处理", "Batch Image Processing")}</Link>
+            <Link href="/remove-background" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg border border-cyan-300/20 bg-cyan-300/[.07] px-3 py-3 text-sm font-semibold text-cyan-200 hover:bg-cyan-300/[.12]"><Star className="size-4" fill="currentColor" />{pick("图片批量处理", "Batch Image Processing")}</Link>
             <Link href="/pdf-tools" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg border border-cyan-300/10 px-3 py-3 text-sm font-semibold text-cyan-200 hover:bg-cyan-300/[.07]"><Star className="size-4" fill="currentColor" />{pick("PDF 批量处理", "Batch PDF Processing")}</Link>
-            <Link href="/ai-image-detector" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg border border-cyan-300/10 px-3 py-3 text-sm font-semibold text-cyan-200 hover:bg-cyan-300/[.07]"><Star className="size-4" fill="currentColor" />{pick("AI 图片检测", "AI image detector")}</Link>
             <Link href="/#tools" onClick={() => setOpen(false)} className="rounded-lg px-3 py-3 text-sm font-medium text-white hover:bg-white/8">{pick("常用工具", "Common tools")}</Link>
             <Link href="/#my-tools" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-3 text-sm font-medium text-cyan-200 hover:bg-cyan-300/[.07]"><Star className="size-4" />{pick("我的工具", "My tools")}{myToolHrefs.length ? <span className="font-mono text-[10px]">{myToolHrefs.length}</span> : null}</Link>
             <Link href="/ai-tools" onClick={() => setOpen(false)} className="rounded-lg px-3 py-3 text-sm font-medium text-zinc-200 hover:bg-white/8">{pick("AI 工具导航", "AI tools directory")}</Link>

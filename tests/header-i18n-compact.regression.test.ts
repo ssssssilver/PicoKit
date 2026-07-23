@@ -14,7 +14,7 @@ describe("localized desktop header regression", () => {
     expect(headerSource).toContain("on-device")
   })
 
-  it("keeps the three flagship tools visible in the zoomed desktop range", () => {
+  it("keeps the two flagship processing tools visible in the zoomed desktop range", () => {
     expect(headerSource).toContain("md:flex")
     expect(headerSource).toContain("lg:hidden")
     expect(headerSource).toContain("lg:max-w-none")
@@ -23,9 +23,7 @@ describe("localized desktop header regression", () => {
     expect(headerSource.indexOf('href="/remove-background"')).toBeLessThan(
       headerSource.indexOf('href="/pdf-tools"'),
     )
-    expect(headerSource.indexOf('href="/pdf-tools"')).toBeLessThan(
-      headerSource.indexOf('href="/ai-image-detector"'),
-    )
+    expect(headerSource).not.toContain('href="/ai-image-detector"')
   })
 
   it("uses concise localized labels for the longest desktop navigation languages", () => {

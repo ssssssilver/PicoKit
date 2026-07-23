@@ -21,7 +21,7 @@ type HeroSlide = {
 export const homeHeroSlides: HeroSlide[] = [
   {
     id: "image-delivery",
-    eyebrow: { zh: "特色功能 · 批量图片处理", en: "Batch Image Processing" },
+    eyebrow: { zh: "特色功能 · 图片批量处理", en: "Batch Image Processing" },
     title: { zh: "一批图片，三步完成交付。", en: "One image batch. Three browser steps." },
     description: { zh: "批量去背景并逐项修边，整批接力到快速修图，再统一优化格式、尺寸与文件大小。队列在步骤间保留，文件始终留在你的设备上。", en: "Remove backgrounds and refine edges, pass the full batch to quick editing, then optimize format, dimensions, and file size together. The queue stays available between steps and files remain on your device." },
     action: { zh: "开始批量处理图片", en: "Open Batch Image Processing" },

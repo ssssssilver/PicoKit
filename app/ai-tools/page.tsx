@@ -9,11 +9,11 @@ import { aiDirectoryCategories, aiDirectoryReviewedAt, aiDirectoryTools } from "
 
 export const metadata: Metadata = {
   title: "AI Tools Directory by Task",
-  description: "Browse AI tools for chat, research, writing, coding, design, video, audio, and automation. Manually reviewed descriptions and official product links.",
-  keywords: ["AI tools directory", "AI apps", "AI coding tools", "AI video tools", "AI agents"],
+  description: "Browse global and Chinese AI assistants, agents, research, coding, design, video, audio, and automation tools with manually reviewed official links.",
+  keywords: ["AI tools directory", "AI agents", "Kimi K3", "GLM", "DeepSeek", "Doubao", "Seedance", "Qwen"],
   openGraph: {
     title: "TabNative AI Tools Directory",
-    description: "AI products organized by task, with manually reviewed descriptions and official direct links.",
+    description: "Global and Chinese AI products organized by task, with manually reviewed descriptions and official direct links.",
     type: "website",
   },
 }

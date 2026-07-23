@@ -19,10 +19,10 @@ export function ImageWorkflowNav({ active }: { active: WorkflowStep }) {
   const activeIndex = steps.findIndex((step) => step.id === active)
 
   return (
-    <section className="mb-6 overflow-hidden rounded-xl border border-cyan-300/20 bg-cyan-300/[.035]" aria-label={pick("批量图片处理", "Batch Image Processing")}>
+    <section className="mb-6 overflow-hidden rounded-xl border border-cyan-300/20 bg-cyan-300/[.035]" aria-label={pick("图片批量处理", "Batch Image Processing")}>
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-4 py-3">
         <div>
-          <p className="text-sm font-semibold text-zinc-100">{pick("批量图片处理", "Batch Image Processing")}</p>
+          <p className="text-sm font-semibold text-zinc-100">{pick("图片批量处理", "Batch Image Processing")}</p>
           <p className="mt-0.5 text-xs text-zinc-500">{pick("每一步都在当前浏览器运行；使用结果页按钮可把整批图片直接接力到下一步。", "Every step runs in this browser; result actions pass the full image batch directly to the next tool.")}</p>
         </div>
         <span className="rounded-full border border-cyan-300/20 px-2.5 py-1 font-mono text-[9px] uppercase tracking-[.14em] text-cyan-300">On-device</span>
