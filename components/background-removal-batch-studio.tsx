@@ -41,6 +41,7 @@ export function BackgroundRemovalBatchStudio() {
   const mountedRef = useRef(true)
   const [queue, setQueue] = useState<QueueItem[]>([])
   const [adding, setAdding] = useState(false)
+  const [loadingSample, setLoadingSample] = useState(false)
   const [running, setRunning] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [processed, setProcessed] = useState(0)
@@ -144,6 +145,38 @@ export function BackgroundRemovalBatchStudio() {
     setNotice(accepted.length ? format("已加入 {count} 张图片。", "{count} images added.", { count: accepted.length }) : "")
     setError(rejected.slice(0, 3).join("；"))
     setAdding(false)
+  }
+
+  async function loadSample() {
+    if (running || adding || loadingSample) return
+    setLoadingSample(true)
+    setError("")
+    try {
+      const sample = new Image()
+      sample.decoding = "async"
+      await new Promise<void>((resolve, reject) => {
+        sample.onload = () => resolve()
+        sample.onerror = () => reject(new Error("sample-load-failed"))
+        sample.src = "/samples/remove-background-cat.png"
+      })
+      const canvas = document.createElement("canvas")
+      canvas.width = sample.naturalWidth
+      canvas.height = sample.naturalHeight
+      const context = canvas.getContext("2d")
+      if (!context) throw new Error("sample-canvas-unavailable")
+      context.drawImage(sample, 0, 0)
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((result) => result ? resolve(result) : reject(new Error("sample-encode-failed")), "image/png")
+      })
+      await addFiles([new File([blob], "tabnative-remove-background-sample.png", {
+        type: "image/png",
+        lastModified: 0,
+      })])
+    } catch {
+      setError(pick("无法载入示例。", "Unable to load the sample."))
+    } finally {
+      if (mountedRef.current) setLoadingSample(false)
+    }
   }
 
   async function processOne(item: QueueItem) {
@@ -277,10 +310,22 @@ export function BackgroundRemovalBatchStudio() {
     <Card className="border-cyan-300/20 bg-cyan-300/[.035] shadow-none">
       <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Images className="size-4 text-cyan-300" />{pick("批量移除背景", "Batch background removal")}</CardTitle><p className="text-sm text-zinc-500">{pick("一次加入多张图片，按顺序处理，避免同时占用过多显存和内存。", "Add multiple images and process them sequentially to limit GPU and memory use.")}</p></CardHeader>
       <CardContent className="space-y-4">
-        <button type="button" aria-busy={adding} disabled={running || adding} onClick={() => inputRef.current?.click()} onDragEnter={(event) => { event.preventDefault(); setDragging(true) }} onDragOver={(event) => event.preventDefault()} onDragLeave={() => setDragging(false)} onDrop={(event) => { event.preventDefault(); setDragging(false); void addFiles(Array.from(event.dataTransfer.files)) }} className={`flex min-h-36 w-full flex-col items-center justify-center rounded-xl border border-dashed px-5 text-center transition ${adding ? "border-cyan-300/60 bg-cyan-300/[.08]" : dragging ? "border-cyan-300 bg-cyan-300/10" : "border-white/15 bg-white/[.025] hover:border-cyan-300/45"}`}>
-          {adding ? <LoaderCircle className="size-8 animate-spin text-cyan-300" /> : <Upload className="size-8 text-cyan-300" />}<span className="mt-3 text-sm font-semibold text-zinc-100">{adding ? pick("正在检查图片", "Checking images") : pick("拖入多张图片，或点击选择", "Drop multiple images, or click to choose")}</span><span className="mt-1 text-xs text-zinc-500">JPG · PNG · WEBP · {format("最多 {count} 张", "Up to {count} images", { count: IMAGE_PIPELINE_BATCH_MAX_ITEMS })}</span>
+        <button type="button" aria-busy={adding || loadingSample} disabled={running || adding || loadingSample} onClick={() => inputRef.current?.click()} onDragEnter={(event) => { event.preventDefault(); setDragging(true) }} onDragOver={(event) => event.preventDefault()} onDragLeave={() => setDragging(false)} onDrop={(event) => { event.preventDefault(); setDragging(false); void addFiles(Array.from(event.dataTransfer.files)) }} className={`flex min-h-36 w-full flex-col items-center justify-center rounded-xl border border-dashed px-5 text-center transition ${adding || loadingSample ? "border-cyan-300/60 bg-cyan-300/[.08]" : dragging ? "border-cyan-300 bg-cyan-300/10" : "border-white/15 bg-white/[.025] hover:border-cyan-300/45"}`}>
+          {adding || loadingSample ? <LoaderCircle className="size-8 animate-spin text-cyan-300" /> : <Upload className="size-8 text-cyan-300" />}<span className="mt-3 text-sm font-semibold text-zinc-100">{loadingSample ? pick("正在载入示例", "Loading sample") : adding ? pick("正在检查图片", "Checking images") : pick("拖入多张图片，或点击选择", "Drop multiple images, or click to choose")}</span><span className="mt-1 text-xs text-zinc-500">JPG · PNG · WEBP · {format("最多 {count} 张", "Up to {count} images", { count: IMAGE_PIPELINE_BATCH_MAX_ITEMS })}</span>
         </button>
         <input ref={inputRef} type="file" multiple accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" className="sr-only" onChange={(event) => { void addFiles(Array.from(event.target.files ?? [])); event.currentTarget.value = "" }} />
+        <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/[.025] p-3 sm:flex-row sm:items-center">
+          <div className="h-20 w-full shrink-0 overflow-hidden rounded-lg bg-[#0a0a0a] sm:w-20">
+            {/* Static sample asset; no optimization is needed for this small local preview. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/samples/remove-background-cat.png" alt="" aria-hidden="true" className="size-full object-cover" />
+          </div>
+          <p className="min-w-0 flex-1 text-sm leading-6 text-zinc-500">{pick("从设备选择图片，或使用页面示例快速了解完整流程。", "Choose an image from your device, or load the sample to explore the complete workflow.")}</p>
+          <Button type="button" variant="outline" className="shrink-0" disabled={running || adding || loadingSample} onClick={() => void loadSample()}>
+            {loadingSample ? <LoaderCircle className="animate-spin" /> : <Play />}
+            {pick("试用示例", "Try sample")}
+          </Button>
+        </div>
         {adding ? <div role="status" aria-live="polite" className="flex items-center gap-3 rounded-xl border border-cyan-300/30 bg-cyan-300/[.08] px-4 py-3 text-sm text-zinc-200"><LoaderCircle className="size-5 shrink-0 animate-spin text-cyan-300" /><span><strong>{pick("图片正在加入队列", "Adding images to the queue")}</strong><span className="ml-2 text-zinc-500">{pick("正在逐张读取并校验，请稍候；完成后会自动显示预览。", "Reading and validating images one at a time. Previews will appear automatically when ready.")}</span></span></div> : null}
       </CardContent>
     </Card>
