@@ -60,6 +60,9 @@ type DeliveryQueueSnapshot = { items: StoredDeliveryQueueItem[]; settings: Batch
 
 export type ImageDeliveryStudioProps = {
   initialFiles?: readonly File[]
+  embedded?: boolean
+  onBatchChange?: (files: readonly File[]) => void
+  onBusyChange?: (busy: boolean) => void
 }
 
 const emptyInitialFiles: readonly File[] = []
@@ -72,7 +75,12 @@ const defaultSettings: BatchTransformSettings = {
   nameTemplate: "{name}-ready-{index}",
 }
 
-export function ImageDeliveryStudio({ initialFiles = emptyInitialFiles }: ImageDeliveryStudioProps) {
+export function ImageDeliveryStudio({
+  initialFiles = emptyInitialFiles,
+  embedded = false,
+  onBatchChange,
+  onBusyChange,
+}: ImageDeliveryStudioProps) {
   const { pick, format } = useLanguage()
   const workflowMemory = useImageWorkflowMemory()
   const inputRef = useRef<HTMLInputElement>(null)
@@ -229,6 +237,21 @@ export function ImageDeliveryStudio({ initialFiles = emptyInitialFiles }: ImageD
     if (fresh.length) void enqueueFiles(fresh)
   }, [adding, enqueueFiles, initialFiles, running])
 
+  useEffect(() => {
+    onBatchChange?.(queue.map((item) => {
+      if (!item.result || item.status !== "done") return item.file
+      return new File([item.result.blob], item.result.fileName, {
+        type: item.result.blob.type || settings.format,
+        lastModified: item.file.lastModified,
+      })
+    }))
+  }, [onBatchChange, queue, settings.format])
+
+  useEffect(() => {
+    onBusyChange?.(adding || running || zipping)
+    return () => onBusyChange?.(false)
+  }, [adding, onBusyChange, running, zipping])
+
   const completed = useMemo(() => queue.filter((item) => item.result && item.status === "done"), [queue])
   const totalResultBytes = useMemo(() => completed.reduce((sum, item) => sum + (item.result?.blob.size ?? 0), 0), [completed])
   const overallProgress = queue.length ? Math.round(processedCount / queue.length * 100) : 0
@@ -354,8 +377,8 @@ export function ImageDeliveryStudio({ initialFiles = emptyInitialFiles }: ImageD
     <div className="space-y-6">
       <Card className="border-border bg-card shadow-none">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base"><Images className="size-4 text-cyan-500" />{pick("加入交付队列", "Add images to the delivery queue")}</CardTitle>
-          <p className="text-sm leading-6 text-muted-foreground">{pick("一次选择多张 JPG、PNG 或 WebP；图片会先逐张校验，再按列表顺序处理。", "Choose multiple JPG, PNG, or WebP images. They are validated and processed one at a time in list order.")}</p>
+          <CardTitle className="flex items-center gap-2 text-base"><Images className="size-4 text-cyan-500" />{embedded ? pick("当前批次 · 输出与下载", "Current batch · Output and download") : pick("加入交付队列", "Add images to the delivery queue")}</CardTitle>
+          <p className="text-sm leading-6 text-muted-foreground">{embedded ? pick("当前批次会逐张优化；也可继续补充 JPG、PNG 或 WebP。", "The current batch is optimized one image at a time. You can also add more JPG, PNG, or WebP images.") : pick("一次选择多张 JPG、PNG 或 WebP；图片会先逐张校验，再按列表顺序处理。", "Choose multiple JPG, PNG, or WebP images. They are validated and processed one at a time in list order.")}</p>
         </CardHeader>
         <CardContent className="space-y-4">
           <button

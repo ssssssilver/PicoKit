@@ -13,7 +13,6 @@ const expected: Record<string, Record<string, string>> = {
     "JSON Toolkit": "أدوات JSON",
   },
   de: {
-    "Batch Quick Image Editor": "Schneller Stapel-Bildeditor",
     "Markdown Editor": "Markdown-Editor",
   },
   es: {
@@ -39,7 +38,6 @@ const expected: Record<string, Record<string, string>> = {
     "Private PDF Organizer": "비공개 PDF 정리 도구",
   },
   pl: {
-    "Batch Quick Image Editor": "Szybki edytor obrazów wsadowych",
     "How to use {name}": "Jak korzystać z narzędzia „{name}”",
     "JSON Toolkit": "Narzędzia JSON",
   },
@@ -48,7 +46,6 @@ const expected: Record<string, Record<string, string>> = {
     "Private PDF Organizer": "Локальный органайзер PDF",
   },
   tr: {
-    "Batch Image Optimizer": "Toplu Görsel Optimizasyonu",
     "Open GitHub repository": "GitHub deposunu aç",
   },
 }

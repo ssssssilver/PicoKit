@@ -68,16 +68,34 @@ type EditorQueueItem = { id: string; file: File; previewUrl: string; edited?: { 
 type StoredEditorQueueItem = Omit<EditorQueueItem, "previewUrl" | "edited"> & { edited?: Omit<NonNullable<EditorQueueItem["edited"]>, "previewUrl"> }
 type EditorQueueSnapshot = { items: StoredEditorQueueItem[]; activeId: string }
 
+export type QuickImageEditorProps = {
+  initialFiles?: readonly File[]
+  embedded?: boolean
+  onBatchChange?: (files: readonly File[]) => void
+  onBusyChange?: (busy: boolean) => void
+  onUnsavedChange?: (unsaved: boolean) => void
+  onContinue?: (files: readonly File[]) => void
+}
+
 const defaultAdjustments: Adjustments = { brightness: 100, contrast: 100, saturation: 100, grayscale: false }
 const defaultColor = "#f43f5e"
 const transparent = "rgba(0,0,0,0)"
+const emptyInitialFiles: readonly File[] = []
 
-export function QuickImageEditor() {
+export function QuickImageEditor({
+  initialFiles = emptyInitialFiles,
+  embedded = false,
+  onBatchChange,
+  onBusyChange,
+  onUnsavedChange,
+  onContinue,
+}: QuickImageEditorProps = {}) {
   const { pick, format } = useLanguage()
   const router = useRouter()
   const workflowMemory = useImageWorkflowMemory()
   const inputRef = useRef<HTMLInputElement>(null)
   const queueRef = useRef<EditorQueueItem[]>([])
+  const initialFilesSeenRef = useRef(new WeakSet<File>())
   const activeIdRef = useRef("")
   const [queue, setQueue] = useState<EditorQueueItem[]>([])
   const [activeId, setActiveId] = useState("")
@@ -130,6 +148,30 @@ export function QuickImageEditor() {
     }
     setAdding(false)
   }, [adding, format, pick, replaceQueue])
+
+  useEffect(() => {
+    if (adding || restoringHandoff) return
+    const fresh = initialFiles.filter((file) => {
+      if (initialFilesSeenRef.current.has(file)) return false
+      initialFilesSeenRef.current.add(file)
+      return true
+    })
+    if (fresh.length) void addFiles(fresh, true)
+  }, [addFiles, adding, initialFiles, restoringHandoff])
+
+  useEffect(() => {
+    onBatchChange?.(queue.map((item) => item.edited?.file ?? item.file))
+  }, [onBatchChange, queue])
+
+  useEffect(() => {
+    onBusyChange?.(adding || restoringHandoff || zipping || handingOff)
+    return () => onBusyChange?.(false)
+  }, [adding, handingOff, onBusyChange, restoringHandoff, zipping])
+
+  useEffect(() => {
+    onUnsavedChange?.(dirty)
+    return () => onUnsavedChange?.(false)
+  }, [dirty, onUnsavedChange])
 
   useEffect(() => {
     if (handoffAttemptedRef.current) return
@@ -251,6 +293,11 @@ export function QuickImageEditor() {
       setPasteError(pick("当前图片还有未保存的修改。请先保存到队列，再继续批量优化。", "The current image has unsaved changes. Save it to the queue before continuing to batch optimization."))
       return
     }
+    const files = queue.map((item) => item.edited?.file ?? item.file)
+    if (onContinue) {
+      onContinue(files)
+      return
+    }
     setHandingOff(true)
     setPasteError("")
     try {
@@ -268,7 +315,7 @@ export function QuickImageEditor() {
   return (
     <div className="space-y-6">
       <Card id="quick-edit-queue" className="scroll-mt-24 border-white/10 bg-[#0d0d0d] text-zinc-100 shadow-none">
-        <CardHeader><CardTitle className="flex items-center gap-2"><Images className="size-5 text-cyan-300" />{pick("快速修图队列", "Quick-edit queue")}</CardTitle><p className="text-sm leading-6 text-zinc-500">{pick("一次加入多张图片，点击队列项逐张编辑；保存到队列后再切换下一张。", "Add multiple images, select one from the queue to edit, save it to the queue, then continue with the next image.")}</p></CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2"><Images className="size-5 text-cyan-300" />{embedded ? pick("当前批次 · 快速修图", "Current batch · Quick editing") : pick("快速修图队列", "Quick-edit queue")}</CardTitle><p className="text-sm leading-6 text-zinc-500">{pick("一次加入多张图片，点击队列项逐张编辑；保存到队列后再切换下一张。", "Add multiple images, select one from the queue to edit, save it to the queue, then continue with the next image.")}</p></CardHeader>
         <CardContent className="space-y-4">
           <Button variant="outline" onClick={() => inputRef.current?.click()} disabled={adding || restoringHandoff}><Upload />{adding || restoringHandoff ? pick("正在检查图片", "Checking images") : pick("添加图片", "Add images")}</Button>
           <input ref={inputRef} type="file" multiple accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" className="sr-only" onChange={(event) => { void addFiles(Array.from(event.target.files ?? [])); event.currentTarget.value = "" }} />
@@ -283,7 +330,7 @@ export function QuickImageEditor() {
             </span><span className="mt-2 block truncate text-xs text-zinc-300">{item.file.name}</span>
           </button>)}</div> : <div className="grid min-h-32 place-items-center rounded-xl border border-dashed border-white/10 text-center text-sm text-zinc-500">{pick("添加图片后，点击缩略图开始编辑。", "Add images, then select a thumbnail to start editing.")}</div>}
           <div className="flex flex-wrap gap-2">{queue.filter((item) => item.edited).map((item) => <Button key={item.id} size="sm" variant="ghost" onClick={() => item.edited && downloadBlob(item.edited.blob, item.edited.name)}><Download />{item.file.name}</Button>)}{queue.some((item) => item.edited) ? <Button size="sm" variant="outline" onClick={() => void downloadAll()} disabled={zipping || handingOff}>{zipping ? <LoaderCircle className="animate-spin" /> : <Archive />}{pick("下载已编辑 ZIP", "Download edited ZIP")}</Button> : null}</div>
-          {queue.length ? <div className="flex flex-col gap-3 rounded-xl border border-cyan-300/25 bg-cyan-300/[.055] p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-semibold text-zinc-100">{pick("下一步：批量优化与交付", "Next: batch optimization and delivery")}</p><p className="mt-1 text-xs leading-5 text-zinc-500">{pick("已保存的修图结果会优先进入下一步，未编辑图片会保持当前版本。", "Saved edits continue to the next step; unedited images keep their current version.")}</p></div><Button className="shrink-0" disabled={handingOff} onClick={() => void continueToBatchOptimizer()}>{handingOff ? <LoaderCircle className="animate-spin" /> : <ArrowRight />}{handingOff ? pick("处理中", "Processing") : format("继续批量优化（{count} 张）", "Continue to batch optimization ({count})", { count: queue.length })}</Button></div> : null}
+          {queue.length ? <div className="flex flex-col gap-3 rounded-xl border border-cyan-300/25 bg-cyan-300/[.055] p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-semibold text-zinc-100">{embedded ? pick("需要统一格式或压缩？", "Need consistent output or compression?") : pick("下一步：批量优化与交付", "Next: batch optimization and delivery")}</p><p className="mt-1 text-xs leading-5 text-zinc-500">{pick("已保存的修图结果会优先进入输出工具，未编辑图片会保持当前版本。", "Saved edits move to the output tool; unedited images keep their current version.")}</p></div><Button className="shrink-0" disabled={handingOff} onClick={() => void continueToBatchOptimizer()}>{handingOff ? <LoaderCircle className="animate-spin" /> : <ArrowRight />}{handingOff ? pick("处理中", "Processing") : embedded ? format("把当前批次交给输出工具（{count} 张）", "Send current batch to output ({count})", { count: queue.length }) : format("继续批量优化（{count} 张）", "Continue to batch optimization ({count})", { count: queue.length })}</Button></div> : null}
           {pasteError ? <p role="alert" className="text-sm text-red-400">{pasteError}</p> : null}
           <div className="flex flex-wrap gap-2 font-mono text-[11px] uppercase tracking-[.14em] text-zinc-600"><span>JPG</span><span>PNG</span><span>WEBP</span><span>·</span><span>{format("最多 {count} 张 / 每张 25MB", "Up to {count} images / 25MB each", { count: IMAGE_PIPELINE_BATCH_MAX_ITEMS })}</span></div>
         </CardContent>

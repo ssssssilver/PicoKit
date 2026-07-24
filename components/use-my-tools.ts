@@ -13,7 +13,7 @@ import {
   writeMyToolsState,
   type MyToolsState,
 } from "@/lib/my-tools"
-import { allTools } from "@/lib/site"
+import { visibleTools as allTools } from "@/lib/site"
 
 const knownToolHrefs = allTools.map((tool) => tool.href)
 const serverSnapshot = createEmptyMyToolsState()

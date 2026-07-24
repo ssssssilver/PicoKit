@@ -1,51 +1,101 @@
 "use client"
 
-import Link from "next/link"
-import { ArrowRight, CheckCircle2 } from "lucide-react"
+import { Check, ImageDown, Paintbrush, Scissors, type LucideIcon } from "lucide-react"
 
 import { useLanguage } from "@/components/language-provider"
+import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
-type WorkflowStep = "remove" | "edit" | "optimize"
+export type ImageWorkflowPanel = "remove" | "edit" | "optimize"
 
-const steps: Array<{ id: WorkflowStep; href: string; zh: string; en: string }> = [
-  { id: "remove", href: "/remove-background", zh: "批量去背景", en: "Batch remove" },
-  { id: "edit", href: "/image-editor", zh: "批量快速修图", en: "Batch quick edit" },
-  { id: "optimize", href: "/image-compressor", zh: "批量优化", en: "Batch optimize" },
+const panels: Array<{
+  id: ImageWorkflowPanel
+  icon: LucideIcon
+  title: { zh: string; en: string }
+  description: { zh: string; en: string }
+}> = [
+  {
+    id: "remove",
+    icon: Scissors,
+    title: { zh: "去背景与成品", en: "Remove & finish" },
+    description: { zh: "去背、修边、换背景", en: "Cut out, refine, replace" },
+  },
+  {
+    id: "edit",
+    icon: Paintbrush,
+    title: { zh: "快速修图", en: "Quick edit" },
+    description: { zh: "裁剪、调色、标注、打码", en: "Crop, tune, annotate, redact" },
+  },
+  {
+    id: "optimize",
+    icon: ImageDown,
+    title: { zh: "输出与下载", en: "Output & download" },
+    description: { zh: "格式、尺寸、质量、ZIP", en: "Format, size, quality, ZIP" },
+  },
 ]
 
-export function ImageWorkflowNav({ active }: { active: WorkflowStep }) {
-  const { pick } = useLanguage()
-  const activeIndex = steps.findIndex((step) => step.id === active)
+export function ImageWorkflowNav({
+  active,
+  counts,
+  visited,
+  onSelect,
+}: {
+  active: ImageWorkflowPanel
+  counts: Record<ImageWorkflowPanel, number>
+  visited: ReadonlySet<ImageWorkflowPanel>
+  onSelect: (panel: ImageWorkflowPanel) => void
+}) {
+  const { pick, format } = useLanguage()
 
   return (
-    <section className="mb-6 overflow-hidden rounded-xl border border-cyan-300/20 bg-cyan-300/[.035]" aria-label={pick("图片批量处理", "Batch Image Processing")}>
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-4 py-3">
+    <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm" aria-label={pick("图片批量处理工具", "Batch image processing tools")}>
+      <div className="flex flex-col gap-3 border-b border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div>
-          <p className="text-sm font-semibold text-zinc-100">{pick("图片批量处理", "Batch Image Processing")}</p>
-          <p className="mt-0.5 text-xs text-zinc-500">{pick("每一步都在当前浏览器运行；使用结果页按钮可把整批图片直接接力到下一步。", "Every step runs in this browser; result actions pass the full image batch directly to the next tool.")}</p>
+          <p className="text-sm font-semibold text-foreground">{pick("选择本批次要使用的工具", "Choose tools for this batch")}</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">{pick("三个工具都可跳过；切换回来时，当前页面内的队列仍会保留。", "Every tool is optional. Return to a panel and its queue remains available on this page.")}</p>
         </div>
-        <span className="rounded-full border border-cyan-300/20 px-2.5 py-1 font-mono text-[9px] uppercase tracking-[.14em] text-cyan-300">On-device</span>
+        <Badge variant="outline" className="w-fit border-cyan-500/25 bg-cyan-500/[.07] text-cyan-700 dark:text-cyan-300">
+          {format("当前工具 {count} 张", "{count} images in current tool", { count: counts[active] })}
+        </Badge>
       </div>
-      <ol className="grid md:grid-cols-3" dir="ltr">
-        {steps.map((step, index) => {
-          const current = step.id === active
-          const completed = index < activeIndex
+      <div role="tablist" aria-label={pick("图片处理工具", "Image processing tools")} className="grid md:grid-cols-3" dir="ltr">
+        {panels.map((panel) => {
+          const Icon = panel.icon
+          const current = panel.id === active
+          const wasVisited = visited.has(panel.id)
           return (
-            <li key={step.id} className="relative min-w-0 border-b border-white/10 last:border-b-0 md:border-b-0 md:border-r md:last:border-r-0">
-              <Link href={step.href} aria-current={current ? "step" : undefined} className={cn("group flex h-full min-h-16 items-center gap-3 px-4 py-3 transition hover:bg-white/[.035]", current && "bg-cyan-300/[.075]")}>
-                <span className={cn("grid size-7 shrink-0 place-items-center rounded-full border font-mono text-[10px]", current ? "border-cyan-300 bg-cyan-300 text-[#07111f]" : completed ? "border-emerald-300/40 text-emerald-300" : "border-white/15 text-zinc-500")}>
-                  {completed ? <CheckCircle2 className="size-4" /> : index + 1}
+            <button
+              key={panel.id}
+              type="button"
+              role="tab"
+              aria-selected={current}
+              aria-controls={`image-workspace-panel-${panel.id}`}
+              onClick={() => onSelect(panel.id)}
+              className={cn(
+                "group relative flex min-h-24 items-center gap-3 border-b border-border px-4 py-4 text-left transition last:border-b-0 hover:bg-muted/45 md:border-b-0 md:border-r md:last:border-r-0",
+                current && "bg-cyan-500/[.08]",
+              )}
+            >
+              <span className={cn(
+                "grid size-10 shrink-0 place-items-center rounded-xl border transition",
+                current
+                  ? "border-cyan-500/35 bg-cyan-500 text-white"
+                  : "border-border bg-muted/40 text-muted-foreground group-hover:text-foreground",
+              )}>
+                <Icon className="size-5" />
+              </span>
+              <span className="min-w-0 flex-1" dir="auto">
+                <span className={cn("flex items-center gap-2 text-sm font-semibold", current ? "text-cyan-700 dark:text-cyan-200" : "text-foreground")}>
+                  {pick(panel.title.zh, panel.title.en)}
+                  {!current && wasVisited ? <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" aria-label={pick("已使用", "Visited")} /> : null}
                 </span>
-                <span className="min-w-0" dir="auto">
-                  <span className={cn("block truncate text-xs font-semibold", current ? "text-cyan-200" : "text-zinc-300")}>{pick(step.zh, step.en)}</span>
-                </span>
-                {index < steps.length - 1 ? <ArrowRight className="ml-auto hidden size-3.5 shrink-0 text-zinc-700 md:block" /> : null}
-              </Link>
-            </li>
+                <span className="mt-1 block text-xs leading-5 text-muted-foreground">{pick(panel.description.zh, panel.description.en)}</span>
+              </span>
+              {counts[panel.id] ? <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-[10px] text-muted-foreground">{counts[panel.id]}</span> : null}
+            </button>
           )
         })}
-      </ol>
+      </div>
     </section>
   )
 }

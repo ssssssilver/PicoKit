@@ -30,7 +30,7 @@ test("server-renders the TabNative homepage and security headers", async () => {
   assert.equal(response.headers.get("referrer-policy"), "strict-origin-when-cross-origin")
   const html = await response.text()
   assert.match(html, /TabNative/)
-  assert.match(html, /一批图片，三步完成交付。/)
+  assert.match(html, /一批图片，一个工作台。/)
   const htmlWithoutLegacyRepositoryUrl = html.replaceAll("https://github.com/ssssssilver/PicoKit", "")
   assert.doesNotMatch(htmlWithoutLegacyRepositoryUrl, /PicoKit/)
   assert.match(html, /href="https:\/\/github\.com\/ssssssilver\/PicoKit"/)
@@ -66,8 +66,8 @@ for (const [pathname, marker] of [
   ["/remove-c2pa-content-credentials", "C2PA"],
   ["/remove-made-with-ai-label", "Made with AI"],
   ["/gemini-watermark-remover", "AI"],
-  ["/image-compressor", "批量图片优化与交付"],
-  ["/image-editor", "快速修图、标注与打码"],
+  ["/image-compressor", "图片批量处理"],
+  ["/image-editor", "图片批量处理"],
   ["/image-wobble-maker", "图片晃动动画"],
   ["/resize-image-to-kb", "把图片压缩到目标大小"],
   ["/remove-background", "图片批量处理"],
@@ -105,13 +105,15 @@ for (const [pathname, marker] of [
   })
 }
 
-test("batch image processing exposes one mode-free removal flow", async () => {
+test("batch image processing exposes one optional-tool workspace", async () => {
   const response = await render("/remove-background")
   assert.equal(response.status, 200)
   const html = await response.text()
   assert.match(html, /图片批量处理/)
-  assert.match(html, /随后可直接继续修图/)
-  assert.match(html, /自动识别主要主体/)
-  assert.match(html, /4\.6 MB/)
+  assert.match(html, /一批图片，一个工作台/)
+  assert.match(html, /三个工具都可跳过/)
+  assert.match(html, /去背景与成品/)
+  assert.match(html, /快速修图/)
+  assert.match(html, /输出与下载/)
   assert.doesNotMatch(html, /人物与物体一键去背景|人像背景移除|通用物体去背景|BEN2|RMBG-2\.0/)
 })

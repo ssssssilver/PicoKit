@@ -6,7 +6,7 @@ import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react"
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 
 import { useLanguage } from "@/components/language-provider"
-import { allTools, toolCategories } from "@/lib/site"
+import { toolCategories, visibleTools as allTools } from "@/lib/site"
 
 type HeroSlide = {
   id: string
@@ -22,8 +22,8 @@ export const homeHeroSlides: HeroSlide[] = [
   {
     id: "image-delivery",
     eyebrow: { zh: "特色功能 · 图片批量处理", en: "Batch Image Processing" },
-    title: { zh: "一批图片，三步完成交付。", en: "One image batch. Three browser steps." },
-    description: { zh: "批量去背景并逐项修边，整批接力到快速修图，再统一优化格式、尺寸与文件大小。队列在步骤间保留，文件始终留在你的设备上。", en: "Remove backgrounds and refine edges, pass the full batch to quick editing, then optimize format, dimensions, and file size together. The queue stays available between steps and files remain on your device." },
+    title: { zh: "一批图片，一个工作台。", en: "One image batch. One browser workspace." },
+    description: { zh: "图片只需导入一次；按需使用去背景与修边、逐张快速修图、格式转换和压缩下载。工具可以跳过，切换回来队列仍在，文件始终留在你的设备上。", en: "Import images once, then use background removal and refinement, per-image quick edits, format conversion, and compressed downloads only when needed. Skip any tool, return to saved queues, and keep files on your device." },
     action: { zh: "开始批量处理图片", en: "Open Batch Image Processing" },
     href: "/remove-background",
     imageSrc: "/illustrations/hero-image-workspace.webp",

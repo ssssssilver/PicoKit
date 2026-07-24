@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation"
 import { useEffect } from "react"
 
 import { myToolsChangedEvent, readMyToolsState, recordRecentTool, writeMyToolsState } from "@/lib/my-tools"
-import { allTools } from "@/lib/site"
+import { visibleTools as allTools } from "@/lib/site"
 
 const knownToolHrefs = allTools.map((tool) => tool.href)
 const knownToolHrefSet = new Set(knownToolHrefs)

@@ -17,7 +17,7 @@ import { useLanguage } from "@/components/language-provider";
 import { useMyTools } from "@/components/use-my-tools";
 import { matchesLocalizedQuery } from "@/lib/localized-search";
 import {
-  allTools,
+  visibleTools as allTools,
   commonTools,
   toolCategories,
   type SiteTool,

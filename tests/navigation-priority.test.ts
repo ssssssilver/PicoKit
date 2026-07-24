@@ -1,20 +1,20 @@
 import { describe, expect, it } from "vitest"
 
 import { heroRotationMs, homeHeroSlides, nextHeroSlideIndex } from "@/components/home-hero-banner"
-import { allTools, commonToolHrefs, commonTools } from "@/lib/site"
+import { commonToolHrefs, commonTools, visibleTools } from "@/lib/site"
 
 describe("tool navigation priority", () => {
   it("keeps a compact, valid, and intentionally ordered common-tool set", () => {
-    expect(commonTools).toHaveLength(9)
+    expect(commonTools).toHaveLength(7)
     expect(new Set(commonToolHrefs).size).toBe(commonToolHrefs.length)
     expect(commonTools.map((tool) => tool.href)).toEqual([...commonToolHrefs])
-    expect(commonToolHrefs.every((href) => allTools.some((tool) => tool.href === href))).toBe(true)
+    expect(commonToolHrefs.every((href) => visibleTools.some((tool) => tool.href === href))).toBe(true)
     expect(commonToolHrefs).toContain("/image-wobble-maker")
   })
 
   it("leaves non-common tools available through the expanded directory", () => {
     const commonHrefs = new Set(commonToolHrefs)
-    expect(allTools.filter((tool) => !commonHrefs.has(tool.href as typeof commonToolHrefs[number]))).toHaveLength(25)
+    expect(visibleTools.filter((tool) => !commonHrefs.has(tool.href as typeof commonToolHrefs[number]))).toHaveLength(25)
   })
 
   it("keeps the rotating homepage banner complete and navigable", () => {
@@ -32,9 +32,11 @@ describe("tool navigation priority", () => {
       "/illustrations/hero-ai-image-detection.webp",
     ])
     expect(homeHeroSlides.some((slide) => slide.href === "/image-compressor")).toBe(false)
-    expect(homeHeroSlides[0].description.zh).toContain("批量去背景")
+    expect(homeHeroSlides[0].title.zh).toContain("一个工作台")
+    expect(homeHeroSlides[0].description.zh).toContain("去背景")
     expect(homeHeroSlides[0].description.zh).toContain("快速修图")
-    expect(homeHeroSlides[0].description.zh).toContain("队列在步骤间保留")
+    expect(homeHeroSlides[0].description.zh).toContain("工具可以跳过")
+    expect(homeHeroSlides[0].description.zh).toContain("切换回来队列仍在")
     expect(heroRotationMs).toBeGreaterThanOrEqual(5_000)
     expect(nextHeroSlideIndex(0, -1)).toBe(homeHeroSlides.length - 1)
     expect(nextHeroSlideIndex(homeHeroSlides.length - 1, 1)).toBe(0)

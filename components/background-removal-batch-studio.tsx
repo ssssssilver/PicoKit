@@ -36,8 +36,17 @@ type StoredQueueItem = Omit<QueueItem, "previewUrl" | "result"> & { result?: Sto
 type BackgroundQueueSnapshot = { items: StoredQueueItem[] }
 type WorkerMessage = { type: "progress" | "status" | "result" | "error"; stage?: string; progress?: number; buffer?: ArrayBuffer; width?: number; height?: number; backend?: string; code?: string }
 
+export type BackgroundRemovalBatchStudioProps = {
+  initialFiles?: readonly File[]
+  embedded?: boolean
+  onBatchChange?: (files: readonly File[]) => void
+  onBusyChange?: (busy: boolean) => void
+  onContinue?: (files: readonly File[]) => void
+}
+
 const MAX_TOTAL_BYTES = 150 * 1024 * 1024
 const MAX_FILE_BYTES = 15 * 1024 * 1024
+const emptyInitialFiles: readonly File[] = []
 
 function deliveryResult(result: RemovalResult) {
   return result.finish ?? result
@@ -49,7 +58,13 @@ function deliveryName(fileName: string, result: RemovalResult) {
     : backgroundRemovalOutputName(fileName)
 }
 
-export function BackgroundRemovalBatchStudio() {
+export function BackgroundRemovalBatchStudio({
+  initialFiles = emptyInitialFiles,
+  embedded = false,
+  onBatchChange,
+  onBusyChange,
+  onContinue,
+}: BackgroundRemovalBatchStudioProps = {}) {
   const { pick, format } = useLanguage()
   const router = useRouter()
   const workflowMemory = useImageWorkflowMemory()
@@ -58,6 +73,7 @@ export function BackgroundRemovalBatchStudio() {
   const pickRef = useRef(pick)
   const workerRef = useRef<Worker | null>(null)
   const queueRef = useRef<QueueItem[]>([])
+  const initialFilesSeenRef = useRef(new WeakSet<File>())
   const stopRef = useRef(false)
   const mountedRef = useRef(true)
   const [queue, setQueue] = useState<QueueItem[]>([])
@@ -149,7 +165,7 @@ export function BackgroundRemovalBatchStudio() {
     replaceQueue((items) => items.map((item) => item.id === id ? update(item) : item))
   }, [replaceQueue])
 
-  async function addFiles(files: readonly File[]) {
+  const addFiles = useCallback(async (files: readonly File[]) => {
     if (!files.length || running || adding) return
     flushSync(() => {
       setAdding(true)
@@ -188,7 +204,33 @@ export function BackgroundRemovalBatchStudio() {
     setNotice(accepted.length ? format("已加入 {count} 张图片。", "{count} images added.", { count: accepted.length }) : "")
     setError(rejected.slice(0, 3).join("；"))
     setAdding(false)
-  }
+  }, [adding, format, pick, replaceQueue, running])
+
+  useEffect(() => {
+    if (running || adding) return
+    const fresh = initialFiles.filter((file) => {
+      if (initialFilesSeenRef.current.has(file)) return false
+      initialFilesSeenRef.current.add(file)
+      return true
+    })
+    if (fresh.length) void addFiles(fresh)
+  }, [addFiles, adding, initialFiles, running])
+
+  useEffect(() => {
+    onBatchChange?.(queue.map((item) => {
+      if (!item.result || item.status !== "done") return item.file
+      const output = deliveryResult(item.result)
+      return new File([output.blob], deliveryName(item.file.name, item.result), {
+        type: output.blob.type || "image/png",
+        lastModified: item.file.lastModified,
+      })
+    }))
+  }, [onBatchChange, queue])
+
+  useEffect(() => {
+    onBusyChange?.(running || adding || loadingSample || zipping || handingOff)
+    return () => onBusyChange?.(false)
+  }, [adding, handingOff, loadingSample, onBusyChange, running, zipping])
 
   async function loadSample() {
     if (running || adding || loadingSample) return
@@ -401,6 +443,17 @@ export function BackgroundRemovalBatchStudio() {
 
   async function continueToBatchEditor() {
     if (!completed.length || handingOff || running) return
+    const files = completed.map((item) => {
+      const output = deliveryResult(item.result)
+      return new File([output.blob], deliveryName(item.file.name, item.result), {
+        type: output.blob.type || "image/png",
+        lastModified: item.file.lastModified,
+      })
+    })
+    if (onContinue) {
+      onContinue(files)
+      return
+    }
     setHandingOff(true)
     setError("")
     try {
@@ -417,7 +470,7 @@ export function BackgroundRemovalBatchStudio() {
 
   return <div className="space-y-6">
     <Card className="border-cyan-300/20 bg-cyan-300/[.035] shadow-none">
-      <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Images className="size-4 text-cyan-300" />{pick("批量移除背景", "Batch background removal")}</CardTitle><p className="text-sm text-zinc-500">{pick("一次加入多张图片，按顺序处理，避免同时占用过多显存和内存。", "Add multiple images and process them sequentially to limit GPU and memory use.")}</p></CardHeader>
+      <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Images className="size-4 text-cyan-300" />{embedded ? pick("去背景与成品", "Background removal and finishing") : pick("批量移除背景", "Batch background removal")}</CardTitle><p className="text-sm text-zinc-500">{pick("一次加入多张图片，按顺序处理，避免同时占用过多显存和内存。", "Add multiple images and process them sequentially to limit GPU and memory use.")}</p></CardHeader>
       <CardContent className="space-y-4">
         <button type="button" aria-busy={adding || loadingSample} disabled={running || adding || loadingSample} onClick={() => inputRef.current?.click()} onDragEnter={(event) => { event.preventDefault(); setDragging(true) }} onDragOver={(event) => event.preventDefault()} onDragLeave={() => setDragging(false)} onDrop={(event) => { event.preventDefault(); setDragging(false); void addFiles(Array.from(event.dataTransfer.files)) }} className={`flex min-h-36 w-full flex-col items-center justify-center rounded-xl border border-dashed px-5 text-center transition ${adding || loadingSample ? "border-cyan-300/60 bg-cyan-300/[.08]" : dragging ? "border-cyan-300 bg-cyan-300/10" : "border-white/15 bg-white/[.025] hover:border-cyan-300/45"}`}>
           {adding || loadingSample ? <LoaderCircle className="size-8 animate-spin text-cyan-300" /> : <Upload className="size-8 text-cyan-300" />}<span className="mt-3 text-sm font-semibold text-zinc-100">{loadingSample ? pick("正在载入示例", "Loading sample") : adding ? pick("正在检查图片", "Checking images") : pick("拖入多张图片，或点击选择", "Drop multiple images, or click to choose")}</span><span className="mt-1 text-xs text-zinc-500">JPG · PNG · WEBP · {format("最多 {count} 张", "Up to {count} images", { count: IMAGE_PIPELINE_BATCH_MAX_ITEMS })}</span>
@@ -453,7 +506,7 @@ export function BackgroundRemovalBatchStudio() {
       })}</ol>
       {running ? <div className="space-y-2"><div className="flex justify-between text-xs text-zinc-500"><span>{processed + 1} / {queue.length}</span><span>{itemProgress}%</span></div><Progress value={itemProgress} /></div> : null}
       {notice ? <p role="status" className="text-sm text-zinc-500">{notice}</p> : null}{error ? <Alert variant="destructive"><OctagonX /><AlertTitle>{pick("部分操作未完成", "Some actions did not finish")}</AlertTitle><AlertDescription>{error}</AlertDescription></Alert> : null}
-      <div className="flex flex-wrap gap-3 border-t border-white/10 pt-4"><Button size="lg" disabled={running || zipping || handingOff} onClick={() => void processQueue()}><Play />{pick("开始批量去背景", "Start batch removal")}</Button>{running ? <Button size="lg" variant="outline" onClick={() => { stopRef.current = true }}><Square />{pick("处理完当前项后停止", "Stop after current")}</Button> : null}<Button size="lg" variant="outline" disabled={!completed.length || running || zipping || handingOff} onClick={() => void downloadZip()}>{zipping ? <LoaderCircle className="animate-spin" /> : <Archive />}{format("下载 ZIP（{count} 张）", "Download ZIP ({count})", { count: completed.length })}</Button><Button size="lg" disabled={!completed.length || running || zipping || handingOff} onClick={() => void continueToBatchEditor()}>{handingOff ? <LoaderCircle className="animate-spin" /> : <ArrowRight />}{handingOff ? pick("处理中", "Processing") : format("继续批量快速修图（{count} 张）", "Continue to batch quick editing ({count})", { count: completed.length })}</Button></div>
+      <div className="flex flex-wrap gap-3 border-t border-white/10 pt-4"><Button size="lg" disabled={running || zipping || handingOff} onClick={() => void processQueue()}><Play />{pick("开始批量去背景", "Start batch removal")}</Button>{running ? <Button size="lg" variant="outline" onClick={() => { stopRef.current = true }}><Square />{pick("处理完当前项后停止", "Stop after current")}</Button> : null}<Button size="lg" variant="outline" disabled={!completed.length || running || zipping || handingOff} onClick={() => void downloadZip()}>{zipping ? <LoaderCircle className="animate-spin" /> : <Archive />}{format("下载 ZIP（{count} 张）", "Download ZIP ({count})", { count: completed.length })}</Button><Button size="lg" disabled={!completed.length || running || zipping || handingOff} onClick={() => void continueToBatchEditor()}>{handingOff ? <LoaderCircle className="animate-spin" /> : <ArrowRight />}{handingOff ? pick("处理中", "Processing") : embedded ? format("把当前结果交给快速修图（{count} 张）", "Send current results to quick editing ({count})", { count: completed.length }) : format("继续批量快速修图（{count} 张）", "Continue to batch quick editing ({count})", { count: completed.length })}</Button></div>
     </CardContent></Card> : null}
 
     {selectedItem ? <section ref={refinementRef} className="scroll-mt-24 space-y-3" aria-label={pick("当前去背结果编辑", "Edit selected background-removed result")}>

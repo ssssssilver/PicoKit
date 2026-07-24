@@ -64,6 +64,7 @@ export type SiteTool = {
   category: ToolCategory
   runtime?: string
   featured?: boolean
+  hidden?: boolean
 }
 
 export const primaryTools: SiteTool[] = [
@@ -114,12 +115,12 @@ export const primaryTools: SiteTool[] = [
 
 export const utilityTools: SiteTool[] = [
   { href: "/3d-model-converter", title: "3D 模型转换与预览", titleEn: "3D Model Converter & Viewer", description: "本地预览 GLB、glTF、OBJ、FBX、STL、PLY，并导出常用交换格式。", descriptionEn: "Preview GLB, glTF, OBJ, FBX, STL, and PLY locally, then export common exchange formats.", icon: Box, category: "model", runtime: "WEBGL / BROWSER", featured: true },
-  { href: "/remove-background", title: "图片批量处理", titleEn: "Batch Image Processing", description: "一次导入最多 30 张图片，连续完成去背景、修边、换背景、成品编辑、逐张修图和打包下载。", descriptionEn: "Import once, then move the same batch through background removal, edge refinement, background replacement, finish editing, quick editing, and packaged delivery.", icon: Scissors, category: "image", runtime: "ONNX / CANVAS / WORKER", featured: true },
+  { href: "/remove-background", title: "图片批量处理", titleEn: "Batch Image Processing", description: "一次导入最多 30 张图片，在同一工作台按需去背景、快速修图、转换压缩并打包下载。", descriptionEn: "Import up to 30 images once, then remove backgrounds, make quick edits, convert, compress, and package downloads in one workspace.", icon: Scissors, category: "image", runtime: "ONNX / CANVAS / WORKER", featured: true },
   { href: "/remove-ai-metadata-from-image", title: "清理 AI 元数据", titleEn: "Remove AI Metadata", description: "移除命中的生成器、工作流、提示词与 AI 来源字段。", descriptionEn: "Remove matched generator, workflow, prompt, and AI provenance fields.", icon: ShieldCheck, category: "privacy" },
   { href: "/remove-c2pa-content-credentials", title: "清理 C2PA", titleEn: "Remove C2PA", description: "删除 C2PA/JUMBF 容器并验证像素载荷保持一致。", descriptionEn: "Remove C2PA/JUMBF containers and verify the pixel payload stays unchanged.", icon: FileSearch, category: "privacy" },
   { href: "/remove-made-with-ai-label", title: "清理 AI 标签信号", titleEn: "Remove AI Label Signals", description: "选择性清理 DigitalSourceType 与 Made with AI 触发字段。", descriptionEn: "Selectively remove DigitalSourceType and Made with AI metadata triggers.", icon: FileImage, category: "privacy" },
-  { href: "/image-compressor", title: "批量图片优化与交付", titleEn: "Batch Image Optimizer", description: "批量调整格式、尺寸、质量与目标大小，并统一命名或打包下载。", descriptionEn: "Batch-adjust format, dimensions, quality, and target size, then rename or download results together.", icon: ImageDown, category: "image", runtime: "CANVAS / WORKER", featured: true },
-  { href: "/image-editor", title: "批量快速修图与标注", titleEn: "Batch Quick Image Editor", description: "多图逐张修图并保存最新版本，再整批接力到图片优化。", descriptionEn: "Edit images one by one, save their latest versions, then pass the full batch to image optimization.", icon: ImageIcon, category: "image", runtime: "FABRIC.JS / CANVAS", featured: true },
+  { href: "/image-compressor", title: "批量图片优化与交付", titleEn: "Batch Image Optimizer", description: "批量调整格式、尺寸、质量与目标大小，并统一命名或打包下载。", descriptionEn: "Batch-adjust format, dimensions, quality, and target size, then rename or download results together.", icon: ImageDown, category: "image", runtime: "CANVAS / WORKER", featured: true, hidden: true },
+  { href: "/image-editor", title: "批量快速修图与标注", titleEn: "Batch Quick Image Editor", description: "多图逐张修图并保存最新版本，再整批接力到图片优化。", descriptionEn: "Edit images one by one, save their latest versions, then pass the full batch to image optimization.", icon: ImageIcon, category: "image", runtime: "FABRIC.JS / CANVAS", featured: true, hidden: true },
   { href: "/image-wobble-maker", title: "图片晃动动画", titleEn: "Image Wobble Animator", description: "涂抹需要运动的区域，实时预览弹性晃动并在本地导出 GIF 或视频。", descriptionEn: "Paint the areas that should move, preview elastic wobble, and export a GIF or video locally.", icon: Waves, category: "image", runtime: "CANVAS / MEDIARECORDER", featured: true },
   { href: "/resize-image-to-kb", title: "压缩到目标大小", titleEn: "Target-size Image Compressor", description: "搜索合适的尺寸与编码质量，尽量不超过目标文件大小。", descriptionEn: "Find a combination of dimensions and encoding quality that stays under a target file size.", icon: Gauge, category: "image" },
   { href: "/color-tools", title: "颜色与调色板", titleEn: "Color & Palette Tools", description: "转换颜色格式、检查对比度，并从图片提取主要颜色。", descriptionEn: "Convert color formats, check contrast, and extract dominant image colors.", icon: Palette, category: "image" },
@@ -146,12 +147,11 @@ export const utilityTools: SiteTool[] = [
 ]
 
 export const allTools = [...primaryTools, ...utilityTools]
+export const visibleTools = allTools.filter((tool) => !tool.hidden)
 
 export const commonToolHrefs = [
   "/remove-background",
   "/ai-image-detector",
-  "/image-compressor",
-  "/image-editor",
   "/image-wobble-maker",
   "/resize-image-to-kb",
   "/pdf-tools",
@@ -159,7 +159,7 @@ export const commonToolHrefs = [
   "/qr-code-tool",
 ] as const
 
-export const commonTools = commonToolHrefs.map((href) => allTools.find((tool) => tool.href === href)!)
+export const commonTools = commonToolHrefs.map((href) => visibleTools.find((tool) => tool.href === href)!)
 
 export function getCategory(id: ToolCategory) {
   return toolCategories.find((category) => category.id === id)!
