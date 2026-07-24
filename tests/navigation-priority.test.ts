@@ -18,19 +18,18 @@ describe("tool navigation priority", () => {
   })
 
   it("keeps the rotating homepage banner complete and navigable", () => {
-    expect(homeHeroSlides).toHaveLength(3)
+    expect(homeHeroSlides).toHaveLength(2)
     expect(new Set(homeHeroSlides.map((slide) => slide.id)).size).toBe(homeHeroSlides.length)
     expect(homeHeroSlides.every((slide) => slide.href.startsWith("/") && slide.title.zh && slide.title.en)).toBe(true)
     expect(homeHeroSlides[0]).toMatchObject({ id: "image-delivery", href: "/remove-background" })
     expect(homeHeroSlides[0].eyebrow).toMatchObject({ zh: expect.stringContaining("图片批量处理"), en: "Batch Image Processing" })
     expect(homeHeroSlides[1]).toMatchObject({ id: "documents", href: "/pdf-tools" })
     expect(homeHeroSlides[1].eyebrow).toMatchObject({ zh: expect.stringContaining("PDF 批量处理"), en: "Batch PDF Processing" })
-    expect(homeHeroSlides[2]).toMatchObject({ id: "inspection", href: "/ai-image-detector" })
     expect(homeHeroSlides.map((slide) => slide.imageSrc)).toEqual([
       "/illustrations/hero-image-workspace.webp",
       "/illustrations/hero-pdf-workspace.webp",
-      "/illustrations/hero-ai-image-detection.webp",
     ])
+    expect(homeHeroSlides.some((slide) => slide.href === "/ai-image-detector")).toBe(false)
     expect(homeHeroSlides.some((slide) => slide.href === "/image-compressor")).toBe(false)
     expect(homeHeroSlides[0].title.zh).toContain("一个工作台")
     expect(homeHeroSlides[0].description.zh).toContain("去背景")
