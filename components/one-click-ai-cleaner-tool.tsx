@@ -195,7 +195,7 @@ export function OneClickAiCleanerTool() {
             {pick("选择要清理的图片", "Choose an image to clean")}
           </CardTitle>
           <p className="text-sm leading-6 text-zinc-500">{pick(
-            "清理支持的 AI 角标与来源字段，并进行轻量图像交付优化。",
+            "清理支持的可见 AI 角标和相关元数据，再重新编码导出。",
             "Clean supported AI marks and provenance fields, then apply a light image-delivery normalization.",
           )}</p>
         </CardHeader>
@@ -225,13 +225,13 @@ export function OneClickAiCleanerTool() {
           </div>
           <div className="space-y-5 p-5 sm:p-6">
             <div>
-              <Badge variant="outline" className="border-cyan-300/25 text-cyan-200">{pick("一键清理范围", "One-click cleanup scope")}</Badge>
-              <h2 className="mt-3 text-xl font-semibold text-zinc-100">{pick("清理 AI 痕迹并优化图像交付", "Clean AI traces and normalize image delivery")}</h2>
+              <Badge variant="outline" className="border-cyan-300/25 text-cyan-200">{pick("可清理的内容", "One-click cleanup scope")}</Badge>
+              <h2 className="mt-3 text-xl font-semibold text-zinc-100">{pick("清理 AI 图片标记并重新导出", "Clean AI traces and normalize image delivery")}</h2>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
               <ScopeItem icon={<Sparkles />} title={pick("可见 AI 角标", "Visible AI marks")} description={pick("Gemini、豆包、即梦", "Gemini, Doubao, and Jimeng")} />
-              <ScopeItem icon={<FileCheck2 />} title={pick("文件来源标记", "File provenance fields")} description={pick("AI 元数据、C2PA、Made with AI", "AI metadata, C2PA, and Made with AI")} />
-              <ScopeItem icon={<ScanSearch />} title={pick("图像交付优化", "Image delivery normalization")} description={pick("重采样、轻量传感器噪声、重新编码", "Resampling, subtle sensor grain, and re-encoding")} />
+               <ScopeItem icon={<FileCheck2 />} title={pick("图片中的 AI 信息", "File provenance fields")} description={pick("AI 元数据、C2PA、Made with AI", "AI metadata, C2PA, and Made with AI")} />
+               <ScopeItem icon={<ScanSearch />} title={pick("重新生成图片", "Image delivery normalization")} description={pick("重新采样并编码导出", "Resampling, subtle sensor grain, and re-encoding")} />
             </div>
             {inspection ? <div className="grid grid-cols-3 gap-3">
               <Info label={pick("格式", "Format")} value={inspection.format} />
@@ -242,7 +242,7 @@ export function OneClickAiCleanerTool() {
               <AlertTriangle className="text-amber-300" />
               <AlertTitle className="text-zinc-100">{pick("处理边界", "Processing boundary")}</AlertTitle>
               <AlertDescription>{pick(
-                "不会伪造相机 EXIF，也不会改变图片的真实来源。交付优化已针对本站检测器复检，但不同平台和模型仍可能得出不同结论。",
+                 "不会伪造相机 EXIF，也不会改变图片的真实来源。处理完成后会检查支持的可见角标是否还在，但不同平台仍可能得出不同结论。",
                 "This does not fabricate camera EXIF or change the image's real origin. The output is verified against this site's visible-mark check, but other platforms and models may still reach different conclusions.",
               )}</AlertDescription>
             </Alert>
@@ -255,7 +255,7 @@ export function OneClickAiCleanerTool() {
             </label>
             <Button size="lg" onClick={clean} disabled={!confirmed || running || !inspection} className="w-full bg-cyan-300 text-black hover:bg-cyan-200 sm:w-auto">
               {running ? <LoaderCircle className="animate-spin" /> : <Eraser />}
-              {running ? pick("正在清理并优化图像交付", "Cleaning and normalizing image delivery") : pick("一键清理 AI 痕迹", "Clean AI traces in one click")}
+              {running ? pick("正在清理并重新生成图片", "Cleaning and normalizing image delivery") : pick("开始清理", "Clean AI traces in one click")}
             </Button>
           </div>
         </div>
@@ -263,9 +263,9 @@ export function OneClickAiCleanerTool() {
 
       {result && resultUrl ? <Card className="border-emerald-400/20 bg-emerald-400/[.035] shadow-none">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base text-emerald-200"><CheckCircle2 className="size-5" />{pick("一键清理完成", "One-click cleanup complete")}</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base text-emerald-200"><CheckCircle2 className="size-5" />{pick("清理完成", "One-click cleanup complete")}</CardTitle>
           <p className="text-sm leading-6 text-zinc-400">{pick(
-            "结果已完成自动清理与复检，可以直接下载或送回检测工具复检。",
+            "图片已重新生成并完成可见角标检查，可以直接下载，也可以再次进行 AI 图片检测。",
             "The result has completed automatic cleanup and verification. Download it directly or send it back to the detector for another check.",
           )}</p>
         </CardHeader>

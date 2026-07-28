@@ -75,7 +75,7 @@ export function LanguageProvider({ children, initialLanguage }: { children: Reac
     const description = document.querySelector<HTMLMetaElement>('meta[name="description"]')
     if (description) {
       description.content = pick(
-        "从原图到可发布成品，全程在浏览器本地处理；批量优化图片、检查 AI 来源证据、整理 PDF，无需登录或上传文件。",
+        "免费在线工具箱：批量处理图片、合并拆分 PDF、生成二维码并使用常用小工具。无需登录，文件不上传。",
         "Take files from source to ready-to-publish entirely in your browser: optimize images in batches, inspect AI provenance evidence, and organize PDFs without an account or uploads.",
       )
     }
@@ -94,20 +94,20 @@ export function LanguageProvider({ children, initialLanguage }: { children: Reac
 
 function titleFor(pathname: string, language: Language, translations?: TranslationMap) {
   const titles: Record<string, [string, string]> = {
-    "/": ["本地图片处理、AI 来源检查与 PDF 工具", "Local image workflows, AI provenance checks, and PDF tools"],
+    "/": ["免费在线工具箱，文件不上传", "Local image workflows, AI provenance checks, and PDF tools"],
     "/ai-tools": ["按任务分类的 AI 工具导航", "AI Tools Directory by Task"],
     "/blog": ["工具使用教程", "Tool Guides and Tutorials"],
     "/ai-text-detector": ["免费 AI 文本检测", "Free AI Text Detector"],
-    "/ai-image-detector": ["AI 图片来源证据检查", "AI Image Provenance Check"],
-    "/one-click-ai-cleaner": ["一键去 AI 痕迹", "One-click AI Trace Cleaner"],
+    "/ai-image-detector": ["AI 图片检测", "AI Image Provenance Check"],
+    "/one-click-ai-cleaner": ["清理 AI 图片标记", "One-click AI Trace Cleaner"],
     "/image-metadata-checker": ["AI 图片来源与 C2PA 检查", "AI Image Provenance and C2PA Check"],
-    "/gemini-watermark-remover": ["AI 可见水印处理", "Visible AI Watermark Tool"],
-    "/ai-watermark-remover": ["AI 可见水印处理", "Visible AI Watermark Tool"],
-    "/remove-ai-metadata-from-image": ["清理图片 AI 元数据", "Remove AI Metadata from Images"],
-    "/remove-c2pa-content-credentials": ["清理 C2PA Content Credentials", "Remove C2PA Content Credentials"],
-    "/remove-made-with-ai-label": ["清理 Made with AI 标签信号", "Remove Made with AI Label Signals"],
+    "/gemini-watermark-remover": ["AI 图片水印去除", "Visible AI Watermark Tool"],
+    "/ai-watermark-remover": ["AI 图片水印去除", "Visible AI Watermark Tool"],
+    "/remove-ai-metadata-from-image": ["去除图片 AI 元数据", "Remove AI Metadata from Images"],
+    "/remove-c2pa-content-credentials": ["去除 C2PA 信息", "Remove C2PA Content Credentials"],
+    "/remove-made-with-ai-label": ["去除 Made with AI 信息", "Remove Made with AI Label Signals"],
     "/remove-background": ["图片批量处理", "Batch Image Processing"],
-    "/image-compressor": ["批量图片优化与交付", "Batch Image Optimization and Delivery"],
+    "/image-compressor": ["批量图片压缩与转换", "Batch Image Optimization and Delivery"],
     "/image-editor": ["批量快速修图、标注与打码", "Batch Quick Image Editing, Annotation, and Redaction"],
     "/image-wobble-maker": ["图片晃动动画", "Image Wobble Animator"],
     "/resize-image-to-kb": ["把图片压缩到指定大小", "Compress an Image to a Target File Size"],

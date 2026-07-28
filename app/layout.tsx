@@ -14,10 +14,10 @@ import { defaultTheme, isTheme, themeStorageKey } from "@/lib/theme"
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
-  title: { default: "TabNative — 本地浏览器工具箱", template: "%s | TabNative" },
+  title: { default: "TabNative — 免费在线工具箱，文件不上传", template: "%s | TabNative" },
   description: siteConfig.description,
   applicationName: "TabNative",
-  keywords: ["browser tools", "本地工具箱", "AI detector", "图片处理", "PDF 工具", "C2PA", "3D 模型转换", "密码生成器", "时间戳转换", "单位转换", "SVG 工具", "屏幕录制"],
+  keywords: ["免费在线工具箱", "图片批量处理", "图片去背景", "图片压缩", "PDF 合并", "PDF 拆分", "PDF 转图片", "AI 图片检测", "二维码生成", "3D 模型转换", "密码生成器", "时间戳转换", "单位转换", "SVG 工具", "屏幕录制"],
   openGraph: { title: "TabNative", description: siteConfig.description, type: "website", locale: "zh_CN" },
   twitter: { card: "summary", title: "TabNative", description: siteConfig.description },
   robots: { index: true, follow: true },

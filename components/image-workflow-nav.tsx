@@ -51,8 +51,8 @@ export function ImageWorkflowNav({
     <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm" aria-label={pick("图片批量处理工具", "Batch image processing tools")}>
       <div className="flex flex-col gap-3 border-b border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div>
-          <p className="text-sm font-semibold text-foreground">{pick("选择本批次要使用的工具", "Choose tools for this batch")}</p>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">{pick("三个工具都可跳过；切换回来时，当前页面内的队列仍会保留。", "Every tool is optional. Return to a panel and its queue remains available on this page.")}</p>
+          <p className="text-sm font-semibold text-foreground">{pick("这批图片要怎么处理？", "Choose tools for this batch")}</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">{pick("三个功能可以随时切换，不用按顺序操作；返回时图片和进度都会保留。", "Every tool is optional. Return to a panel and its queue remains available on this page.")}</p>
         </div>
         <Badge variant="outline" className="w-fit border-cyan-500/25 bg-cyan-500/[.07] text-cyan-700 dark:text-cyan-300">
           {format("当前工具 {count} 张", "{count} images in current tool", { count: counts[active] })}

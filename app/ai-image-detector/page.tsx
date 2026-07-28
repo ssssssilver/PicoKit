@@ -7,13 +7,13 @@ import { ToolShell } from "@/components/tool-shell"
 
 export const metadata: Metadata = {
   title: "免费 AI 图片检测器",
-  description: "上传图片后直接判断是否由 AI 生成。检测在浏览器本地完成，图片不会上传；详细依据可按需下载为检测报告。",
+  description: "选择图片后自动检测是否可能由 AI 生成，结果简洁直观；图片不上传，需要时可下载完整 PDF 检测报告。",
 }
 
 export default function Page() {
   return <ToolShell
     title={{ zh: "AI 图片检测", en: "Free AI Image Detector" }}
-    description={{ zh: "选择一张图片，检测它是否由 AI 生成。图片只在当前设备处理，不会上传。", en: "Choose an image to check whether it was AI-generated. It stays on this device and is never uploaded." }}
+    description={{ zh: "选择图片后会自动开始检测，直接告诉你是否可能由 AI 生成。图片不上传，需要详细依据时可下载 PDF 报告。", en: "Choose an image to check whether it was AI-generated. It stays on this device and is never uploaded." }}
     eyebrow="AI Image Detector"
     icon={ScanSearch}
     compactHero

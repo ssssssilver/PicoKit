@@ -4,7 +4,7 @@ import { ImageBatchWorkspacePage } from "@/components/image-batch-workspace-page
 
 export const metadata: Metadata = {
   title: "免费批量图片压缩、转换与目标大小优化",
-  description: "直接打开图片批量处理工作台的输出面板，在浏览器本地批量转换 JPG、PNG、WebP，调整尺寸、质量与目标大小并打包下载。",
+  description: "批量转换 JPG、PNG、WebP，统一调整尺寸、清晰度和目标文件大小，并单独下载或打包为 ZIP；图片不上传。",
 }
 
 export default function Page() {

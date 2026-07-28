@@ -43,7 +43,7 @@ export function PdfTool() {
   }
 
   const tabs = [
-    { id: "workspace" as const, icon: Layers3, label: pick("页面装配", "Page assembly") },
+    { id: "workspace" as const, icon: Layers3, label: pick("合并与整理", "Page assembly") },
     { id: "images" as const, icon: Images, label: pick("图片转 PDF", "Images to PDF") },
     { id: "export" as const, icon: FileImage, label: pick("PDF 转图片", "PDF to images") },
   ]
@@ -53,7 +53,7 @@ export function PdfTool() {
       <Card>
         <CardHeader className="pb-4">
           <CardTitle>{pick("PDF 批量处理", "Batch PDF Processing")}</CardTitle>
-          <p className="text-sm leading-6 text-muted-foreground">{pick("汇入多个 PDF，逐页查看和重组，再按统一规则导出；也可在图片与 PDF 之间进行可预览、可配置的本地转换。", "Bring multiple PDFs into one assembly, inspect and rebuild them page by page, then export under consistent rules. Previewable image conversions remain available.")}</p>
+          <p className="text-sm leading-6 text-muted-foreground">{pick("添加多个 PDF 后，可逐页看大图、调整顺序、旋转、删除或提取，再合并导出；图片转 PDF 和 PDF 转图片也能单独使用。", "Bring multiple PDFs into one assembly, inspect and rebuild them page by page, then export under consistent rules. Previewable image conversions remain available.")}</p>
         </CardHeader>
         <CardContent>
           <div role="tablist" aria-label={pick("PDF 工具模式", "PDF tool modes")} className="grid gap-2 sm:grid-cols-3">
@@ -89,14 +89,14 @@ export function PdfTool() {
 function PdfToolAside({ mode }: { mode: PdfToolMode }) {
   const { pick } = useLanguage()
   const modeLabel = mode === "workspace"
-    ? pick("页面装配", "Page assembly")
+    ? pick("合并与整理", "Page assembly")
     : mode === "images"
       ? pick("图片转 PDF", "Images to PDF")
       : pick("PDF 转图片", "PDF to images")
   const notes = mode === "workspace"
     ? [
         pick("原始 PDF 不会被修改", "Source PDFs are never changed"),
-        pick("缩略图与导出均在后台 Worker 中处理", "Thumbnails and exports run in background Workers"),
+        pick("预览和导出都由浏览器自动处理", "Thumbnails and exports run in background Workers"),
         pick("单个最大 150 MB，整批最大 300 MB，最多 1000 页", "150 MB per file, 300 MB per workspace, up to 1,000 pages"),
       ]
     : mode === "images"
@@ -113,15 +113,15 @@ function PdfToolAside({ mode }: { mode: PdfToolMode }) {
 
   return <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
     <Card>
-      <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-sm"><HardDrive className="size-4 text-cyan-600" />{pick("PDF 本地处理", "Local PDF processing")}</CardTitle></CardHeader>
+      <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-sm"><HardDrive className="size-4 text-cyan-600" />{pick("处理说明", "Local PDF processing")}</CardTitle></CardHeader>
       <CardContent className="space-y-3 text-sm">
         <InfoRow label={pick("当前模式", "Current mode")} value={<span aria-live="polite">{modeLabel}</span>} />
-        <InfoRow label={pick("处理方式", "Processing")} value={pick("后台 Worker", "Background Worker")} />
-        <InfoRow label={pick("文件位置", "File location")} value={pick("仅当前设备", "This device only")} />
+        <InfoRow label={pick("处理方式", "Processing")} value={pick("浏览器自动处理", "Background Worker")} />
+        <InfoRow label={pick("文件位置", "File location")} value={pick("不上传", "This device only")} />
       </CardContent>
     </Card>
     <Card>
-      <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-sm"><LockKeyhole className="size-4 text-cyan-600" />{pick("隐私保证", "Privacy guarantee")}</CardTitle></CardHeader>
+      <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-sm"><LockKeyhole className="size-4 text-cyan-600" />{pick("文件不上传", "Privacy guarantee")}</CardTitle></CardHeader>
       <CardContent><p className="text-sm leading-6 text-muted-foreground">{pick("文件内容不会上传到 TabNative 服务端；关闭页面前请下载需要保留的结果。", "File contents are not uploaded to the TabNative server. Download anything you want to keep before closing the page.")}</p></CardContent>
     </Card>
     <Card>

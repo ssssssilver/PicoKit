@@ -256,7 +256,7 @@ export function PdfWorkspace({
         const file = files[fileIndex]
         setImportProgress({ current: fileIndex + 1, total: files.length, name: file.name })
         if (sources.length + accepted.length >= PDF_MAX_SOURCE_COUNT) {
-          rejected.push(format("工作台最多加入 {count} 个 PDF。", "The workspace accepts up to {count} PDFs.", { count: PDF_MAX_SOURCE_COUNT }))
+          rejected.push(format("一次最多添加 {count} 个 PDF。", "The workspace accepts up to {count} PDFs.", { count: PDF_MAX_SOURCE_COUNT }))
           break
         }
         if (file.size > PDF_MAX_FILE_BYTES) {
@@ -264,12 +264,12 @@ export function PdfWorkspace({
           continue
         }
         if (totalBytes + file.size > PDF_MAX_BATCH_BYTES) {
-          rejected.push(pick("工作台中的 PDF 合计不能超过 300 MB。", "PDFs in the workspace cannot exceed 300 MB in total."))
+          rejected.push(pick("本次添加的 PDF 合计不能超过 300 MB。", "PDFs in the workspace cannot exceed 300 MB in total."))
           break
         }
         const fingerprint = fileFingerprint(file)
         if (known.has(fingerprint)) {
-          rejected.push(format("{name}：已经在工作台中", "{name}: already in the workspace", { name: file.name }))
+          rejected.push(format("{name}：已经添加过了", "{name}: already in the workspace", { name: file.name }))
           continue
         }
         const signature = new TextDecoder("latin1").decode(await file.slice(0, 1_024).arrayBuffer())
@@ -287,7 +287,7 @@ export function PdfWorkspace({
           }
           if (totalPages + pages > PDF_MAX_WORKSPACE_PAGES) {
             preview.releaseSource(id)
-            rejected.push(format("工作台最多处理 {count} 页。", "The workspace supports up to {count} pages.", { count: PDF_MAX_WORKSPACE_PAGES }))
+            rejected.push(format("一次最多处理 {count} 页。", "The workspace supports up to {count} pages.", { count: PDF_MAX_WORKSPACE_PAGES }))
             break
           }
           accepted.push({ id, file, pages, color: sourceColors[(sources.length + accepted.length) % sourceColors.length] })
@@ -416,7 +416,7 @@ export function PdfWorkspace({
   }
 
   function removeSource(source: WorkspaceSource) {
-    if (!window.confirm(format("从工作台移除“{name}”及其所有页面？", 'Remove "{name}" and all of its pages from the workspace?', { name: source.file.name }))) return
+    if (!window.confirm(format("移除“{name}”及其所有页面？", 'Remove "{name}" and all of its pages from the workspace?', { name: source.file.name }))) return
     preview.releaseSource(source.id)
     setSources((current) => current.filter((item) => item.id !== source.id))
     replacePlanAfterSourceChange(pagePlanRef.current.filter((page) => page.sourceId !== source.id))
@@ -824,7 +824,7 @@ export function PdfWorkspace({
   return <div className="space-y-6">
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2"><Layers3 className="size-5 text-cyan-500" />{pick("PDF 页面装配区", "PDF page assembly")}</CardTitle>
+        <CardTitle className="flex items-center gap-2"><Layers3 className="size-5 text-cyan-500" />{pick("PDF 页面整理", "PDF page assembly")}</CardTitle>
         <p className="text-sm leading-6 text-muted-foreground">{pick("添加一个或多个 PDF，在同一页面网格中完成合并、排序、旋转、删除和提取。", "Add one or more PDFs, then merge, reorder, rotate, remove, or extract pages in one workspace.")}</p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -915,7 +915,7 @@ export function PdfWorkspace({
           onDrop={dropPages}
           requestThumbnail={preview.requestThumbnail}
         /> : <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">{pick("所有来源页面都已隐藏，可在来源文件区域重新显示。", "All source pages are hidden. Show them again from Source files.")}</div>}
-        <p className="text-xs leading-5 text-muted-foreground">{pick("单击页面可查看大图并用方向键翻页；Ctrl/Cmd 可多选，Shift 可连续选择，也可以拖动所选页面。页面网格只挂载视口附近的项目，缩略图由后台 Worker 按需生成。", "Click a page for a large preview and use the arrow keys to navigate. Use Ctrl/Cmd for multi-select, Shift for a range, or drag selected pages. The grid mounts only items near the viewport and generates thumbnails on demand in a background Worker.")}</p>
+        <p className="text-xs leading-5 text-muted-foreground">{pick("单击页面可看大图，按左右方向键翻页；按住 Ctrl/Cmd 可多选，按住 Shift 可连续选择，也可以直接拖动页面调整顺序。缩略图会在滚动到附近时自动生成，PDF 页数再多也能正常整理。", "Click a page for a large preview and use the arrow keys to navigate. Use Ctrl/Cmd for multi-select, Shift for a range, or drag selected pages. The grid mounts only items near the viewport and generates thumbnails on demand in a background Worker.")}</p>
       </CardContent>
     </Card> : null}
 
@@ -991,7 +991,7 @@ export function PdfWorkspace({
           {compressionMode !== "structure" ? <Alert className="mt-4 border-amber-500/30 bg-amber-500/[.06] text-amber-950 dark:text-amber-100"><AlertTriangle /><AlertTitle>{pick("有损压缩会改变页面内容", "Lossy compression changes page content")}</AlertTitle><AlertDescription>{format("数字签名、文本层、链接、表单和矢量内容不会保留；一次最多 {count} 页。请保留原文件并抽查结果。", "Digital signatures, text layers, links, forms, and vectors are not retained; process up to {count} pages at once. Keep the source and review the result.", { count: PDF_RASTER_COMPRESSION_MAX_PAGES })}</AlertDescription></Alert> : null}
         </fieldset>
         {running || progress ? <div className="space-y-2 rounded-xl border border-cyan-500/25 bg-cyan-500/[.06] p-4"><div className="flex items-center justify-between gap-3 text-sm"><span>{progressText}</span><span>{progress}%</span></div><Progress value={progress} />{running ? <Button size="sm" variant="outline" onClick={cancelExport}><X />{pick("取消导出", "Cancel export")}</Button> : null}</div> : null}
-        {delivery ? <Alert className="border-emerald-500/30 bg-emerald-500/[.07] text-emerald-950 dark:text-emerald-100"><FileCheck2 /><AlertTitle>{pick("交付文件已校验", "Delivery file verified")}</AlertTitle><AlertDescription><p>{format("{name} · {pages} 页 · {size}", "{name} · {pages} pages · {size}", { name: delivery.filename, pages: delivery.pages, size: formatBytes(delivery.bytes) })}</p><p className="mt-1 text-xs opacity-80">{pick("已核对页数和文档属性设置；请仍人工检查表单、链接和版面。", "Page count and document-property settings were checked; still review forms, links, and layout manually.")}</p><div className="mt-3 flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => downloadBlob(delivery.blob, delivery.filename)}><Download />{pick("再次下载", "Download again")}</Button><Button size="sm" variant="outline" onClick={downloadDeliveryReport}><Download />{pick("下载交付报告", "Download delivery report")}</Button>{onContinueToImages ? <Button size="sm" variant="outline" onClick={() => onContinueToImages(new File([delivery.blob], delivery.filename, { type: "application/pdf", lastModified: Date.now() }))}>{pick("继续转图片", "Continue to images")}<ArrowRight /></Button> : null}</div></AlertDescription></Alert> : null}
+        {delivery ? <Alert className="border-emerald-500/30 bg-emerald-500/[.07] text-emerald-950 dark:text-emerald-100"><FileCheck2 /><AlertTitle>{pick("PDF 已生成并检查完成", "Delivery file verified")}</AlertTitle><AlertDescription><p>{format("{name} · {pages} 页 · {size}", "{name} · {pages} pages · {size}", { name: delivery.filename, pages: delivery.pages, size: formatBytes(delivery.bytes) })}</p><p className="mt-1 text-xs opacity-80">{pick("已核对页数和文档设置；表单、链接和版面仍建议人工打开检查一次。", "Page count and document-property settings were checked; still review forms, links, and layout manually.")}</p><div className="mt-3 flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => downloadBlob(delivery.blob, delivery.filename)}><Download />{pick("再次下载", "Download again")}</Button><Button size="sm" variant="outline" onClick={downloadDeliveryReport}><Download />{pick("下载处理报告", "Download delivery report")}</Button>{onContinueToImages ? <Button size="sm" variant="outline" onClick={() => onContinueToImages(new File([delivery.blob], delivery.filename, { type: "application/pdf", lastModified: Date.now() }))}>{pick("继续转图片", "Continue to images")}<ArrowRight /></Button> : null}</div></AlertDescription></Alert> : null}
         <div className="flex flex-wrap gap-2">
           <Button disabled={running} onClick={() => void exportPages(pagePlan, false)}>{running ? <LoaderCircle className="animate-spin" /> : <Download />}{format("导出完整 PDF（{count} 页）", "Export complete PDF ({count} pages)", { count: pagePlan.length })}</Button>
           <Button variant="outline" disabled={running || !selectedPages.length} onClick={() => void exportPages(selectedPages, true)}><Download />{format("提取所选页面（{count} 页）", "Extract selected pages ({count})", { count: selectedPages.length })}</Button>

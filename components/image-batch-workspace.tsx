@@ -139,12 +139,12 @@ export function ImageBatchWorkspace({ initialPanel = "remove" }: { initialPanel?
               <Layers3 className="size-5" />
             </span>
             <div>
-              <h2 className="text-lg font-semibold tracking-tight text-foreground">{pick("一批图片，一个工作台", "One image batch, one workspace")}</h2>
-              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{pick("只导入一次，按需使用去背景、快速修图和输出设置。工具不是必须按顺序完成的步骤，未使用的可以直接跳过。", "Import once, then use background removal, quick editing, and output settings only when needed. These are optional tools, not required sequential steps.")}</p>
+              <h2 className="text-lg font-semibold tracking-tight text-foreground">{pick("批量处理图片，不用重复添加", "One image batch, one workspace")}</h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{pick("去背景、快速修图、转换压缩可以随时切换，不需要按固定顺序操作；返回时，已经添加的图片和处理进度都会保留。", "Import once, then use background removal, quick editing, and output settings only when needed. These are optional tools, not required sequential steps.")}</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-2 lg:max-w-64 lg:justify-end">
-            <Badge variant="outline" className="border-border bg-background/50"><CheckCircle2 className="text-emerald-600 dark:text-emerald-400" />{pick("队列切换后保留", "Queues stay available")}</Badge>
+            <Badge variant="outline" className="border-border bg-background/50"><CheckCircle2 className="text-emerald-600 dark:text-emerald-400" />{pick("切换功能不丢图片", "Queues stay available")}</Badge>
             <Badge variant="outline" className="border-border bg-background/50"><ShieldCheck className="text-cyan-600 dark:text-cyan-400" />{pick("文件不上传", "Files stay local")}</Badge>
           </div>
         </CardContent>
@@ -152,7 +152,7 @@ export function ImageBatchWorkspace({ initialPanel = "remove" }: { initialPanel?
 
       <ImageWorkflowNav active={active} counts={counts} visited={visited} onSelect={showPanel} />
 
-      {notice ? <Alert className="border-cyan-500/25 bg-cyan-500/[.06]"><CheckCircle2 className="text-cyan-600 dark:text-cyan-400" /><AlertTitle>{pick("工作台提示", "Workspace note")}</AlertTitle><AlertDescription>{notice}</AlertDescription></Alert> : null}
+      {notice ? <Alert className="border-cyan-500/25 bg-cyan-500/[.06]"><CheckCircle2 className="text-cyan-600 dark:text-cyan-400" /><AlertTitle>{pick("处理提示", "Workspace note")}</AlertTitle><AlertDescription>{notice}</AlertDescription></Alert> : null}
 
       <section
         id={`image-workspace-panel-${active}`}

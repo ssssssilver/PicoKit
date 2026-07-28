@@ -377,7 +377,7 @@ export function ImageDeliveryStudio({
     <div className="space-y-6">
       <Card className="border-border bg-card shadow-none">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base"><Images className="size-4 text-cyan-500" />{embedded ? pick("当前批次 · 输出与下载", "Current batch · Output and download") : pick("加入交付队列", "Add images to the delivery queue")}</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base"><Images className="size-4 text-cyan-500" />{embedded ? pick("当前批次 · 输出与下载", "Current batch · Output and download") : pick("添加要处理的图片", "Add images to the delivery queue")}</CardTitle>
           <p className="text-sm leading-6 text-muted-foreground">{embedded ? pick("当前批次会逐张优化；也可继续补充 JPG、PNG 或 WebP。", "The current batch is optimized one image at a time. You can also add more JPG, PNG, or WebP images.") : pick("一次选择多张 JPG、PNG 或 WebP；图片会先逐张校验，再按列表顺序处理。", "Choose multiple JPG, PNG, or WebP images. They are validated and processed one at a time in list order.")}</p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -436,7 +436,7 @@ export function ImageDeliveryStudio({
 
       <Card className="border-border bg-card shadow-none">
         <CardHeader>
-          <CardTitle className="text-base">{pick("统一交付设置", "Delivery settings")}</CardTitle>
+          <CardTitle className="text-base">{pick("统一输出设置", "Delivery settings")}</CardTitle>
           <p className="text-sm leading-6 text-muted-foreground">{pick("设置修改后，已有结果会回到等待状态，确保最终 ZIP 使用同一套参数。", "Changing a setting returns existing results to queued state so the final ZIP uses one consistent configuration.")}</p>
         </CardHeader>
         <CardContent className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -473,7 +473,7 @@ export function ImageDeliveryStudio({
       <Alert className="border-amber-500/30 bg-amber-500/5">
         <ShieldCheck className="text-amber-500" />
         <AlertTitle>{pick("默认清理原始元数据", "Original metadata is removed by default")}</AlertTitle>
-        <AlertDescription>{pick("交付结果由浏览器重新编码，不会带回原图中的 EXIF、GPS、XMP、IPTC 或 C2PA 等元数据与来源凭证。源文件不会被修改，请自行保留原件。", "Delivery outputs are re-encoded in your browser and do not carry over EXIF, GPS, XMP, IPTC, C2PA, or other source metadata. Source files are never changed, so keep the originals you need.")}</AlertDescription>
+        <AlertDescription>{pick("导出的图片会由浏览器重新生成，不会保留原图中的 EXIF、GPS、XMP、IPTC、C2PA 等信息。原文件不会被修改，请保留好需要的原图。", "Delivery outputs are re-encoded in your browser and do not carry over EXIF, GPS, XMP, IPTC, C2PA, or other source metadata. Source files are never changed, so keep the originals you need.")}</AlertDescription>
       </Alert>
 
       <Card className="border-border bg-card shadow-none">

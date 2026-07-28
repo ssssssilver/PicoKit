@@ -19,8 +19,8 @@ describe("PDF toolbox experience", () => {
   })
 
   it("shows PDF-specific local processing details and mode-specific limits", () => {
-    expect(pdfToolSource).toContain("PDF 本地处理")
-    expect(pdfToolSource).toContain("后台 Worker")
+    expect(pdfToolSource).toContain("处理说明")
+    expect(pdfToolSource).toContain("浏览器自动处理")
     expect(pdfToolSource).toContain("最多 60 张，合计 250 MB，单张最高 40 MP")
     expect(pdfToolSource).toContain("一次最多转换 200 页")
     expect(pdfToolSource).not.toContain("DeviceCapability")

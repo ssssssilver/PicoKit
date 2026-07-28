@@ -83,7 +83,7 @@ export function HomeToolDirectory() {
               title: "My tools",
               titleEn: "My tools",
               titleZh: "我的工具",
-              description: "收藏与最近使用的工具，仅保存在当前浏览器",
+              description: "收藏和最近用过的工具，只保存在当前浏览器",
               descriptionEn:
                 "Favorites and recently used tools, stored only in this browser",
               tools,
@@ -97,7 +97,7 @@ export function HomeToolDirectory() {
           title: "Common tools",
           titleEn: "Common tools",
           titleZh: "常用工具",
-          description: "优先展示最常处理的图片、PDF、AI 检测与二维码任务",
+          description: "图片、PDF、二维码等常用功能，点开就能用",
           descriptionEn:
             "Quick access to common image, PDF, AI detection, and QR tasks",
           tools,
@@ -196,13 +196,13 @@ export function HomeToolDirectory() {
       <div className="border-b border-white/10 pb-7">
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[.2em] text-cyan-300">
-            {pick("工具目录", "Tool directory")}
+            {pick("全部工具", "Tool directory")}
           </p>
           <h2 className="mt-2 text-2xl font-bold tracking-[-.035em] text-white sm:text-3xl">
-            {pick("选择要完成的任务", "Choose a task")}
+            {pick("想处理什么？", "Choose a task")}
           </h2>
           <p className="mt-2 text-sm text-zinc-500">
-            {format("先展示 {common} 个常用工具，其余 {more} 个按分类展开", "{common} common tools first; expand {more} more by category", { common: commonTools.length, more: allTools.length - commonTools.length })}
+            {format("常用的 {common} 个工具放在前面，另外 {more} 个可按分类查找", "{common} common tools first; expand {more} more by category", { common: commonTools.length, more: allTools.length - commonTools.length })}
           </p>
         </div>
       </div>
@@ -215,7 +215,7 @@ export function HomeToolDirectory() {
           onChange={(event) => setQuery(event.target.value)}
           className="min-w-0 flex-1 bg-transparent text-sm text-zinc-100 outline-none placeholder:text-zinc-600"
           placeholder={pick(
-            "搜索工具、格式或功能…",
+            "搜索工具，例如：去背景、压缩、PDF 合并…",
             "Search tools, formats, or features…",
           )}
           aria-label={pick("搜索 TabNative 工具", "Search TabNative tools")}
@@ -266,7 +266,7 @@ export function HomeToolDirectory() {
           aria-controls="more-tool-categories"
           className="inline-flex h-10 items-center gap-2 rounded-lg border border-white/10 px-3.5 text-sm text-zinc-500 transition hover:border-white/20 hover:text-zinc-200"
         >
-          {pick("更多工具与分类", "More tools and categories")}
+          {pick("全部分类", "More tools and categories")}
           <span className="font-mono text-[10px] opacity-60">
             {allTools.length - commonTools.length}
           </span>
@@ -481,7 +481,7 @@ function ToolCard({
             {pick(tool.description, tool.descriptionEn)}
           </span>
           <span className="mt-4 block font-mono text-[10px] uppercase tracking-[.1em] text-zinc-600">
-            {tool.runtime ?? "BROWSER WORKER"}
+            {pick("浏览器本地处理", tool.runtime ?? "BROWSER WORKER")}
           </span>
         </span>
         <ArrowRight className="mt-1 size-4 text-zinc-700 transition group-hover:translate-x-1 group-hover:text-cyan-300" />

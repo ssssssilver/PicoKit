@@ -30,7 +30,7 @@ test("server-renders the TabNative homepage and security headers", async () => {
   assert.equal(response.headers.get("referrer-policy"), "strict-origin-when-cross-origin")
   const html = await response.text()
   assert.match(html, /TabNative/)
-  assert.match(html, /一批图片，一个工作台。/)
+  assert.match(html, /一批图片，一次搞定。/)
   const htmlWithoutLegacyRepositoryUrl = html.replaceAll("https://github.com/ssssssilver/PicoKit", "")
   assert.doesNotMatch(htmlWithoutLegacyRepositoryUrl, /PicoKit/)
   assert.match(html, /href="https:\/\/github\.com\/ssssssilver\/PicoKit"/)
@@ -62,7 +62,7 @@ for (const [pathname, marker] of [
   ["/one-click-ai-cleaner", "ONE-CLICK AI MARK CLEANUP"],
   ["/ai-text-detector", "AI 文本检测"],
   ["/ai-image-detector", "AI 图片检测"],
-  ["/remove-ai-metadata-from-image", "清理图片 AI 元数据"],
+  ["/remove-ai-metadata-from-image", "去除图片 AI 元数据"],
   ["/remove-c2pa-content-credentials", "C2PA"],
   ["/remove-made-with-ai-label", "Made with AI"],
   ["/gemini-watermark-remover", "AI"],
@@ -100,7 +100,7 @@ for (const [pathname, marker] of [
     const html = await response.text()
     assert.match(html, new RegExp(marker))
     assert.ok(html.includes(`href="/blog${pathname}"`), `${pathname} should link to its matching guide`)
-    assert.match(html, /查看完整使用教程/)
+    assert.match(html, /查看使用教程/)
     assert.doesNotMatch(html, /侧栏广告位|Sidebar ad/)
   })
 }
@@ -110,8 +110,8 @@ test("batch image processing exposes one optional-tool workspace", async () => {
   assert.equal(response.status, 200)
   const html = await response.text()
   assert.match(html, /图片批量处理/)
-  assert.match(html, /一批图片，一个工作台/)
-  assert.match(html, /三个工具都可跳过/)
+  assert.match(html, /批量处理图片，不用重复添加/)
+  assert.match(html, /去背景、快速修图、转换压缩可以随时切换/)
   assert.match(html, /去背景与成品/)
   assert.match(html, /快速修图/)
   assert.match(html, /输出与下载/)

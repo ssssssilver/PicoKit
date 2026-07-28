@@ -59,7 +59,7 @@ export function SiteHeader() {
         <nav className="mx-2 hidden min-w-0 flex-1 items-center justify-center gap-0.5 md:flex" aria-label={pick("主导航", "Primary navigation")}>
           <Link href="/remove-background" title={pick("图片批量处理", "Batch Image Processing")} className="inline-flex max-w-24 min-w-0 items-center gap-1.5 rounded-md border border-cyan-300/25 bg-cyan-300/[.08] px-2 py-2 text-xs font-semibold text-cyan-200 transition hover:border-cyan-300/45 hover:bg-cyan-300/[.13] hover:text-cyan-100 lg:max-w-none lg:px-2.5 lg:text-sm">
             <Star className="size-3.5 shrink-0" fill="currentColor" aria-hidden="true" />
-            <span className="truncate lg:hidden">{pick("图片流水线", "Image workflow")}</span>
+            <span className="truncate lg:hidden">{pick("批量图片", "Image workflow")}</span>
             <span className="hidden whitespace-nowrap lg:inline">{pick("图片批量处理", "Batch Image Processing")}</span>
           </Link>
           <Link href="/pdf-tools" title={pick("PDF 批量处理", "Batch PDF Processing")} className="inline-flex max-w-24 min-w-0 items-center gap-1.5 rounded-md px-2 py-2 text-xs font-semibold text-cyan-200 transition hover:bg-cyan-300/[.06] hover:text-cyan-100 lg:max-w-none lg:px-2.5 lg:text-sm">
@@ -154,7 +154,7 @@ export function SiteHeader() {
             <Link href="/blog" onClick={() => setOpen(false)} className="rounded-lg px-3 py-3 text-sm font-medium text-zinc-200 hover:bg-white/8">{pick("使用教程", "Tool guides")}</Link>
             <details className="group sm:col-span-2">
               <summary className="flex cursor-pointer list-none items-center justify-between rounded-lg px-3 py-3 text-sm text-zinc-300 hover:bg-white/8">
-                <span>{pick("更多工具与分类", "More tools and categories")}</span>
+                <span>{pick("全部工具", "More tools and categories")}</span>
                 <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
               </summary>
               <div className="grid gap-1 border-l border-white/10 pl-3 sm:grid-cols-2">

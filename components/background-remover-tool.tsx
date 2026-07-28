@@ -231,11 +231,11 @@ export function BackgroundRemoverTool() {
       <Card className="border-cyan-300/20 bg-cyan-300/[.035] shadow-none">
         <CardHeader className="pb-3">
           <CardTitle className="text-base text-zinc-100">{pick("一键移除背景", "Remove background")}</CardTitle>
-          <p className="text-sm leading-6 text-zinc-500">{pick("自动识别图片主体并生成透明背景，处理全程在当前设备完成。", "Automatically detect the main subject and create a transparent background, entirely on this device.")}</p>
+          <p className="text-sm leading-6 text-zinc-500">{pick("自动识别人像、商品、动物等主体并去掉背景，图片不会上传。", "Automatically detect the main subject and create a transparent background, entirely on this device.")}</p>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2 text-xs text-zinc-500">
           <Badge variant="outline">{pick("本地处理", "On-device")}</Badge>
-          <Badge variant="outline">WebGPU / WASM</Badge>
+          <Badge variant="outline">{pick("自动选择更快的处理方式", "WebGPU / WASM")}</Badge>
           <Badge variant="outline">{modelCacheLabel(modelCached, pick)}</Badge>
         </CardContent>
       </Card>
@@ -293,7 +293,7 @@ export function BackgroundRemoverTool() {
                   : pick("一键移除背景", "Remove background")}
               </Button>
               {running ? <Button size="lg" variant="outline" onClick={cancel}><X />{pick("取消", "Cancel")}</Button> : null}
-              <p className="text-xs text-zinc-500">{pick("首次使用会准备约 4.6 MB 的本地处理能力，优先使用 GPU，不可用时自动切换到本机 CPU；之后会复用浏览器缓存。", "The first run prepares about 4.6 MB of on-device processing resources, prefers the GPU, and automatically uses this device's CPU when needed; the browser reuses its cache afterward.")}</p>
+              <p className="text-xs text-zinc-500">{pick("第一次使用需要联网准备一下，通常只要几秒；之后会直接使用浏览器缓存，无需手动设置。", "The first run prepares about 4.6 MB of on-device processing resources, prefers the GPU, and automatically uses this device's CPU when needed; the browser reuses its cache afterward.")}</p>
             </div>
           ) : null}
           {running ? (
@@ -311,7 +311,7 @@ export function BackgroundRemoverTool() {
           <CardHeader className="flex-row items-center justify-between gap-4">
             <div><CardTitle className="text-base text-zinc-100">{pick("透明背景结果", "Transparent background result")}</CardTitle><p className="mt-1 text-sm text-zinc-500">{pick("拖动滑块比较原图和透明 PNG。", "Drag the slider to compare the original and transparent PNG.")}</p></div>
             <div className="flex flex-wrap items-center justify-end gap-2">
-              <Badge variant="outline">{pick("本地去背景", "On-device removal")}</Badge>
+              <Badge variant="outline">{pick("图片不上传", "On-device removal")}</Badge>
               <Badge variant="secondary">{result.backend.toUpperCase()}</Badge>
             </div>
           </CardHeader>
@@ -328,7 +328,7 @@ export function BackgroundRemoverTool() {
                 {handoff === "editor" ? <LoaderCircle className="animate-spin" /> : <ArrowRight />}{pick("继续快速修图", "Continue editing")}
               </Button>
               <Button size="lg" variant="outline" disabled={Boolean(handoff)} onClick={() => void continueWith("optimizer")}>
-                {handoff === "optimizer" ? <LoaderCircle className="animate-spin" /> : <ArrowRight />}{pick("继续压缩交付", "Continue to optimize")}
+                {handoff === "optimizer" ? <LoaderCircle className="animate-spin" /> : <ArrowRight />}{pick("继续压缩和转换", "Continue to optimize")}
               </Button>
             </div>
             {result.blob.size > IMAGE_EDITOR_MAX_BYTES ? <p className="text-xs leading-5 text-amber-300">{pick("透明 PNG 较大，暂不适合直接进入快速修图；可以先进入批量优化缩小文件。", "This transparent PNG is too large for the quick editor. Optimize it first to reduce the file size.")}</p> : null}
@@ -366,21 +366,21 @@ function localizeStage(stage: string | undefined, pick: (zh: string, en: string)
 
 function modelCacheLabel(cached: boolean | null, pick: (zh: string, en: string) => string) {
   if (cached === true) return pick("已在浏览器缓存", "Cached in this browser")
-  if (cached === false) return pick("首次使用时按需准备", "Prepared on first use")
-  return pick("按需准备", "Prepared on demand")
+  if (cached === false) return pick("首次使用需要准备", "Prepared on first use")
+  return pick("使用时自动准备", "Prepared on demand")
 }
 
 function backgroundRemovalError(code: string | undefined, pick: (zh: string, en: string) => string) {
   if (code === "general-model-integrity-failed") return pick(
-    "本地处理组件校验失败，已停止运行以避免使用不完整文件。请清理该网站的缓存后重试。",
+    "去背景功能准备失败。请清理该网站的浏览器缓存，然后重新打开页面再试。",
     "The local processing component failed verification, so processing stopped instead of using an incomplete file. Clear this site's cache and try again.",
   )
   if (code === "general-model-load-failed") return pick(
-    "本地去背景能力未能准备完成。请检查网络后重试；无需 GPU，也可以使用本机 CPU。",
+    "去背景功能准备失败。请检查网络后重试，浏览器会自动选择可用的处理方式。",
     "On-device background removal could not be prepared. Check your connection and try again; a GPU is not required because this device's CPU can also be used.",
   )
   return pick(
-    "当前浏览器未能完成本地处理。请刷新后重试；系统会自动在 GPU 与 CPU 之间选择可用方式。",
+    "当前浏览器未能完成去背景。请刷新页面后重试，或换一张尺寸更小、主体更清晰的图片。",
     "This browser could not complete local processing. Refresh and try again; the tool automatically chooses an available GPU or CPU path.",
   )
 }

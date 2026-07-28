@@ -10,8 +10,8 @@ export function ToolAside({ notes }: { notes: LocalizedValue[] }) {
     <>
       <DeviceCapability />
       <Card className="border-white/10 bg-[#111] shadow-none">
-        <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-sm"><LockKeyhole className="size-4 text-cyan-300" /><Localized zh="隐私保证" en="Privacy guarantee" /></CardTitle></CardHeader>
-        <CardContent><p className="text-sm leading-6 text-zinc-500"><Localized zh="工具不会把文件内容发送到 TabNative 服务端。广告区域与处理区域通过组件边界隔离。" en="Tools never send file contents to the TabNative server. Component boundaries isolate advertising from processing areas." /></p></CardContent>
+        <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-sm"><LockKeyhole className="size-4 text-cyan-300" /><Localized zh="文件不上传" en="Privacy guarantee" /></CardTitle></CardHeader>
+        <CardContent><p className="text-sm leading-6 text-zinc-500"><Localized zh="文件只在当前浏览器中处理，TabNative 不会读取或保存原文件和处理结果；广告也无法访问处理中的文件。" en="Tools never send file contents to the TabNative server. Component boundaries isolate advertising from processing areas." /></p></CardContent>
       </Card>
       <Card className="border-white/10 bg-[#111] shadow-none">
         <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-sm"><CircleHelp className="size-4 text-cyan-300" /><Localized zh="使用提示" en="Tips" /></CardTitle></CardHeader>
